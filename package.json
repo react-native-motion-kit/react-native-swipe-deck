@@ -1,0 +1,135 @@
+{
+  "name": "@react-native-motion-kit/swipe-deck",
+  "version": "0.1.0",
+  "description": "High-performance Tinder-style swipe deck and swipe cards for React Native, powered by Reanimated and Gesture Handler.",
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.tsx",
+      "types": "./lib/typescript/src/index.d.ts",
+      "default": "./lib/module/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "android",
+    "ios",
+    "cpp",
+    "*.podspec",
+    "react-native.config.js",
+    "!ios/build",
+    "!android/build",
+    "!android/gradle",
+    "!android/gradlew",
+    "!android/gradlew.bat",
+    "!android/local.properties",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__",
+    "!**/.*"
+  ],
+  "scripts": {
+    "example": "yarn workspace @react-native-motion-kit/swipe-deck-example",
+    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
+    "prepare": "bob build",
+    "typecheck": "tsc",
+    "test": "jest"
+  },
+  "keywords": [
+    "react-native",
+    "ios",
+    "android",
+    "react-native-swipe-deck",
+    "swipe-deck",
+    "swipe-cards",
+    "tinder-cards",
+    "tinder-style",
+    "card-stack",
+    "deck-swiper",
+    "reanimated",
+    "react-native-reanimated",
+    "gesture-handler",
+    "react-native-gesture-handler",
+    "animation",
+    "gesture"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/react-native-motion-kit/react-native-swipe-deck.git"
+  },
+  "author": "harang <dbd02169@naver.com> (https://github.com/saseungmin)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/react-native-motion-kit/react-native-swipe-deck/issues"
+  },
+  "homepage": "https://github.com/react-native-motion-kit/react-native-swipe-deck#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "@commitlint/config-conventional": "^20.5.0",
+    "@jest/globals": "29.7.0",
+    "@react-native/babel-preset": "0.85.0",
+    "@react-native/jest-preset": "0.85.0",
+    "@types/react": "^19.2.0",
+    "commitlint": "^20.5.0",
+    "del-cli": "^7.0.0",
+    "jest": "29.7.0",
+    "lefthook": "^2.1.4",
+    "react": "19.2.3",
+    "react-native": "0.85.0",
+    "react-native-builder-bob": "^0.41.0",
+    "turbo": "^2.8.21",
+    "typescript": "^6.0.2"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "workspaces": [
+    "example"
+  ],
+  "packageManager": "yarn@4.15.0",
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
+  },
+  "jest": {
+    "preset": "@react-native/jest-preset",
+    "modulePathIgnorePatterns": [
+      "<rootDir>/example/node_modules",
+      "<rootDir>/lib/"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "create-react-native-library": {
+    "type": "library",
+    "languages": "js",
+    "tools": [
+      "jest",
+      "lefthook"
+    ],
+    "version": "0.62.0"
+  }
+}

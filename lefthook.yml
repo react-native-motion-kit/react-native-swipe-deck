@@ -1,0 +1,11 @@
+pre-commit:
+  parallel: true
+  commands:
+    types:
+      glob: "*.{js,jsx,ts,tsx}"
+      run: yarn typecheck
+commit-msg:
+  parallel: true
+  commands:
+    commitlint:
+      run: yarn commitlint --edit {1}
