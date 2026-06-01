@@ -67,7 +67,8 @@
   },
   "scripts": {
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
-    "example": "yarn workspace @react-native-motion-kit/swipe-deck-example",
+    "example": "yarn workspace example",
+    "example:build": "yarn example build",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "oxlint",
