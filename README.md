@@ -4,7 +4,6 @@ High-performance Tinder-style swipe deck and swipe cards for React Native, power
 
 ## Installation
 
-
 ```sh
 npm install @react-native-motion-kit/swipe-deck
 ```

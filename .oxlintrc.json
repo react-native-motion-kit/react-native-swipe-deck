@@ -1,0 +1,64 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "react", "import", "oxc", "typescript"],
+  "categories": {
+    "correctness": "error",
+    "perf": "error",
+    "nursery": "error",
+    "suspicious": "error"
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "react/style-prop-object": "off",
+    "import/no-unassigned-import": [
+      "error",
+      {
+        "allow": ["**/*.css"]
+      }
+    ]
+  },
+  "settings": {
+    "jsx-a11y": {
+      "polymorphicPropName": null,
+      "components": {},
+      "attributes": {}
+    },
+    "react": {
+      "formComponents": [],
+      "linkComponents": [],
+      "version": "19.2",
+      "componentWrapperFunctions": []
+    },
+    "jsdoc": {
+      "ignorePrivate": false,
+      "ignoreInternal": false,
+      "ignoreReplacesDocs": true,
+      "overrideReplacesDocs": true,
+      "augmentsExtendsReplacesDocs": false,
+      "implementsReplacesDocs": false,
+      "exemptDestructuredRootsFromChecks": false,
+      "tagNamePreference": {}
+    },
+    "vitest": {
+      "typecheck": false
+    }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+      "env": {
+        "jest": true
+      }
+    }
+  ],
+  "env": {
+    "builtin": true,
+    "node": true,
+    "es6": true,
+    "browser": true
+  },
+  "globals": {
+    "__DEV__": "readonly"
+  },
+  "ignorePatterns": [".yarn/**", "lib/**"]
+}
