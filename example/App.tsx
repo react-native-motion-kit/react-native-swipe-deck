@@ -3,7 +3,14 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-const profiles = Array.from({ length: 150 }, (_, index) => ({
+type Profile = {
+  id: string;
+  name: string;
+  bio: string;
+  accent: string;
+};
+
+const profiles: Profile[] = Array.from({ length: 150 }, (_, index) => ({
   id: `profile-${index}`,
   name: `Profile ${index + 1}`,
   bio: `Swipe deck item ${index + 1}`,
@@ -22,7 +29,7 @@ export default function App() {
         </View>
 
         <View style={styles.deckFrame}>
-          <SwipeDeck
+          <SwipeDeck<Profile>
             data={profiles}
             getKey={(item) => item.id}
             containerStyle={styles.deck}
@@ -33,7 +40,7 @@ export default function App() {
               console.log('No more profiles');
             }}
           >
-            <SwipeDeck.Card style={styles.cardShadow}>
+            <SwipeDeck.Card<Profile> style={styles.cardShadow}>
               {({ item, role, isActive }) => (
                 <View style={[styles.card, { backgroundColor: item.accent }]}>
                   <Text style={styles.role}>{role}</Text>
