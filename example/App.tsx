@@ -1,4 +1,4 @@
-import { SwipeDeck } from '@react-native-motion-kit/swipe-deck';
+import { createSwipeDeck } from '@react-native-motion-kit/swipe-deck';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -17,6 +17,8 @@ const profiles: Profile[] = Array.from({ length: 150 }, (_, index) => ({
   accent: index % 2 === 0 ? '#7c3aed' : '#0891b2',
 }));
 
+const SwipeDeck = createSwipeDeck<Profile>();
+
 export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -29,7 +31,7 @@ export default function App() {
         </View>
 
         <View style={styles.deckFrame}>
-          <SwipeDeck<Profile>
+          <SwipeDeck.Root
             data={profiles}
             getKey={(item) => item.id}
             containerStyle={styles.deck}
@@ -40,7 +42,7 @@ export default function App() {
               console.log('No more profiles');
             }}
           >
-            <SwipeDeck.Card<Profile> style={styles.cardShadow}>
+            <SwipeDeck.Card style={styles.cardShadow}>
               {({ item, role, isActive }) => (
                 <View style={[styles.card, { backgroundColor: item.accent }]}>
                   <Text style={styles.role}>{role}</Text>
@@ -52,7 +54,7 @@ export default function App() {
                 </View>
               )}
             </SwipeDeck.Card>
-          </SwipeDeck>
+          </SwipeDeck.Root>
         </View>
       </View>
     </GestureHandlerRootView>

@@ -41,3 +41,13 @@ export type SwipeDeckCardProps<T> = {
   style?: StyleProp<ViewStyle>;
   children: (info: SwipeRenderInfo<T>) => ReactElement | null;
 };
+
+export type SwipeDeckInstance<T> = {
+  Root: (props: SwipeDeckProps<T>) => ReactElement;
+  Card: (props: SwipeDeckCardProps<T>) => ReactElement | null;
+};
+
+export type SwipeDeckStatic = {
+  Root: <T>(props: SwipeDeckProps<T>) => ReactElement;
+  Card: <T>(props: SwipeDeckCardProps<T>) => ReactElement | null;
+};

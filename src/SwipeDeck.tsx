@@ -4,7 +4,14 @@ import type { LayoutChangeEvent } from 'react-native';
 import React, { isValidElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import type { SwipeDeckCardProps, SwipeDeckLayout, SwipeDeckProps, SwipeDirection } from './types';
+import type {
+  SwipeDeckCardProps,
+  SwipeDeckInstance,
+  SwipeDeckLayout,
+  SwipeDeckProps,
+  SwipeDeckStatic,
+  SwipeDirection,
+} from './types';
 import type { SwipeWindowDescriptor } from './windowing';
 
 import { getSwipeRenderItems } from './rendering';
@@ -12,10 +19,6 @@ import { getSwipeCommit, shouldResetEndReached } from './state';
 import { SwipeDeckCard } from './SwipeDeckCard';
 import { SwipeDeckRenderedCard } from './SwipeDeckRenderedCard';
 import { clampActiveIndex } from './windowing';
-
-type SwipeDeckComponent = (<T>(props: SwipeDeckProps<T>) => ReactElement) & {
-  Card: typeof SwipeDeckCard;
-};
 
 type SwipeDeckHandle = {
   swipe: (direction: SwipeDirection) => void;
@@ -47,7 +50,7 @@ function getCardKey<T>(
   return `${role}-${itemKey}`;
 }
 
-function SwipeDeckRoot<T>({
+function Root<T>({
   data,
   getKey,
   initialIndex = 0,
@@ -144,9 +147,17 @@ function SwipeDeckRoot<T>({
   );
 }
 
-export const SwipeDeck = Object.assign(SwipeDeckRoot, {
+export function createSwipeDeck<T = never>(): SwipeDeckInstance<T> {
+  return {
+    Root,
+    Card: SwipeDeckCard,
+  };
+}
+
+export const SwipeDeck = {
+  Root,
   Card: SwipeDeckCard,
-}) as SwipeDeckComponent;
+} satisfies SwipeDeckStatic;
 
 const styles = StyleSheet.create({
   container: {
