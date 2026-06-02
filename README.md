@@ -20,6 +20,12 @@ const SwipeDeck = createSwipeDeck<Profile>();
 <SwipeDeck.Root
   data={profiles}
   getKey={(item) => item.id}
+  animationConfig={{
+    nextScale: 0.95,
+    nextOpacity: 0.92,
+    nextTranslateY: 12,
+    swipeProgressDistance: ({ width }) => width * 0.5,
+  }}
   onSwipe={({ item, direction }) => {
     console.log(item, direction);
   }}
@@ -34,6 +40,8 @@ const SwipeDeck = createSwipeDeck<Profile>();
 ```
 
 The deck renders a bounded window only: previous, current, and next cards where available. It does not render the whole data set.
+
+The next buffered card follows swipe progress by default, scaling from `nextScale` to `1`, fading from `nextOpacity` to `1`, and translating from `nextTranslateY` to `0` as the active card is dragged. Tune that behavior with `animationConfig`.
 
 ## API direction
 

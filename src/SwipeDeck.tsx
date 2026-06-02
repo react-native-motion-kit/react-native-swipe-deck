@@ -3,6 +3,7 @@ import type { LayoutChangeEvent } from 'react-native';
 
 import React, { isValidElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 
 import type {
   SwipeDeckCardProps,
@@ -14,6 +15,7 @@ import type {
 } from './types';
 import type { SwipeWindowDescriptor } from './windowing';
 
+import { resolveSwipeDeckAnimationConfig } from './animation';
 import { getSwipeRenderItems } from './rendering';
 import { getSwipeCommit, shouldResetEndReached } from './state';
 import { SwipeDeckCard } from './SwipeDeckCard';
@@ -57,6 +59,7 @@ function Root<T>({
   disabled = false,
   swipeThreshold,
   velocityThreshold,
+  animationConfig: animationConfigProp,
   containerStyle,
   children,
   onSwipe,
@@ -66,8 +69,10 @@ function Root<T>({
   const [layout, setLayout] = useState<SwipeDeckLayout>({ width: 0, height: 0 });
   const [activeIndex, setActiveIndex] = useState(() => clampActiveIndex(data.length, initialIndex));
   const [endReached, setEndReached] = useState(false);
+  const swipeProgress = useSharedValue(0);
   const cardSlot = findCardSlot<T>(children);
   const renderItems = getSwipeRenderItems(data, activeIndex);
+  const animationConfig = resolveSwipeDeckAnimationConfig(animationConfigProp, layout);
 
   useEffect(() => {
     setActiveIndex((currentIndex) => clampActiveIndex(data.length, currentIndex));
@@ -79,10 +84,10 @@ function Root<T>({
     }
   }, [activeIndex, data.length]);
 
-  const handleLayout = (event: LayoutChangeEvent) => {
+  const handleLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     setLayout({ width, height });
-  };
+  }, []);
 
   const commitSwipe = useCallback(
     (direction: SwipeDirection) => {
@@ -94,6 +99,7 @@ function Root<T>({
 
       const item = data[commit.swipedIndex] as T;
 
+      swipeProgress.value = 0;
       onSwipe?.({ item, index: commit.swipedIndex, direction });
       onIndexChange?.(commit.nextIndex);
       setActiveIndex(commit.nextIndex);
@@ -103,7 +109,7 @@ function Root<T>({
         onEndReached?.();
       }
     },
-    [activeIndex, data, endReached, onEndReached, onIndexChange, onSwipe],
+    [activeIndex, data, endReached, onEndReached, onIndexChange, onSwipe, swipeProgress],
   );
 
   const privateHandle = useMemo<SwipeDeckHandle>(
@@ -139,6 +145,8 @@ function Root<T>({
             layout={layout}
             swipeThreshold={swipeThreshold}
             velocityThreshold={velocityThreshold}
+            swipeProgress={swipeProgress}
+            animationConfig={animationConfig}
             onAcceptedSwipe={privateHandle.swipe}
           />
         );

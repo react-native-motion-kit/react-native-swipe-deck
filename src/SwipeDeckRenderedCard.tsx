@@ -4,18 +4,22 @@ import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
+  Extrapolation,
+  interpolate,
+  type SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { SwipeRenderItem } from './rendering';
 import type {
   SwipeDeckCardProps,
   SwipeDeckLayout,
   SwipeDeckProps,
+  ResolvedSwipeDeckAnimationConfig,
   SwipeDirection,
   SwipeRenderInfo,
 } from './types';
@@ -30,6 +34,8 @@ type SwipeDeckRenderedCardProps<T> = {
   layout: SwipeDeckLayout;
   swipeThreshold: SwipeDeckProps<T>['swipeThreshold'];
   velocityThreshold: SwipeDeckProps<T>['velocityThreshold'];
+  swipeProgress: SharedValue<number>;
+  animationConfig: ResolvedSwipeDeckAnimationConfig;
   onAcceptedSwipe: (direction: SwipeDirection) => void;
 };
 
@@ -52,6 +58,8 @@ export function SwipeDeckRenderedCard<T>({
   layout,
   swipeThreshold,
   velocityThreshold,
+  swipeProgress,
+  animationConfig,
   onAcceptedSwipe,
 }: SwipeDeckRenderedCardProps<T>) {
   const translateX = useSharedValue(0);
@@ -69,6 +77,45 @@ export function SwipeDeckRenderedCard<T>({
 
   const resolvedSwipeThreshold =
     typeof swipeThreshold === 'function' ? swipeThreshold(layout) : swipeThreshold;
+  const {
+    nextScale,
+    nextOpacity,
+    nextTranslateY,
+    previousScale,
+    previousOpacity,
+    previousTranslateY,
+    swipeProgressDistance,
+  } = animationConfig;
+
+  const passiveAnimatedStyle = useAnimatedStyle(() => {
+    if (descriptor.role === 'next') {
+      return {
+        opacity: interpolate(swipeProgress.value, [0, 1], [nextOpacity, 1], Extrapolation.CLAMP),
+        transform: [
+          {
+            scale: interpolate(swipeProgress.value, [0, 1], [nextScale, 1], Extrapolation.CLAMP),
+          },
+          {
+            translateY: interpolate(
+              swipeProgress.value,
+              [0, 1],
+              [nextTranslateY, 0],
+              Extrapolation.CLAMP,
+            ),
+          },
+        ],
+      };
+    }
+
+    if (descriptor.role === 'previous') {
+      return {
+        opacity: previousOpacity,
+        transform: [{ scale: previousScale }, { translateY: previousTranslateY }],
+      };
+    }
+
+    return {};
+  });
 
   const pan = useMemo(
     () =>
@@ -77,6 +124,10 @@ export function SwipeDeckRenderedCard<T>({
         .onUpdate((event) => {
           translateX.value = event.translationX;
           translateY.value = event.translationY;
+          swipeProgress.value = Math.min(
+            Math.abs(event.translationX) / Math.max(swipeProgressDistance, 1),
+            1,
+          );
         })
         .onEnd((event) => {
           const direction = resolveSwipeDirection({
@@ -91,6 +142,7 @@ export function SwipeDeckRenderedCard<T>({
           if (!direction) {
             translateX.value = withSpring(0);
             translateY.value = withSpring(0);
+            swipeProgress.value = withSpring(0);
             return;
           }
 
@@ -99,9 +151,10 @@ export function SwipeDeckRenderedCard<T>({
               ? Math.max(layout.width, 1) * OFFSCREEN_MULTIPLIER
               : -Math.max(layout.width, 1) * OFFSCREEN_MULTIPLIER;
 
+          swipeProgress.value = withTiming(1);
           translateX.value = withTiming(offscreenX, undefined, (finished) => {
             if (finished) {
-              runOnJS(onAcceptedSwipe)(direction);
+              scheduleOnRN(onAcceptedSwipe, direction);
             }
           });
         }),
@@ -111,6 +164,8 @@ export function SwipeDeckRenderedCard<T>({
       layout,
       onAcceptedSwipe,
       resolvedSwipeThreshold,
+      swipeProgress,
+      swipeProgressDistance,
       translateX,
       translateY,
       velocityThreshold,
@@ -133,6 +188,7 @@ export function SwipeDeckRenderedCard<T>({
       style={[
         styles.card,
         getPassiveStyle(descriptor.role),
+        isCurrent ? null : passiveAnimatedStyle,
         cardStyle,
         isCurrent ? animatedStyle : null,
       ]}
@@ -162,10 +218,8 @@ const styles = StyleSheet.create({
   },
   nextCard: {
     zIndex: 2,
-    transform: [{ scale: 0.96 }, { translateY: 12 }],
   },
   previousCard: {
     zIndex: 1,
-    transform: [{ scale: 0.92 }, { translateY: 20 }],
   },
 });

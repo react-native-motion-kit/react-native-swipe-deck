@@ -1,5 +1,7 @@
 export { createSwipeDeck, SwipeDeck } from './SwipeDeck';
 export type {
+  ResolvedSwipeDeckAnimationConfig,
+  SwipeDeckAnimationConfig,
   SwipeDeckCardProps,
   SwipeDeckInstance,
   SwipeDeckLayout,
