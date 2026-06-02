@@ -27,13 +27,14 @@ export default function App() {
         <View style={styles.header}>
           <Text style={styles.eyebrow}>React Native Motion Kit</Text>
           <Text style={styles.title}>Swipe Deck</Text>
-          <Text style={styles.subtitle}>Only previous/current/next cards render.</Text>
+          <Text style={styles.subtitle}>Five stable slots recycle as the deck advances.</Text>
         </View>
 
         <View style={styles.deckFrame}>
           <SwipeDeck.Root
             data={profiles}
             getKey={(item) => item.id}
+            visibleCardCount={5}
             containerStyle={styles.deck}
             onSwipe={({ item, direction }) => {
               console.log(`Swiped ${item.name} ${direction}`);

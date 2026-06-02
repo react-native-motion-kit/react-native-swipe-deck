@@ -2,9 +2,13 @@ import type { SwipeRole } from './types';
 
 export type SwipeWindowDescriptor = {
   index: number;
+  offset: number;
   role: SwipeRole;
   isActive: boolean;
 };
+
+const DEFAULT_VISIBLE_CARD_COUNT = 5;
+const MIN_VISIBLE_CARD_COUNT = 5;
 
 export function clampActiveIndex(dataLength: number, activeIndex: number): number {
   if (dataLength <= 0) {
@@ -22,7 +26,23 @@ export function clampActiveIndex(dataLength: number, activeIndex: number): numbe
   return activeIndex;
 }
 
-export function getSwipeWindow(dataLength: number, activeIndex: number): SwipeWindowDescriptor[] {
+export function normalizeVisibleCardCount(visibleCardCount?: number): number {
+  if (!Number.isFinite(visibleCardCount)) {
+    return DEFAULT_VISIBLE_CARD_COUNT;
+  }
+
+  return Math.max(MIN_VISIBLE_CARD_COUNT, Math.floor(visibleCardCount as number));
+}
+
+function getSwipeRole(offset: number): SwipeRole {
+  return offset === 0 ? 'current' : offset < 0 ? 'previous' : 'next';
+}
+
+export function getSwipeWindow(
+  dataLength: number,
+  activeIndex: number,
+  visibleCardCount?: number,
+): SwipeWindowDescriptor[] {
   if (dataLength <= 0 || activeIndex >= dataLength) {
     return [];
   }
@@ -33,25 +53,20 @@ export function getSwipeWindow(dataLength: number, activeIndex: number): SwipeWi
     return [];
   }
 
-  if (currentIndex === 0) {
-    return dataLength === 1
-      ? [{ index: currentIndex, role: 'current', isActive: true }]
-      : [
-          { index: currentIndex, role: 'current', isActive: true },
-          { index: currentIndex + 1, role: 'next', isActive: false },
-        ];
-  }
+  const renderCount = Math.min(dataLength, normalizeVisibleCardCount(visibleCardCount));
+  const previousCount = Math.floor((renderCount - 1) / 2);
+  const desiredStartIndex = currentIndex - previousCount;
+  const startIndex = Math.max(0, Math.min(desiredStartIndex, dataLength - renderCount));
 
-  if (currentIndex === dataLength - 1) {
-    return [
-      { index: currentIndex - 1, role: 'previous', isActive: false },
-      { index: currentIndex, role: 'current', isActive: true },
-    ];
-  }
+  return Array.from({ length: renderCount }, (_, itemOffset) => {
+    const index = startIndex + itemOffset;
+    const offset = index - currentIndex;
 
-  return [
-    { index: currentIndex - 1, role: 'previous', isActive: false },
-    { index: currentIndex, role: 'current', isActive: true },
-    { index: currentIndex + 1, role: 'next', isActive: false },
-  ];
+    return {
+      index,
+      offset,
+      role: getSwipeRole(offset),
+      isActive: offset === 0,
+    };
+  });
 }

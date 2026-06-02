@@ -13,6 +13,7 @@ export type SwipeDeckLayout = {
 export type SwipeRenderInfo<T> = {
   item: T;
   index: number;
+  offset: number;
   role: SwipeRole;
   isActive: boolean;
 };
@@ -66,6 +67,13 @@ export type SwipeDeckProps<T> = {
   swipeThreshold?: number | ((layout: SwipeDeckLayout) => number);
   velocityThreshold?: number;
   animationConfig?: SwipeDeckAnimationConfig;
+  /**
+   * Maximum number of cards kept mounted around the active card.
+   * Values below 5 are normalized to 5 when enough data is available.
+   *
+   * @default 5
+   */
+  visibleCardCount?: number;
   containerStyle?: StyleProp<ViewStyle>;
   children: ReactNode;
   onSwipe?: (event: SwipeEvent<T>) => void;

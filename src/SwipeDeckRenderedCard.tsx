@@ -1,82 +1,53 @@
 import type { ReactElement } from 'react';
 
-import { useMemo } from 'react';
+import { Fragment } from 'react';
 import { StyleSheet } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  Extrapolation,
-  interpolate,
-  type SharedValue,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
+import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
-import type { SwipeRenderItem } from './rendering';
 import type {
   SwipeDeckCardProps,
-  SwipeDeckLayout,
-  SwipeDeckProps,
   ResolvedSwipeDeckAnimationConfig,
-  SwipeDirection,
   SwipeRenderInfo,
 } from './types';
 import type { SwipeWindowDescriptor } from './windowing';
 
-import { resolveSwipeDirection } from './directions';
-
 type SwipeDeckRenderedCardProps<T> = {
-  renderItem: SwipeRenderItem<T>;
+  slotId: number;
+  itemKey: string;
+  item: T;
+  descriptor: SwipeWindowDescriptor;
   cardSlot: ReactElement<SwipeDeckCardProps<T>>;
-  disabled: boolean;
-  layout: SwipeDeckLayout;
-  swipeThreshold: SwipeDeckProps<T>['swipeThreshold'];
-  velocityThreshold: SwipeDeckProps<T>['velocityThreshold'];
   swipeProgress: SharedValue<number>;
+  activeTranslateX: SharedValue<number>;
+  activeTranslateY: SharedValue<number>;
+  dragSlotId: SharedValue<number>;
   animationConfig: ResolvedSwipeDeckAnimationConfig;
-  onAcceptedSwipe: (direction: SwipeDirection) => void;
 };
 
-const OFFSCREEN_MULTIPLIER = 1.5;
+function getZIndex(offset: number): number {
+  'worklet';
 
-function getPassiveStyle(role: SwipeWindowDescriptor['role']) {
-  const roleStyles = {
-    previous: styles.previousCard,
-    current: styles.currentCard,
-    next: styles.nextCard,
-  } satisfies Record<SwipeWindowDescriptor['role'], object>;
+  if (offset === 0) {
+    return 100;
+  }
 
-  return roleStyles[role];
+  return offset > 0 ? 100 - offset : 50 - Math.abs(offset);
 }
 
 export function SwipeDeckRenderedCard<T>({
-  renderItem,
+  slotId,
+  itemKey,
+  item,
+  descriptor,
   cardSlot,
-  disabled,
-  layout,
-  swipeThreshold,
-  velocityThreshold,
   swipeProgress,
+  activeTranslateX,
+  activeTranslateY,
+  dragSlotId,
   animationConfig,
-  onAcceptedSwipe,
 }: SwipeDeckRenderedCardProps<T>) {
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const { descriptor, item } = renderItem;
-  const isCurrent = descriptor.role === 'current';
+  const offset = descriptor.offset;
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.get() },
-      { translateY: translateY.get() },
-      { rotate: `${translateX.get() / 18}deg` },
-    ],
-  }));
-
-  const resolvedSwipeThreshold =
-    typeof swipeThreshold === 'function' ? swipeThreshold(layout) : swipeThreshold;
   const {
     nextScale,
     nextOpacity,
@@ -84,98 +55,58 @@ export function SwipeDeckRenderedCard<T>({
     previousScale,
     previousOpacity,
     previousTranslateY,
-    swipeProgressDistance,
   } = animationConfig;
 
-  const passiveAnimatedStyle = useAnimatedStyle(() => {
-    if (descriptor.role === 'next') {
+  const cardAnimatedStyle = useAnimatedStyle(() => {
+    const zIndex = getZIndex(offset);
+    const isDraggingSlot = dragSlotId.get() === slotId;
+
+    if (isDraggingSlot) {
       return {
-        opacity: interpolate(swipeProgress.get(), [0, 1], [nextOpacity, 1], Extrapolation.CLAMP),
+        zIndex: 100,
+        opacity: 1,
         transform: [
-          {
-            scale: interpolate(swipeProgress.get(), [0, 1], [nextScale, 1], Extrapolation.CLAMP),
-          },
-          {
-            translateY: interpolate(
-              swipeProgress.get(),
-              [0, 1],
-              [nextTranslateY, 0],
-              Extrapolation.CLAMP,
-            ),
-          },
+          { translateX: activeTranslateX.get() },
+          { translateY: activeTranslateY.get() },
+          { rotate: `${activeTranslateX.get() / 18}deg` },
         ],
       };
     }
 
-    if (descriptor.role === 'previous') {
+    if (offset > 0) {
+      const nextDepth = Math.max(offset - swipeProgress.get(), 0);
+
       return {
-        opacity: previousOpacity,
-        transform: [{ scale: previousScale }, { translateY: previousTranslateY }],
+        zIndex,
+        opacity: nextOpacity ** nextDepth,
+        transform: [{ scale: nextScale ** nextDepth }, { translateY: nextTranslateY * nextDepth }],
       };
     }
 
-    return {};
+    if (offset < 0) {
+      const previousDepth = Math.abs(offset);
+
+      return {
+        zIndex,
+        opacity: previousOpacity,
+        transform: [
+          { scale: previousScale ** previousDepth },
+          { translateY: previousTranslateY * previousDepth },
+        ],
+      };
+    }
+
+    return {
+      zIndex,
+      opacity: 1,
+      transform: [{ scale: 1 }, { translateY: 0 }],
+    };
   });
-
-  const pan = useMemo(
-    () =>
-      Gesture.Pan()
-        .enabled(isCurrent && !disabled)
-        .onUpdate((event) => {
-          translateX.set(event.translationX);
-          translateY.set(event.translationY);
-          swipeProgress.set(
-            Math.min(Math.abs(event.translationX) / Math.max(swipeProgressDistance, 1), 1),
-          );
-        })
-        .onEnd((event) => {
-          const direction = resolveSwipeDirection({
-            translationX: event.translationX,
-            velocityX: event.velocityX,
-            disabled: disabled || !isCurrent,
-            layout,
-            swipeThreshold: resolvedSwipeThreshold,
-            velocityThreshold,
-          });
-
-          if (!direction) {
-            translateX.set(withSpring(0));
-            translateY.set(withSpring(0));
-            swipeProgress.set(withSpring(0));
-            return;
-          }
-
-          const offscreenX =
-            direction === 'right'
-              ? Math.max(layout.width, 1) * OFFSCREEN_MULTIPLIER
-              : -Math.max(layout.width, 1) * OFFSCREEN_MULTIPLIER;
-
-          swipeProgress.set(withTiming(1));
-          translateX.set(
-            withTiming(offscreenX, undefined, (finished) => {
-              if (finished) {
-                scheduleOnRN(onAcceptedSwipe, direction);
-              }
-            }),
-          );
-        }),
-    [
-      disabled,
-      isCurrent,
-      layout,
-      onAcceptedSwipe,
-      resolvedSwipeThreshold,
-      swipeProgress,
-      swipeProgressDistance,
-      translateX,
-      translateY,
-      velocityThreshold,
-    ],
-  );
 
   const renderInfo: SwipeRenderInfo<T> = {
     item,
     index: descriptor.index,
+    offset: descriptor.offset,
     role: descriptor.role,
     isActive: descriptor.isActive,
   };
@@ -183,27 +114,15 @@ export function SwipeDeckRenderedCard<T>({
   const content = cardSlot.props.children(renderInfo);
   const cardStyle = cardSlot.props.style;
 
-  const card = (
+  return (
     <Animated.View
-      pointerEvents={isCurrent ? 'auto' : 'none'}
-      style={[
-        styles.card,
-        getPassiveStyle(descriptor.role),
-        isCurrent ? null : passiveAnimatedStyle,
-        cardStyle,
-        isCurrent ? animatedStyle : null,
-      ]}
+      pointerEvents="none"
+      style={[styles.card, cardAnimatedStyle, cardStyle]}
       testID={`swipe-deck-card-${descriptor.role}`}
     >
-      {content}
+      <Fragment key={itemKey}>{content}</Fragment>
     </Animated.View>
   );
-
-  if (!isCurrent) {
-    return card;
-  }
-
-  return <GestureDetector gesture={pan}>{card}</GestureDetector>;
 }
 
 const styles = StyleSheet.create({
@@ -213,14 +132,5 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-  },
-  currentCard: {
-    zIndex: 3,
-  },
-  nextCard: {
-    zIndex: 2,
-  },
-  previousCard: {
-    zIndex: 1,
   },
 });

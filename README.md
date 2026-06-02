@@ -20,6 +20,7 @@ const SwipeDeck = createSwipeDeck<Profile>();
 <SwipeDeck.Root
   data={profiles}
   getKey={(item) => item.id}
+  visibleCardCount={5}
   animationConfig={{
     nextScale: 0.95,
     nextOpacity: 0.92,
@@ -39,9 +40,25 @@ const SwipeDeck = createSwipeDeck<Profile>();
 </SwipeDeck.Root>;
 ```
 
-The deck renders a bounded window only: previous, current, and next cards where available. It does not render the whole data set.
+The deck renders a bounded slot pool only. By default it keeps up to five stable card slots mounted around the active card, which gives the outgoing, active, and incoming stack enough continuity without rendering the whole data set. `visibleCardCount` is a maximum budget: values below `5` normalize to `5`, and the actual mounted count never exceeds `data.length`.
 
-The next buffered card follows swipe progress by default, scaling from `nextScale` to `1`, fading from `nextOpacity` to `1`, and translating from `nextTranslateY` to `0` as the active card is dragged. Tune that behavior with `animationConfig`.
+Buffered next cards follow swipe progress by default, scaling toward `1`, fading toward `1`, and translating toward `0` as the active card is dragged. When a swipe commits, the outer animated slots stay mounted and only the leaving slot is recycled into the entering item. Tune that behavior with `animationConfig`.
+
+### Visible slot budget
+
+```tsx
+<SwipeDeck.Root data={profiles} visibleCardCount={5}>
+  {/* default/minimum budget */}
+</SwipeDeck.Root>
+
+<SwipeDeck.Root data={profiles} visibleCardCount={9}>
+  {/* deeper stacked UI */}
+</SwipeDeck.Root>
+```
+
+- `visibleCardCount={3}` mounts up to `5` cards when data permits.
+- `visibleCardCount={20}` with 10 data items mounts 10 cards.
+- Even values are kept as the maximum budget; they are not rounded up.
 
 ## API direction
 

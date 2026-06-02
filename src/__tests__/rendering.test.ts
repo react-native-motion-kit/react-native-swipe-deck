@@ -1,7 +1,9 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { getSwipeRenderItems } from '../rendering';
+import { getSwipeRenderItems, getSwipeSlotRenderItems } from '../rendering';
+import { createSwipeSlots, reconcileSwipeSlots } from '../slots';
 import { getSwipeCommit, shouldResetEndReached } from '../state';
+import { getSwipeWindow } from '../windowing';
 
 const profiles: Array<{ id: string; name: string }> = Array.from({ length: 150 }, (_, index) => ({
   id: `profile-${index}`,
@@ -9,25 +11,58 @@ const profiles: Array<{ id: string; name: string }> = Array.from({ length: 150 }
 }));
 
 describe('getSwipeRenderItems', () => {
-  it('creates render info only for the bounded three-card window', () => {
+  it('creates render info only for the bounded five-card window', () => {
     const items = getSwipeRenderItems(profiles, 75);
 
-    expect(items).toHaveLength(3);
-    expect(items.map((item) => item.index)).toEqual([74, 75, 76]);
-    expect(items.map((item) => item.role)).toEqual(['previous', 'current', 'next']);
-    expect(items.map((item) => item.isActive)).toEqual([false, true, false]);
+    expect(items).toHaveLength(5);
+    expect(items.map((item) => item.index)).toEqual([73, 74, 75, 76, 77]);
+    expect(items.map((item) => item.offset)).toEqual([-2, -1, 0, 1, 2]);
+    expect(items.map((item) => item.role)).toEqual([
+      'previous',
+      'previous',
+      'current',
+      'next',
+      'next',
+    ]);
+    expect(items.map((item) => item.isActive)).toEqual([false, false, true, false, false]);
   });
 
-  it('creates previous and current render info at the last valid index', () => {
+  it('fills the five-card render window at the last valid index', () => {
     const items = getSwipeRenderItems(profiles, 149);
 
-    expect(items).toHaveLength(2);
-    expect(items.map((item) => item.role)).toEqual(['previous', 'current']);
+    expect(items).toHaveLength(5);
+    expect(items.map((item) => item.index)).toEqual([145, 146, 147, 148, 149]);
+    expect(items.map((item) => item.offset)).toEqual([-4, -3, -2, -1, 0]);
+    expect(items.map((item) => item.role)).toEqual([
+      'previous',
+      'previous',
+      'previous',
+      'previous',
+      'current',
+    ]);
   });
 
   it('creates no render info for empty or completed decks', () => {
     expect(getSwipeRenderItems([], 0)).toEqual([]);
     expect(getSwipeRenderItems(profiles, 150)).toEqual([]);
+  });
+});
+
+describe('getSwipeSlotRenderItems', () => {
+  it('keeps outer slot ids stable while item keys follow item identity after recycling', () => {
+    const currentSlots = createSwipeSlots(getSwipeWindow(profiles.length, 75));
+    const nextSlots = reconcileSwipeSlots(currentSlots, getSwipeWindow(profiles.length, 76));
+    const items = getSwipeSlotRenderItems(profiles, nextSlots, (item) => item.id);
+
+    expect(items.map((item) => item.slotId)).toEqual([0, 1, 2, 3, 4]);
+    expect(items.map((item) => item.itemKey)).toEqual([
+      'profile-78',
+      'profile-74',
+      'profile-75',
+      'profile-76',
+      'profile-77',
+    ]);
+    expect(items.map((item) => item.offset)).toEqual([2, -2, -1, 0, 1]);
   });
 });
 
