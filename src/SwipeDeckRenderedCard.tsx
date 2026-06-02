@@ -69,9 +69,9 @@ export function SwipeDeckRenderedCard<T>({
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { rotate: `${translateX.value / 18}deg` },
+      { translateX: translateX.get() },
+      { translateY: translateY.get() },
+      { rotate: `${translateX.get() / 18}deg` },
     ],
   }));
 
@@ -90,14 +90,14 @@ export function SwipeDeckRenderedCard<T>({
   const passiveAnimatedStyle = useAnimatedStyle(() => {
     if (descriptor.role === 'next') {
       return {
-        opacity: interpolate(swipeProgress.value, [0, 1], [nextOpacity, 1], Extrapolation.CLAMP),
+        opacity: interpolate(swipeProgress.get(), [0, 1], [nextOpacity, 1], Extrapolation.CLAMP),
         transform: [
           {
-            scale: interpolate(swipeProgress.value, [0, 1], [nextScale, 1], Extrapolation.CLAMP),
+            scale: interpolate(swipeProgress.get(), [0, 1], [nextScale, 1], Extrapolation.CLAMP),
           },
           {
             translateY: interpolate(
-              swipeProgress.value,
+              swipeProgress.get(),
               [0, 1],
               [nextTranslateY, 0],
               Extrapolation.CLAMP,
@@ -122,11 +122,10 @@ export function SwipeDeckRenderedCard<T>({
       Gesture.Pan()
         .enabled(isCurrent && !disabled)
         .onUpdate((event) => {
-          translateX.value = event.translationX;
-          translateY.value = event.translationY;
-          swipeProgress.value = Math.min(
-            Math.abs(event.translationX) / Math.max(swipeProgressDistance, 1),
-            1,
+          translateX.set(event.translationX);
+          translateY.set(event.translationY);
+          swipeProgress.set(
+            Math.min(Math.abs(event.translationX) / Math.max(swipeProgressDistance, 1), 1),
           );
         })
         .onEnd((event) => {
@@ -140,9 +139,9 @@ export function SwipeDeckRenderedCard<T>({
           });
 
           if (!direction) {
-            translateX.value = withSpring(0);
-            translateY.value = withSpring(0);
-            swipeProgress.value = withSpring(0);
+            translateX.set(withSpring(0));
+            translateY.set(withSpring(0));
+            swipeProgress.set(withSpring(0));
             return;
           }
 
@@ -151,12 +150,14 @@ export function SwipeDeckRenderedCard<T>({
               ? Math.max(layout.width, 1) * OFFSCREEN_MULTIPLIER
               : -Math.max(layout.width, 1) * OFFSCREEN_MULTIPLIER;
 
-          swipeProgress.value = withTiming(1);
-          translateX.value = withTiming(offscreenX, undefined, (finished) => {
-            if (finished) {
-              scheduleOnRN(onAcceptedSwipe, direction);
-            }
-          });
+          swipeProgress.set(withTiming(1));
+          translateX.set(
+            withTiming(offscreenX, undefined, (finished) => {
+              if (finished) {
+                scheduleOnRN(onAcceptedSwipe, direction);
+              }
+            }),
+          );
         }),
     [
       disabled,

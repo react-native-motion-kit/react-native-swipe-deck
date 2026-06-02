@@ -99,7 +99,7 @@ function Root<T>({
 
       const item = data[commit.swipedIndex] as T;
 
-      swipeProgress.value = 0;
+      swipeProgress.set(0);
       onSwipe?.({ item, index: commit.swipedIndex, direction });
       onIndexChange?.(commit.nextIndex);
       setActiveIndex(commit.nextIndex);
