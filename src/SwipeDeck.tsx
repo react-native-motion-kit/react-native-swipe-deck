@@ -74,6 +74,7 @@ function Root<T>({
   const activeTranslateY = useSharedValue(0);
   const dragSlotId = useSharedValue(-1);
   const currentSlotId = useSharedValue(-1);
+  const isAnimating = useSharedValue(false);
   const dataRef = useRef(data);
   const onSwipeRef = useRef(onSwipe);
   const onIndexChangeRef = useRef(onIndexChange);
@@ -120,6 +121,7 @@ function Root<T>({
         activeTranslateY.set(0);
         swipeProgress.set(0);
         dragSlotId.set(-1);
+        isAnimating.set(false);
       });
 
       if (commit.shouldEmitEndReached) {
@@ -133,6 +135,7 @@ function Root<T>({
       activeTranslateY,
       dragSlotId,
       endReached,
+      isAnimating,
       swipeProgress,
       visibleCardCount,
     ],
@@ -143,9 +146,21 @@ function Root<T>({
       Gesture.Pan()
         .enabled(hasActiveCard && !disabled)
         .onBegin(() => {
+          if (isAnimating.get()) {
+            return;
+          }
+
           dragSlotId.set(currentSlotId.get());
         })
         .onUpdate((event) => {
+          if (isAnimating.get()) {
+            return;
+          }
+
+          if (dragSlotId.get() < 0) {
+            dragSlotId.set(currentSlotId.get());
+          }
+
           activeTranslateX.set(event.translationX);
           activeTranslateY.set(event.translationY);
           swipeProgress.set(
@@ -156,6 +171,10 @@ function Root<T>({
           );
         })
         .onEnd((event) => {
+          if (isAnimating.get()) {
+            return;
+          }
+
           const direction = resolveSwipeDirection({
             translationX: event.translationX,
             velocityX: event.velocityX,
@@ -165,11 +184,16 @@ function Root<T>({
             velocityThreshold,
           });
 
+          if (dragSlotId.get() < 0) {
+            dragSlotId.set(currentSlotId.get());
+          }
+
           if (!direction) {
             activeTranslateX.set(
               withSpring(0, undefined, (finished) => {
                 if (finished) {
                   dragSlotId.set(-1);
+                  isAnimating.set(false);
                 }
               }),
             );
@@ -178,6 +202,7 @@ function Root<T>({
             return;
           }
 
+          isAnimating.set(true);
           const offscreenX =
             direction === 'right'
               ? Math.max(layout.width, 1) * OFFSCREEN_MULTIPLIER
@@ -201,6 +226,7 @@ function Root<T>({
       disabled,
       dragSlotId,
       hasActiveCard,
+      isAnimating,
       layout,
       resolvedSwipeThreshold,
       swipeProgress,
