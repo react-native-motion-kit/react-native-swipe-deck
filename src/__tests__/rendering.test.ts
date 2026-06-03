@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { getSwipeRenderItems } from '../rendering';
-import { getSwipeCommit, shouldResetEndReached } from '../state';
+import { getSwipeCommit, shouldDeferActiveItemSync, shouldResetEndReached } from '../state';
 
 const getProfileKey = (item: { id: string }) => item.id;
 
@@ -90,5 +90,13 @@ describe('shouldResetEndReached', () => {
   it('resets end-reached state when data extension makes the active index valid again', () => {
     expect(shouldResetEndReached(1, 1)).toBe(false);
     expect(shouldResetEndReached(1, 2)).toBe(true);
+  });
+});
+
+describe('shouldDeferActiveItemSync', () => {
+  it('defers React-to-shared active item sync during commit animation handoff only', () => {
+    expect(shouldDeferActiveItemSync(true, false)).toBe(true);
+    expect(shouldDeferActiveItemSync(true, true)).toBe(false);
+    expect(shouldDeferActiveItemSync(false, false)).toBe(false);
   });
 });

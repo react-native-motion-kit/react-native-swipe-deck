@@ -28,3 +28,10 @@ export function getSwipeCommit(
 export function shouldResetEndReached(activeIndex: number, dataLength: number): boolean {
   return activeIndex < dataLength;
 }
+
+export function shouldDeferActiveItemSync(
+  isAnimating: boolean,
+  hasPendingCommitReset: boolean,
+): boolean {
+  return isAnimating && !hasPendingCommitReset;
+}

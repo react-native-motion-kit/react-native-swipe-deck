@@ -27,7 +27,7 @@ import type {
 import { resolveSwipeDeckAnimationConfig } from './animation';
 import { resolveSwipeDirection } from './directions';
 import { getSwipeRenderItems } from './rendering';
-import { getSwipeCommit, shouldResetEndReached } from './state';
+import { getSwipeCommit, shouldDeferActiveItemSync, shouldResetEndReached } from './state';
 import { SwipeDeckCard } from './SwipeDeckCard';
 import { SwipeDeckRenderedCard } from './SwipeDeckRenderedCard';
 import { clampActiveIndex } from './windowing';
@@ -242,9 +242,15 @@ function Root<T>({
   }, [activeIndex, data.length]);
 
   useLayoutEffect(() => {
+    const hasPendingCommitReset = pendingCommitResetRef.current;
+
+    if (shouldDeferActiveItemSync(isAnimating.get(), hasPendingCommitReset)) {
+      return;
+    }
+
     activeItemIndex.set(activeRenderItemId);
 
-    if (!pendingCommitResetRef.current) {
+    if (!hasPendingCommitReset) {
       return;
     }
 
