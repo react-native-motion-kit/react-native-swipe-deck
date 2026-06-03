@@ -11,21 +11,15 @@ const profiles: Array<{ id: string; name: string }> = Array.from({ length: 150 }
 }));
 
 describe('getSwipeRenderItems', () => {
-  it('creates render info only for the bounded five-card window', () => {
+  it('creates render info only for the bounded three-card window by default', () => {
     const items = getSwipeRenderItems(profiles, 75, getProfileKey);
 
-    expect(items).toHaveLength(5);
-    expect(items.map((item) => item.index)).toEqual([75, 76, 77, 78, 79]);
-    expect(items.map((item) => item.itemKey)).toEqual([
-      'profile-75',
-      'profile-76',
-      'profile-77',
-      'profile-78',
-      'profile-79',
-    ]);
-    expect(items.map((item) => item.offset)).toEqual([0, 1, 2, 3, 4]);
-    expect(items.map((item) => item.role)).toEqual(['current', 'next', 'next', 'next', 'next']);
-    expect(items.map((item) => item.isActive)).toEqual([true, false, false, false, false]);
+    expect(items).toHaveLength(3);
+    expect(items.map((item) => item.index)).toEqual([75, 76, 77]);
+    expect(items.map((item) => item.itemKey)).toEqual(['profile-75', 'profile-76', 'profile-77']);
+    expect(items.map((item) => item.offset)).toEqual([0, 1, 2]);
+    expect(items.map((item) => item.role)).toEqual(['current', 'next', 'next']);
+    expect(items.map((item) => item.isActive)).toEqual([true, false, false]);
   });
 
   it('does not backfill dismissed previous cards at the last valid index', () => {

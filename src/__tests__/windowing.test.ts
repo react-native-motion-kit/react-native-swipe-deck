@@ -27,17 +27,15 @@ describe('getSwipeWindow', () => {
     ]);
   });
 
-  it('renders the default current-plus-next window for a middle item in large data', () => {
+  it('renders the default current-plus-two-next window for a middle item in large data', () => {
     const descriptors = getSwipeWindow(150, 75);
 
     expect(descriptors).toEqual([
       { index: 75, offset: 0, role: 'current', isActive: true },
       { index: 76, offset: 1, role: 'next', isActive: false },
       { index: 77, offset: 2, role: 'next', isActive: false },
-      { index: 78, offset: 3, role: 'next', isActive: false },
-      { index: 79, offset: 4, role: 'next', isActive: false },
     ]);
-    expect(descriptors).toHaveLength(5);
+    expect(descriptors).toHaveLength(3);
   });
 
   it('clamps negative active indexes to the first item', () => {
@@ -74,9 +72,9 @@ describe('getSwipeWindow', () => {
 });
 
 describe('normalizeVisibleCardCount', () => {
-  it('defaults and clamps to the five-card minimum', () => {
-    expect(normalizeVisibleCardCount()).toBe(5);
-    expect(normalizeVisibleCardCount(3)).toBe(5);
+  it('defaults and clamps to the three-card minimum', () => {
+    expect(normalizeVisibleCardCount()).toBe(3);
+    expect(normalizeVisibleCardCount(2)).toBe(3);
   });
 
   it('keeps larger finite integer budgets', () => {

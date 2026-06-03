@@ -20,7 +20,7 @@ const SwipeDeck = createSwipeDeck<Profile>();
 <SwipeDeck.Root
   data={profiles}
   getKey={(item) => item.id}
-  visibleCardCount={5}
+  visibleCardCount={3}
   animationConfig={{
     nextScale: 0.95,
     nextOpacity: 0.92,
@@ -40,7 +40,7 @@ const SwipeDeck = createSwipeDeck<Profile>();
 </SwipeDeck.Root>;
 ```
 
-The deck renders a bounded forward render window only. By default it keeps up to five item-keyed cards mounted from the active card forward, which gives the active and incoming stack enough continuity without rendering the whole data set or backfilling dismissed previous cards. `visibleCardCount` is a maximum budget: values below `5` normalize to `5`, and the actual mounted count never exceeds the remaining data from the active index.
+The deck renders a bounded forward render window only. By default it keeps up to three item-keyed cards mounted from the active card forward, which gives the active and incoming stack enough continuity without rendering the whole data set or backfilling dismissed previous cards. `visibleCardCount` is a maximum budget: values below `3` normalize to `3`, and the actual mounted count never exceeds the remaining data from the active index.
 
 `getKey` is required because card identity is part of the rendering contract. The key must be stable for the same item across swipes so promoted cards keep their React Native view identity instead of reusing a different item's text subtree.
 
@@ -49,7 +49,7 @@ Buffered next cards follow swipe progress by default, scaling toward `1`, fading
 ### Visible card budget
 
 ```tsx
-<SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={5}>
+<SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
   {/* default/minimum budget */}
 </SwipeDeck.Root>
 
@@ -58,7 +58,7 @@ Buffered next cards follow swipe progress by default, scaling toward `1`, fading
 </SwipeDeck.Root>
 ```
 
-- `visibleCardCount={3}` mounts up to `5` cards when data permits.
+- `visibleCardCount={2}` mounts up to `3` cards when data permits.
 - `visibleCardCount={20}` with 10 data items mounts at most the remaining cards from the active index.
 - Even values are kept as the maximum budget; they are not rounded up.
 

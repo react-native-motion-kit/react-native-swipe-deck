@@ -36,7 +36,7 @@ export default function App() {
           <SwipeDeck.Root
             data={profiles}
             getKey={(item) => item.id}
-            visibleCardCount={5}
+            visibleCardCount={3}
             containerStyle={styles.deck}
             onSwipe={({ item, direction }) => {
               console.log(`Swiped ${item.name} ${direction}`);

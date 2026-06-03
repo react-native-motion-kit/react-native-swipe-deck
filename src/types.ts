@@ -78,15 +78,15 @@ export type SwipeDeckProps<T> = {
   /**
    * Maximum number of cards kept mounted from the active card forward.
    *
-   * Keep this as small as your UI allows. The default/minimum budget is `5`, which covers the
-   * active card plus four forward buffered cards for smooth next-card promotion without rendering
+   * Keep this as small as your UI allows. The default/minimum budget is `3`, which covers the
+   * active card plus two forward buffered cards for smooth next-card promotion without rendering
    * the full data set. Increase it only when your design visibly exposes a deeper stack or
    * intentionally needs more cards pre-mounted.
    *
-   * Values below `5` are normalized to `5` when enough forward data is available. The actual
+   * Values below `3` are normalized to `3` when enough forward data is available. The actual
    * mounted count never exceeds the remaining item count from the active index.
    *
-   * @default 5
+   * @default 3
    */
   visibleCardCount?: number;
   containerStyle?: StyleProp<ViewStyle>;
