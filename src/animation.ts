@@ -18,9 +18,6 @@ export function resolveSwipeDeckAnimationConfig(
     nextScale: animationConfig?.nextScale ?? 0.95,
     nextOpacity: animationConfig?.nextOpacity ?? 1,
     nextTranslateY: animationConfig?.nextTranslateY ?? 12,
-    previousScale: animationConfig?.previousScale ?? 0.92,
-    previousOpacity: animationConfig?.previousOpacity ?? 1,
-    previousTranslateY: animationConfig?.previousTranslateY ?? 20,
     swipeProgressDistance: resolvedSwipeProgressDistance,
   };
 }

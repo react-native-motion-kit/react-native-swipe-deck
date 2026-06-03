@@ -12,7 +12,7 @@ import type {
 import type { SwipeWindowDescriptor } from './windowing';
 
 type SwipeDeckRenderedCardProps<T> = {
-  slotId: number;
+  itemIndex: number;
   itemKey: string;
   item: T;
   descriptor: SwipeWindowDescriptor;
@@ -20,22 +20,19 @@ type SwipeDeckRenderedCardProps<T> = {
   swipeProgress: SharedValue<number>;
   activeTranslateX: SharedValue<number>;
   activeTranslateY: SharedValue<number>;
-  dragSlotId: SharedValue<number>;
+  dragItemIndex: SharedValue<number>;
+  activeItemIndex: SharedValue<number>;
   animationConfig: ResolvedSwipeDeckAnimationConfig;
 };
 
 function getZIndex(offset: number): number {
   'worklet';
 
-  if (offset === 0) {
-    return 100;
-  }
-
-  return offset > 0 ? 100 - offset : 50 - Math.abs(offset);
+  return 100 - Math.max(offset, 0);
 }
 
 export function SwipeDeckRenderedCard<T>({
-  slotId,
+  itemIndex,
   itemKey,
   item,
   descriptor,
@@ -43,25 +40,18 @@ export function SwipeDeckRenderedCard<T>({
   swipeProgress,
   activeTranslateX,
   activeTranslateY,
-  dragSlotId,
+  dragItemIndex,
+  activeItemIndex,
   animationConfig,
 }: SwipeDeckRenderedCardProps<T>) {
-  const offset = descriptor.offset;
-
-  const {
-    nextScale,
-    nextOpacity,
-    nextTranslateY,
-    previousScale,
-    previousOpacity,
-    previousTranslateY,
-  } = animationConfig;
+  const { nextScale, nextOpacity, nextTranslateY } = animationConfig;
 
   const cardAnimatedStyle = useAnimatedStyle(() => {
-    const zIndex = getZIndex(offset);
-    const isDraggingSlot = dragSlotId.get() === slotId;
+    const relativeOffset = itemIndex - activeItemIndex.get();
+    const zIndex = getZIndex(relativeOffset);
+    const isDraggingItem = dragItemIndex.get() === itemIndex;
 
-    if (isDraggingSlot) {
+    if (isDraggingItem) {
       return {
         zIndex: 100,
         opacity: 1,
@@ -73,26 +63,21 @@ export function SwipeDeckRenderedCard<T>({
       };
     }
 
-    if (offset > 0) {
-      const nextDepth = Math.max(offset - swipeProgress.get(), 0);
+    if (relativeOffset < 0) {
+      return {
+        zIndex: 0,
+        opacity: 0,
+        transform: [{ scale: 1 }, { translateY: 0 }],
+      };
+    }
+
+    if (relativeOffset > 0) {
+      const nextDepth = Math.max(relativeOffset - swipeProgress.get(), 0);
 
       return {
         zIndex,
         opacity: nextOpacity ** nextDepth,
         transform: [{ scale: nextScale ** nextDepth }, { translateY: nextTranslateY * nextDepth }],
-      };
-    }
-
-    if (offset < 0) {
-      const previousDepth = Math.abs(offset);
-
-      return {
-        zIndex,
-        opacity: previousOpacity,
-        transform: [
-          { scale: previousScale ** previousDepth },
-          { translateY: previousTranslateY * previousDepth },
-        ],
       };
     }
 

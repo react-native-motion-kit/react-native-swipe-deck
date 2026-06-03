@@ -21,22 +21,21 @@ describe('getSwipeWindow', () => {
     ]);
   });
 
-  it('renders previous and current for the last item', () => {
+  it('renders only current for the last item', () => {
     expect(getSwipeWindow(2, 1)).toEqual([
-      { index: 0, offset: -1, role: 'previous', isActive: false },
       { index: 1, offset: 0, role: 'current', isActive: true },
     ]);
   });
 
-  it('renders the default five-card window for a middle item in large data', () => {
+  it('renders the default current-plus-next window for a middle item in large data', () => {
     const descriptors = getSwipeWindow(150, 75);
 
     expect(descriptors).toEqual([
-      { index: 73, offset: -2, role: 'previous', isActive: false },
-      { index: 74, offset: -1, role: 'previous', isActive: false },
       { index: 75, offset: 0, role: 'current', isActive: true },
       { index: 76, offset: 1, role: 'next', isActive: false },
       { index: 77, offset: 2, role: 'next', isActive: false },
+      { index: 78, offset: 3, role: 'next', isActive: false },
+      { index: 79, offset: 4, role: 'next', isActive: false },
     ]);
     expect(descriptors).toHaveLength(5);
   });
@@ -49,25 +48,23 @@ describe('getSwipeWindow', () => {
     ]);
   });
 
-  it('keeps the configured visible card count within the data length', () => {
-    expect(getSwipeWindow(5, 2, 3)).toHaveLength(5);
+  it('keeps the configured visible card count within the remaining data length', () => {
+    expect(getSwipeWindow(5, 2, 3)).toHaveLength(3);
     expect(getSwipeWindow(9, 4, 5)).toHaveLength(5);
-    expect(getSwipeWindow(10, 4, 20)).toHaveLength(10);
-    expect(getSwipeWindow(10, 4, 10)).toHaveLength(10);
+    expect(getSwipeWindow(10, 4, 20)).toHaveLength(6);
+    expect(getSwipeWindow(10, 4, 10)).toHaveLength(6);
   });
 
-  it('uses exact even visible counts without exceeding the requested budget', () => {
+  it('uses exact even visible counts without rendering dismissed previous cards', () => {
     const descriptors = getSwipeWindow(10, 4, 10);
 
-    expect(descriptors).toHaveLength(10);
-    expect(descriptors.map((descriptor) => descriptor.offset)).toEqual([
-      -4, -3, -2, -1, 0, 1, 2, 3, 4, 5,
-    ]);
+    expect(descriptors).toHaveLength(6);
+    expect(descriptors.map((descriptor) => descriptor.offset)).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
-  it('fills the window from available cards at the edges', () => {
+  it('does not backfill dismissed previous cards at the edges', () => {
     expect(getSwipeWindow(10, 0, 5).map((descriptor) => descriptor.index)).toEqual([0, 1, 2, 3, 4]);
-    expect(getSwipeWindow(10, 9, 5).map((descriptor) => descriptor.index)).toEqual([5, 6, 7, 8, 9]);
+    expect(getSwipeWindow(10, 9, 5).map((descriptor) => descriptor.index)).toEqual([9]);
   });
 
   it('returns no descriptors for completed indexes', () => {

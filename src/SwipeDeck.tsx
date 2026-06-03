@@ -26,12 +26,11 @@ import type {
 
 import { resolveSwipeDeckAnimationConfig } from './animation';
 import { resolveSwipeDirection } from './directions';
-import { getSwipeSlotRenderItems } from './rendering';
-import { createSwipeSlots, reconcileSwipeSlots } from './slots';
+import { getSwipeRenderItems } from './rendering';
 import { getSwipeCommit, shouldResetEndReached } from './state';
 import { SwipeDeckCard } from './SwipeDeckCard';
 import { SwipeDeckRenderedCard } from './SwipeDeckRenderedCard';
-import { clampActiveIndex, getSwipeWindow } from './windowing';
+import { clampActiveIndex } from './windowing';
 
 function findCardSlot<T>(children: ReactNode): ReactElement<SwipeDeckCardProps<T>> | null {
   const childArray = React.Children.toArray(children);
@@ -43,10 +42,6 @@ function findCardSlot<T>(children: ReactNode): ReactElement<SwipeDeckCardProps<T
   }
 
   return null;
-}
-
-function getInitialSlots(dataLength: number, activeIndex: number, visibleCardCount?: number) {
-  return createSwipeSlots(getSwipeWindow(dataLength, activeIndex, visibleCardCount));
 }
 
 const OFFSCREEN_MULTIPLIER = 1.5;
@@ -72,24 +67,21 @@ function Root<T>({
   const swipeProgress = useSharedValue(0);
   const activeTranslateX = useSharedValue(0);
   const activeTranslateY = useSharedValue(0);
-  const dragSlotId = useSharedValue(-1);
-  const currentSlotId = useSharedValue(-1);
+  const dragItemIndex = useSharedValue(-1);
+  const activeItemIndex = useSharedValue(-1);
   const isAnimating = useSharedValue(false);
   const dataRef = useRef(data);
   const onSwipeRef = useRef(onSwipe);
   const onIndexChangeRef = useRef(onIndexChange);
   const onEndReachedRef = useRef(onEndReached);
-  const slotResetConfigRef = useRef({ dataLength: data.length, visibleCardCount });
+  const pendingCommitResetRef = useRef(false);
   const cardSlot = findCardSlot<T>(children);
-  const [slots, setSlots] = useState(() =>
-    getInitialSlots(data.length, activeIndex, visibleCardCount),
-  );
-  const slotRenderItems = getSwipeSlotRenderItems(data, slots, getKey);
-  const activeSlotId = slotRenderItems.find((renderItem) => renderItem.isActive)?.slotId ?? -1;
+  const hasActiveCard = activeIndex >= 0 && activeIndex < data.length;
+  const activeRenderItemId = hasActiveCard ? activeIndex : -1;
+  const renderItems = getSwipeRenderItems(data, activeIndex, getKey, visibleCardCount);
   const animationConfig = resolveSwipeDeckAnimationConfig(animationConfigProp, layout);
   const resolvedSwipeThreshold =
     typeof swipeThreshold === 'function' ? swipeThreshold(layout) : swipeThreshold;
-  const hasActiveCard = activeIndex >= 0 && activeIndex < data.length;
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -109,36 +101,15 @@ function Root<T>({
 
       onSwipeRef.current?.({ item, index: commit.swipedIndex, direction });
       onIndexChangeRef.current?.(commit.nextIndex);
-      setSlots((currentSlots) =>
-        reconcileSwipeSlots(
-          currentSlots,
-          getSwipeWindow(currentData.length, commit.nextIndex, visibleCardCount),
-        ),
-      );
+      pendingCommitResetRef.current = true;
       setActiveIndex(commit.nextIndex);
-      requestAnimationFrame(() => {
-        activeTranslateX.set(0);
-        activeTranslateY.set(0);
-        swipeProgress.set(0);
-        dragSlotId.set(-1);
-        isAnimating.set(false);
-      });
 
       if (commit.shouldEmitEndReached) {
         setEndReached(true);
         onEndReachedRef.current?.();
       }
     },
-    [
-      activeIndex,
-      activeTranslateX,
-      activeTranslateY,
-      dragSlotId,
-      endReached,
-      isAnimating,
-      swipeProgress,
-      visibleCardCount,
-    ],
+    [activeIndex, endReached],
   );
 
   const pan = useMemo(
@@ -150,15 +121,15 @@ function Root<T>({
             return;
           }
 
-          dragSlotId.set(currentSlotId.get());
+          dragItemIndex.set(activeItemIndex.get());
         })
         .onUpdate((event) => {
           if (isAnimating.get()) {
             return;
           }
 
-          if (dragSlotId.get() < 0) {
-            dragSlotId.set(currentSlotId.get());
+          if (dragItemIndex.get() < 0) {
+            dragItemIndex.set(activeItemIndex.get());
           }
 
           activeTranslateX.set(event.translationX);
@@ -184,15 +155,15 @@ function Root<T>({
             velocityThreshold,
           });
 
-          if (dragSlotId.get() < 0) {
-            dragSlotId.set(currentSlotId.get());
+          if (dragItemIndex.get() < 0) {
+            dragItemIndex.set(activeItemIndex.get());
           }
 
           if (!direction) {
             activeTranslateX.set(
               withSpring(0, undefined, (finished) => {
                 if (finished) {
-                  dragSlotId.set(-1);
+                  dragItemIndex.set(-1);
                   isAnimating.set(false);
                 }
               }),
@@ -212,6 +183,12 @@ function Root<T>({
           activeTranslateX.set(
             withTiming(offscreenX, undefined, (finished) => {
               if (finished) {
+                const nextActiveItemIndex = activeItemIndex.get() + 1;
+                activeItemIndex.set(nextActiveItemIndex);
+                activeTranslateX.set(0);
+                activeTranslateY.set(0);
+                swipeProgress.set(0);
+                dragItemIndex.set(-1);
                 scheduleOnRN(commitSwipe, direction);
               }
             }),
@@ -222,9 +199,9 @@ function Root<T>({
       activeTranslateY,
       animationConfig.swipeProgressDistance,
       commitSwipe,
-      currentSlotId,
+      activeItemIndex,
       disabled,
-      dragSlotId,
+      dragItemIndex,
       hasActiveCard,
       isAnimating,
       layout,
@@ -251,24 +228,12 @@ function Root<T>({
   }, [onEndReached]);
 
   useEffect(() => {
-    const previousConfig = slotResetConfigRef.current;
-    const isSameConfig =
-      previousConfig.dataLength === data.length &&
-      previousConfig.visibleCardCount === visibleCardCount;
-
-    if (isSameConfig) {
-      return;
-    }
-
-    slotResetConfigRef.current = { dataLength: data.length, visibleCardCount };
     const nextIndex = clampActiveIndex(data.length, activeIndex);
-
-    setSlots(getInitialSlots(data.length, nextIndex, visibleCardCount));
 
     if (nextIndex !== activeIndex) {
       setActiveIndex(nextIndex);
     }
-  }, [activeIndex, data.length, visibleCardCount]);
+  }, [activeIndex, data.length]);
 
   useEffect(() => {
     if (shouldResetEndReached(activeIndex, data.length)) {
@@ -277,8 +242,27 @@ function Root<T>({
   }, [activeIndex, data.length]);
 
   useLayoutEffect(() => {
-    currentSlotId.set(activeSlotId);
-  }, [activeSlotId, currentSlotId]);
+    activeItemIndex.set(activeRenderItemId);
+
+    if (!pendingCommitResetRef.current) {
+      return;
+    }
+
+    pendingCommitResetRef.current = false;
+    activeTranslateX.set(0);
+    activeTranslateY.set(0);
+    swipeProgress.set(0);
+    dragItemIndex.set(-1);
+    isAnimating.set(false);
+  }, [
+    activeRenderItemId,
+    activeTranslateX,
+    activeTranslateY,
+    activeItemIndex,
+    dragItemIndex,
+    isAnimating,
+    swipeProgress,
+  ]);
 
   if (!cardSlot) {
     return <View onLayout={handleLayout} style={[styles.container, containerStyle]} />;
@@ -287,11 +271,11 @@ function Root<T>({
   return (
     <GestureDetector gesture={pan}>
       <View onLayout={handleLayout} style={[styles.container, containerStyle]}>
-        {slotRenderItems.map((renderItem) => {
+        {renderItems.map((renderItem) => {
           return (
             <SwipeDeckRenderedCard
-              key={renderItem.slotId}
-              slotId={renderItem.slotId}
+              key={renderItem.itemKey}
+              itemIndex={renderItem.index}
               itemKey={renderItem.itemKey}
               item={renderItem.item}
               descriptor={renderItem.descriptor}
@@ -299,7 +283,8 @@ function Root<T>({
               swipeProgress={swipeProgress}
               activeTranslateX={activeTranslateX}
               activeTranslateY={activeTranslateY}
-              dragSlotId={dragSlotId}
+              dragItemIndex={dragItemIndex}
+              activeItemIndex={activeItemIndex}
               animationConfig={animationConfig}
             />
           );

@@ -35,7 +35,7 @@ export function normalizeVisibleCardCount(visibleCardCount?: number): number {
 }
 
 function getSwipeRole(offset: number): SwipeRole {
-  return offset === 0 ? 'current' : offset < 0 ? 'previous' : 'next';
+  return offset === 0 ? 'current' : 'next';
 }
 
 export function getSwipeWindow(
@@ -53,14 +53,11 @@ export function getSwipeWindow(
     return [];
   }
 
-  const renderCount = Math.min(dataLength, normalizeVisibleCardCount(visibleCardCount));
-  const previousCount = Math.floor((renderCount - 1) / 2);
-  const desiredStartIndex = currentIndex - previousCount;
-  const startIndex = Math.max(0, Math.min(desiredStartIndex, dataLength - renderCount));
+  const remainingCount = dataLength - currentIndex;
+  const renderCount = Math.min(remainingCount, normalizeVisibleCardCount(visibleCardCount));
 
-  return Array.from({ length: renderCount }, (_, itemOffset) => {
-    const index = startIndex + itemOffset;
-    const offset = index - currentIndex;
+  return Array.from({ length: renderCount }, (_, offset) => {
+    const index = currentIndex + offset;
 
     return {
       index,

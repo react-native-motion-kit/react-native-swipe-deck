@@ -40,24 +40,26 @@ const SwipeDeck = createSwipeDeck<Profile>();
 </SwipeDeck.Root>;
 ```
 
-The deck renders a bounded slot pool only. By default it keeps up to five stable card slots mounted around the active card, which gives the outgoing, active, and incoming stack enough continuity without rendering the whole data set. `visibleCardCount` is a maximum budget: values below `5` normalize to `5`, and the actual mounted count never exceeds `data.length`.
+The deck renders a bounded forward render window only. By default it keeps up to five item-keyed cards mounted from the active card forward, which gives the active and incoming stack enough continuity without rendering the whole data set or backfilling dismissed previous cards. `visibleCardCount` is a maximum budget: values below `5` normalize to `5`, and the actual mounted count never exceeds the remaining data from the active index.
 
-Buffered next cards follow swipe progress by default, scaling toward `1`, fading toward `1`, and translating toward `0` as the active card is dragged. When a swipe commits, the outer animated slots stay mounted and only the leaving slot is recycled into the entering item. Tune that behavior with `animationConfig`.
+`getKey` is required because card identity is part of the rendering contract. The key must be stable for the same item across swipes so promoted cards keep their React Native view identity instead of reusing a different item's text subtree.
 
-### Visible slot budget
+Buffered next cards follow swipe progress by default, scaling toward `1`, fading toward `1`, and translating toward `0` as the active card is dragged. When a swipe commits, the promoted next card keeps its item identity and a new future next item enters the bounded window instead of rendering the dismissed card as a previous card. Tune that behavior with `animationConfig`.
+
+### Visible card budget
 
 ```tsx
-<SwipeDeck.Root data={profiles} visibleCardCount={5}>
+<SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={5}>
   {/* default/minimum budget */}
 </SwipeDeck.Root>
 
-<SwipeDeck.Root data={profiles} visibleCardCount={9}>
+<SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={9}>
   {/* deeper stacked UI */}
 </SwipeDeck.Root>
 ```
 
 - `visibleCardCount={3}` mounts up to `5` cards when data permits.
-- `visibleCardCount={20}` with 10 data items mounts 10 cards.
+- `visibleCardCount={20}` with 10 data items mounts at most the remaining cards from the active index.
 - Even values are kept as the maximum budget; they are not rounded up.
 
 ## API direction

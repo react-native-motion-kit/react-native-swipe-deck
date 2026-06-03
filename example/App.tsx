@@ -27,7 +27,9 @@ export default function App() {
         <View style={styles.header}>
           <Text style={styles.eyebrow}>React Native Motion Kit</Text>
           <Text style={styles.title}>Swipe Deck</Text>
-          <Text style={styles.subtitle}>Five stable slots recycle as the deck advances.</Text>
+          <Text style={styles.subtitle}>
+            A bounded forward window advances with item-stable cards.
+          </Text>
         </View>
 
         <View style={styles.deckFrame}>

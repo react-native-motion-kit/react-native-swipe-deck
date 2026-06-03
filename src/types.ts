@@ -3,7 +3,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
 
 export type SwipeDirection = 'left' | 'right';
 
-export type SwipeRole = 'previous' | 'current' | 'next';
+export type SwipeRole = 'current' | 'next';
 
 export type SwipeDeckLayout = {
   width: number;
@@ -40,12 +40,6 @@ export type SwipeDeckAnimationConfig = {
    * The next card animates from this value to `0` as swipe progress increases.
    */
   nextTranslateY?: number;
-  /** Scale applied to the previous buffered card. */
-  previousScale?: number;
-  /** Opacity applied to the previous buffered card. */
-  previousOpacity?: number;
-  /** Vertical offset applied to the previous buffered card. */
-  previousTranslateY?: number;
   /**
    * Horizontal drag distance that maps to full visual progress.
    * Defaults to `max(layout.width * 0.35, 120)`.
@@ -60,16 +54,37 @@ export type ResolvedSwipeDeckAnimationConfig = Required<
 };
 
 export type SwipeDeckProps<T> = {
+  /**
+   * Ordered items rendered by the deck.
+   *
+   * Only the bounded forward window is mounted; the full array is never rendered at once.
+   */
   data: readonly T[];
-  getKey?: (item: T, index: number) => string;
+  /**
+   * Returns a stable unique key for an item.
+   *
+   * The same logical item must return the same key across swipes, and different items should not
+   * share a key. The deck uses this key as each mounted card's React identity so promoted next
+   * cards keep their React Native view identity and do not reuse another item's native text
+   * subtree.
+   */
+  getKey: (item: T, index: number) => string;
+  /** Initial active item index. */
   initialIndex?: number;
   disabled?: boolean;
   swipeThreshold?: number | ((layout: SwipeDeckLayout) => number);
   velocityThreshold?: number;
   animationConfig?: SwipeDeckAnimationConfig;
   /**
-   * Maximum number of cards kept mounted around the active card.
-   * Values below 5 are normalized to 5 when enough data is available.
+   * Maximum number of cards kept mounted from the active card forward.
+   *
+   * Keep this as small as your UI allows. The default/minimum budget is `5`, which covers the
+   * active card plus four forward buffered cards for smooth next-card promotion without rendering
+   * the full data set. Increase it only when your design visibly exposes a deeper stack or
+   * intentionally needs more cards pre-mounted.
+   *
+   * Values below `5` are normalized to `5` when enough forward data is available. The actual
+   * mounted count never exceeds the remaining item count from the active index.
    *
    * @default 5
    */
@@ -82,7 +97,9 @@ export type SwipeDeckProps<T> = {
 };
 
 export type SwipeDeckCardProps<T> = {
+  /** Style applied to the absolute card container. */
   style?: StyleProp<ViewStyle>;
+  /** Renders a card for one item in the bounded window. */
   children: (info: SwipeRenderInfo<T>) => ReactElement | null;
 };
 
