@@ -28,3 +28,7 @@ export function getSwipeRenderItems<T>(
     };
   });
 }
+
+export function getSwipeStackRenderItems<T>(renderItems: readonly T[]): T[] {
+  return [...renderItems].reverse();
+}

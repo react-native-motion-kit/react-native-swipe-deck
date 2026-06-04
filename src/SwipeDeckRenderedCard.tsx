@@ -25,12 +25,6 @@ type SwipeDeckRenderedCardProps<T> = {
   animationConfig: ResolvedSwipeDeckAnimationConfig;
 };
 
-function getZIndex(offset: number): number {
-  'worklet';
-
-  return 100 - Math.max(offset, 0);
-}
-
 export function SwipeDeckRenderedCard<T>({
   itemIndex,
   itemKey,
@@ -48,12 +42,10 @@ export function SwipeDeckRenderedCard<T>({
 
   const cardAnimatedStyle = useAnimatedStyle(() => {
     const relativeOffset = itemIndex - activeItemIndex.get();
-    const zIndex = getZIndex(relativeOffset);
     const isDraggingItem = dragItemIndex.get() === itemIndex;
 
     if (isDraggingItem) {
       return {
-        zIndex: 100,
         opacity: 1,
         transform: [
           { translateX: activeTranslateX.get() },
@@ -65,7 +57,6 @@ export function SwipeDeckRenderedCard<T>({
 
     if (relativeOffset < 0) {
       return {
-        zIndex: 0,
         opacity: 0,
         transform: [{ scale: 1 }, { translateY: 0 }],
       };
@@ -75,14 +66,12 @@ export function SwipeDeckRenderedCard<T>({
       const nextDepth = Math.max(relativeOffset - swipeProgress.get(), 0);
 
       return {
-        zIndex,
         opacity: nextOpacity ** nextDepth,
         transform: [{ scale: nextScale ** nextDepth }, { translateY: nextTranslateY * nextDepth }],
       };
     }
 
     return {
-      zIndex,
       opacity: 1,
       transform: [{ scale: 1 }, { translateY: 0 }],
     };
@@ -102,7 +91,7 @@ export function SwipeDeckRenderedCard<T>({
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.card, cardAnimatedStyle, cardStyle]}
+      style={[styles.card, cardStyle, cardAnimatedStyle]}
       testID={`swipe-deck-card-${descriptor.role}`}
     >
       <Fragment key={itemKey}>{content}</Fragment>

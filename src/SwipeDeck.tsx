@@ -26,7 +26,7 @@ import type {
 
 import { resolveSwipeDeckAnimationConfig } from './animation';
 import { resolveSwipeDirection } from './directions';
-import { getSwipeRenderItems } from './rendering';
+import { getSwipeRenderItems, getSwipeStackRenderItems } from './rendering';
 import { getSwipeCommit, shouldDeferActiveItemSync, shouldResetEndReached } from './state';
 import { SwipeDeckCard } from './SwipeDeckCard';
 import { SwipeDeckRenderedCard } from './SwipeDeckRenderedCard';
@@ -79,6 +79,7 @@ function Root<T>({
   const hasActiveCard = activeIndex >= 0 && activeIndex < data.length;
   const activeRenderItemId = hasActiveCard ? activeIndex : -1;
   const renderItems = getSwipeRenderItems(data, activeIndex, getKey, visibleCardCount);
+  const stackRenderItems = getSwipeStackRenderItems(renderItems);
   const animationConfig = resolveSwipeDeckAnimationConfig(animationConfigProp, layout);
   const resolvedSwipeThreshold =
     typeof swipeThreshold === 'function' ? swipeThreshold(layout) : swipeThreshold;
@@ -277,7 +278,7 @@ function Root<T>({
   return (
     <GestureDetector gesture={pan}>
       <View onLayout={handleLayout} style={[styles.container, containerStyle]}>
-        {renderItems.map((renderItem) => {
+        {stackRenderItems.map((renderItem) => {
           return (
             <SwipeDeckRenderedCard
               key={renderItem.itemKey}

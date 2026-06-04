@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { getSwipeRenderItems } from '../rendering';
+import { getSwipeRenderItems, getSwipeStackRenderItems } from '../rendering';
 import { getSwipeCommit, shouldDeferActiveItemSync, shouldResetEndReached } from '../state';
 
 const getProfileKey = (item: { id: string }) => item.id;
@@ -20,6 +20,12 @@ describe('getSwipeRenderItems', () => {
     expect(items.map((item) => item.offset)).toEqual([0, 1, 2]);
     expect(items.map((item) => item.role)).toEqual(['current', 'next', 'next']);
     expect(items.map((item) => item.isActive)).toEqual([true, false, false]);
+  });
+
+  it('orders mounted cards back-to-front so current renders above next cards', () => {
+    const items = getSwipeRenderItems(profiles, 75, getProfileKey);
+
+    expect(getSwipeStackRenderItems(items).map((item) => item.index)).toEqual([77, 76, 75]);
   });
 
   it('does not backfill dismissed previous cards at the last valid index', () => {
