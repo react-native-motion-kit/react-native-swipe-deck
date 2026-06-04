@@ -4,12 +4,20 @@ import { Fragment } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
-import type {
-  SwipeDeckCardProps,
-  ResolvedSwipeDeckAnimationConfig,
-  SwipeRenderInfo,
-} from './types';
+import type { SwipeDeckCardProps, SwipeDeckRotationOrigin, SwipeRenderInfo } from './types';
 import type { SwipeWindowDescriptor } from './windowing';
+
+export type SwipeDeckRenderedCardMotionConfig = {
+  nextScale: number;
+  nextOpacity: number;
+  nextTranslateY: number;
+  rotation: {
+    origin: SwipeDeckRotationOrigin;
+    maxDegrees: number;
+    inputRange: number;
+  };
+  liftYFactor: number;
+};
 
 type SwipeDeckRenderedCardProps<T> = {
   itemIndex: number;
@@ -22,7 +30,7 @@ type SwipeDeckRenderedCardProps<T> = {
   activeTranslateY: SharedValue<number>;
   dragItemIndex: SharedValue<number>;
   activeItemIndex: SharedValue<number>;
-  animationConfig: ResolvedSwipeDeckAnimationConfig;
+  motionConfig: SwipeDeckRenderedCardMotionConfig;
 };
 
 export function SwipeDeckRenderedCard<T>({
@@ -36,22 +44,34 @@ export function SwipeDeckRenderedCard<T>({
   activeTranslateY,
   dragItemIndex,
   activeItemIndex,
-  animationConfig,
+  motionConfig,
 }: SwipeDeckRenderedCardProps<T>) {
-  const { nextScale, nextOpacity, nextTranslateY } = animationConfig;
+  const { nextScale, nextOpacity, nextTranslateY, rotation, liftYFactor } = motionConfig;
 
   const cardAnimatedStyle = useAnimatedStyle(() => {
     const relativeOffset = itemIndex - activeItemIndex.get();
     const isDraggingItem = dragItemIndex.get() === itemIndex;
 
     if (isDraggingItem) {
+      const translateX = activeTranslateX.get();
+      const translateY = activeTranslateY.get() - Math.abs(translateX) * liftYFactor;
+      const rotationProgress = Math.min(
+        Math.max(translateX / Math.max(rotation.inputRange, 1), -1),
+        1,
+      );
+      const rotate = `${rotationProgress * rotation.maxDegrees}deg`;
+
+      if (rotation.origin === 'bottom-center') {
+        return {
+          opacity: 1,
+          transformOrigin: ['50%', '100%', 0],
+          transform: [{ translateX }, { translateY }, { rotate }],
+        };
+      }
+
       return {
         opacity: 1,
-        transform: [
-          { translateX: activeTranslateX.get() },
-          { translateY: activeTranslateY.get() },
-          { rotate: `${activeTranslateX.get() / 18}deg` },
-        ],
+        transform: [{ translateX }, { translateY }, { rotate }],
       };
     }
 

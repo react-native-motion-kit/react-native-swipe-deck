@@ -15,16 +15,23 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import type { SwipeDeckRenderedCardMotionConfig } from './SwipeDeckRenderedCard';
 import type {
   SwipeDeckCardProps,
+  SwipeDeckFactoryConfig,
   SwipeDeckInstance,
   SwipeDeckLayout,
   SwipeDeckProps,
   SwipeDeckStatic,
   SwipeDirection,
+  SwipeDeckMotionPreset,
 } from './types';
 
-import { resolveSwipeDeckAnimationConfig } from './animation';
+import {
+  mergeSwipeDeckMotionPreset,
+  resolveSwipeDeckDismissDuration,
+  resolveSwipeDeckMotionConfig,
+} from './animation';
 import { resolveSwipeDirection } from './directions';
 import { getSwipeRenderItems, getSwipeStackRenderItems } from './rendering';
 import { getSwipeCommit, shouldDeferActiveItemSync, shouldResetEndReached } from './state';
@@ -44,7 +51,9 @@ function findCardSlot<T>(children: ReactNode): ReactElement<SwipeDeckCardProps<T
   return null;
 }
 
-const OFFSCREEN_MULTIPLIER = 1.5;
+type SwipeDeckRootProps<T> = SwipeDeckProps<T> & {
+  factoryMotion?: SwipeDeckMotionPreset;
+};
 
 function Root<T>({
   data,
@@ -53,14 +62,15 @@ function Root<T>({
   disabled = false,
   swipeThreshold,
   velocityThreshold,
-  animationConfig: animationConfigProp,
+  motion,
+  factoryMotion,
   visibleCardCount,
   containerStyle,
   children,
   onSwipe,
   onIndexChange,
   onEndReached,
-}: SwipeDeckProps<T>): ReactElement {
+}: SwipeDeckRootProps<T>): ReactElement {
   const [layout, setLayout] = useState<SwipeDeckLayout>({ width: 0, height: 0 });
   const [activeIndex, setActiveIndex] = useState(() => clampActiveIndex(data.length, initialIndex));
   const [endReached, setEndReached] = useState(false);
@@ -80,9 +90,48 @@ function Root<T>({
   const activeRenderItemId = hasActiveCard ? activeIndex : -1;
   const renderItems = getSwipeRenderItems(data, activeIndex, getKey, visibleCardCount);
   const stackRenderItems = getSwipeStackRenderItems(renderItems);
-  const animationConfig = resolveSwipeDeckAnimationConfig(animationConfigProp, layout);
+  const motionConfig = useMemo(() => {
+    const rootMotion = mergeSwipeDeckMotionPreset(factoryMotion, motion);
+
+    return resolveSwipeDeckMotionConfig(rootMotion, {
+      width: layout.width,
+      height: layout.height,
+    });
+  }, [factoryMotion, layout.height, layout.width, motion]);
+  const cardMotionConfig = useMemo<SwipeDeckRenderedCardMotionConfig>(
+    () => ({
+      nextScale: motionConfig.nextScale,
+      nextOpacity: motionConfig.nextOpacity,
+      nextTranslateY: motionConfig.nextTranslateY,
+      rotation: {
+        origin: motionConfig.rotation.origin,
+        maxDegrees: motionConfig.rotation.maxDegrees,
+        inputRange: motionConfig.rotation.inputRange,
+      },
+      liftYFactor: motionConfig.liftYFactor,
+    }),
+    [
+      motionConfig.liftYFactor,
+      motionConfig.nextOpacity,
+      motionConfig.nextScale,
+      motionConfig.nextTranslateY,
+      motionConfig.rotation.inputRange,
+      motionConfig.rotation.maxDegrees,
+      motionConfig.rotation.origin,
+    ],
+  );
   const resolvedSwipeThreshold =
-    typeof swipeThreshold === 'function' ? swipeThreshold(layout) : swipeThreshold;
+    typeof swipeThreshold === 'function'
+      ? swipeThreshold(layout)
+      : (swipeThreshold ?? motionConfig.dismiss.threshold);
+  const resolvedVelocityThreshold = velocityThreshold ?? motionConfig.dismiss.velocityThreshold;
+  const cancelSpringConfig = motionConfig.cancelSpringConfig;
+  const dismissDuration = motionConfig.dismiss.duration;
+  const dismissEasing = motionConfig.dismiss.easing;
+  const dismissMaxDuration = motionConfig.dismiss.maxDuration;
+  const dismissMinDuration = motionConfig.dismiss.minDuration;
+  const destinationDistance = motionConfig.dismiss.destinationDistance;
+  const swipeProgressDistance = motionConfig.swipeProgressDistance;
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -136,10 +185,7 @@ function Root<T>({
           activeTranslateX.set(event.translationX);
           activeTranslateY.set(event.translationY);
           swipeProgress.set(
-            Math.min(
-              Math.abs(event.translationX) / Math.max(animationConfig.swipeProgressDistance, 1),
-              1,
-            ),
+            Math.min(Math.abs(event.translationX) / Math.max(swipeProgressDistance, 1), 1),
           );
         })
         .onEnd((event) => {
@@ -153,7 +199,7 @@ function Root<T>({
             disabled: disabled || !hasActiveCard,
             layout,
             swipeThreshold: resolvedSwipeThreshold,
-            velocityThreshold,
+            velocityThreshold: resolvedVelocityThreshold,
           });
 
           if (dragItemIndex.get() < 0) {
@@ -162,27 +208,36 @@ function Root<T>({
 
           if (!direction) {
             activeTranslateX.set(
-              withSpring(0, undefined, (finished) => {
+              withSpring(0, cancelSpringConfig, (finished) => {
                 if (finished) {
                   dragItemIndex.set(-1);
                   isAnimating.set(false);
                 }
               }),
             );
-            activeTranslateY.set(withSpring(0));
-            swipeProgress.set(withSpring(0));
+            activeTranslateY.set(withSpring(0, cancelSpringConfig));
+            swipeProgress.set(withSpring(0, cancelSpringConfig));
             return;
           }
 
           isAnimating.set(true);
-          const offscreenX =
-            direction === 'right'
-              ? Math.max(layout.width, 1) * OFFSCREEN_MULTIPLIER
-              : -Math.max(layout.width, 1) * OFFSCREEN_MULTIPLIER;
+          const exitX = direction === 'right' ? destinationDistance : -destinationDistance;
+          const resolvedDismissDuration = resolveSwipeDeckDismissDuration({
+            translationX: event.translationX,
+            velocityX: event.velocityX,
+            destinationX: exitX,
+            duration: dismissDuration,
+            minDuration: dismissMinDuration,
+            maxDuration: dismissMaxDuration,
+          });
+          const dismissTimingConfig = {
+            duration: resolvedDismissDuration,
+            easing: dismissEasing,
+          };
 
-          swipeProgress.set(withTiming(1));
+          swipeProgress.set(withTiming(1, dismissTimingConfig));
           activeTranslateX.set(
-            withTiming(offscreenX, undefined, (finished) => {
+            withTiming(exitX, dismissTimingConfig, (finished) => {
               if (finished) {
                 const nextActiveItemIndex = activeItemIndex.get() + 1;
                 activeItemIndex.set(nextActiveItemIndex);
@@ -198,17 +253,23 @@ function Root<T>({
     [
       activeTranslateX,
       activeTranslateY,
-      animationConfig.swipeProgressDistance,
+      cancelSpringConfig,
       commitSwipe,
+      dismissDuration,
+      dismissEasing,
+      dismissMaxDuration,
+      dismissMinDuration,
       activeItemIndex,
       disabled,
       dragItemIndex,
       hasActiveCard,
       isAnimating,
       layout,
+      destinationDistance,
       resolvedSwipeThreshold,
       swipeProgress,
-      velocityThreshold,
+      swipeProgressDistance,
+      resolvedVelocityThreshold,
     ],
   );
 
@@ -292,7 +353,7 @@ function Root<T>({
               activeTranslateY={activeTranslateY}
               dragItemIndex={dragItemIndex}
               activeItemIndex={activeItemIndex}
-              animationConfig={animationConfig}
+              motionConfig={cardMotionConfig}
             />
           );
         })}
@@ -301,15 +362,29 @@ function Root<T>({
   );
 }
 
-export function createSwipeDeck<T = never>(): SwipeDeckInstance<T> {
+function createRoot<T>(factoryConfig?: SwipeDeckFactoryConfig) {
+  return function SwipeDeckRoot(props: SwipeDeckProps<T>): ReactElement {
+    return <Root {...props} factoryMotion={factoryConfig?.motion} />;
+  };
+}
+
+export function createSwipeDeck<T = never>(
+  factoryConfig?: SwipeDeckFactoryConfig,
+): SwipeDeckInstance<T> {
   return {
-    Root,
+    Root: createRoot<T>(factoryConfig),
     Card: SwipeDeckCard,
   };
 }
 
+const StaticRoot: SwipeDeckStatic['Root'] = function SwipeDeckRoot<T>(
+  props: SwipeDeckProps<T>,
+): ReactElement {
+  return <Root {...props} />;
+};
+
 export const SwipeDeck = {
-  Root,
+  Root: StaticRoot,
   Card: SwipeDeckCard,
 } satisfies SwipeDeckStatic;
 

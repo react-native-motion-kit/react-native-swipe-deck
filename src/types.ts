@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
+import type { WithSpringConfig, WithTimingConfig } from 'react-native-reanimated';
 
 export type SwipeDirection = 'left' | 'right';
 
@@ -24,7 +25,11 @@ export type SwipeEvent<T> = {
   direction: SwipeDirection;
 };
 
-export type SwipeDeckAnimationConfig = {
+export type SwipeDeckMotionEasing = NonNullable<WithTimingConfig['easing']>;
+
+export type SwipeDeckRotationOrigin = 'center' | 'bottom-center';
+
+export type SwipeDeckTinderMotionConfig = {
   /**
    * Scale applied to the next buffered card when the active card is at rest.
    * The next card animates from this value to `1` as swipe progress increases.
@@ -45,12 +50,88 @@ export type SwipeDeckAnimationConfig = {
    * Defaults to `max(layout.width * 0.35, 120)`.
    */
   swipeProgressDistance?: number | ((layout: SwipeDeckLayout) => number);
+  /** Active card rotation while dragging. */
+  rotation?: {
+    /**
+     * Rotation anchor.
+     *
+     * `center` rotates around the card center. `bottom-center` rotates around the bottom-center
+     * edge, so the lower part feels anchored while the top travels through a larger arc. Because
+     * the same degree value feels stronger with `bottom-center`, the Tinder preset uses a smaller
+     * default `maxDegrees` for that origin unless you provide `maxDegrees` explicitly.
+     */
+    origin?: SwipeDeckRotationOrigin;
+    /**
+     * Maximum absolute rotation in degrees.
+     *
+     * Defaults to `20` for `center` and `18` for `bottom-center` in `SwipeDeckMotion.tinder()`.
+     */
+    maxDegrees?: number;
+    /** Horizontal drag distance that maps to `maxDegrees`. */
+    inputRange?: number | ((layout: SwipeDeckLayout) => number);
+  };
+  /** Lifts the active card upward by `abs(translationX) * liftYFactor`. */
+  liftYFactor?: number;
+  /** Dismiss motion and swipe recognition defaults. */
+  dismiss?: {
+    /** Horizontal drag distance required to commit a swipe. Root `swipeThreshold` overrides this. */
+    threshold?: number | ((layout: SwipeDeckLayout) => number);
+    /** Horizontal velocity required to commit a flick swipe. Root `velocityThreshold` overrides this. */
+    velocityThreshold?: number;
+    /**
+     * Multiplier applied to deck width for the successful swipe release target.
+     *
+     * Successful swipes always dismiss offscreen. The default `1.5` sends the card far enough that
+     * a full-width card clears the deck instead of stopping at the edge. When `duration` is
+     * omitted, velocity-derived timing is computed from the remaining distance to this target, so
+     * larger multipliers can also increase the computed duration within `minDuration` and
+     * `maxDuration`. Adjust only when a design needs a shorter or longer throw; values below `1`
+     * are normalized to `1`.
+     *
+     * @default 1.5
+     */
+    offscreenMultiplier?: number;
+    /** Fixed dismiss duration to reach the resolved offscreen target. When omitted, duration is derived from release velocity. */
+    duration?: number;
+    /** Minimum velocity-derived dismiss duration. */
+    minDuration?: number;
+    /** Maximum velocity-derived dismiss duration. */
+    maxDuration?: number;
+    /** Reanimated `withTiming` easing. Defaults to `Easing.out(Easing.cubic)`. */
+    easing?: SwipeDeckMotionEasing;
+  };
+  /** Spring config used when a non-committed card returns to rest. */
+  cancelSpringConfig?: WithSpringConfig;
 };
 
-export type ResolvedSwipeDeckAnimationConfig = Required<
-  Omit<SwipeDeckAnimationConfig, 'swipeProgressDistance'>
-> & {
+export type SwipeDeckTinderMotionPreset = {
+  type: 'tinder';
+  config?: SwipeDeckTinderMotionConfig;
+};
+
+export type SwipeDeckMotionPreset = SwipeDeckTinderMotionPreset;
+
+export type ResolvedSwipeDeckMotionConfig = {
+  nextScale: number;
+  nextOpacity: number;
+  nextTranslateY: number;
   swipeProgressDistance: number;
+  rotation: {
+    origin: SwipeDeckRotationOrigin;
+    maxDegrees: number;
+    inputRange: number;
+  };
+  liftYFactor: number;
+  dismiss: {
+    threshold?: number;
+    destinationDistance: number;
+    velocityThreshold?: number;
+    duration?: number;
+    minDuration: number;
+    maxDuration: number;
+    easing: SwipeDeckMotionEasing;
+  };
+  cancelSpringConfig?: WithSpringConfig;
 };
 
 export type SwipeDeckProps<T> = {
@@ -74,7 +155,8 @@ export type SwipeDeckProps<T> = {
   disabled?: boolean;
   swipeThreshold?: number | ((layout: SwipeDeckLayout) => number);
   velocityThreshold?: number;
-  animationConfig?: SwipeDeckAnimationConfig;
+  /** Motion preset for this deck instance. Overrides factory motion defaults. */
+  motion?: SwipeDeckMotionPreset;
   /**
    * Maximum number of cards kept mounted from the active card forward.
    *
@@ -101,6 +183,16 @@ export type SwipeDeckCardProps<T> = {
   style?: StyleProp<ViewStyle>;
   /** Renders a card for one item in the bounded window. */
   children: (info: SwipeRenderInfo<T>) => ReactElement | null;
+};
+
+export type SwipeDeckFactoryConfig = {
+  /**
+   * Default motion used by all roots created from this factory.
+   *
+   * Prefer this for app-wide deck feel so consumers do not have to repeat motion props on every
+   * `Root`. A `Root motion` prop still wins for one-off overrides.
+   */
+  motion?: SwipeDeckMotionPreset;
 };
 
 export type SwipeDeckInstance<T> = {

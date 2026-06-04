@@ -1,12 +1,15 @@
+export { SwipeDeckMotion } from './animation';
 export { createSwipeDeck, SwipeDeck } from './SwipeDeck';
 export type {
-  ResolvedSwipeDeckAnimationConfig,
-  SwipeDeckAnimationConfig,
   SwipeDeckCardProps,
+  SwipeDeckFactoryConfig,
   SwipeDeckInstance,
   SwipeDeckLayout,
+  SwipeDeckTinderMotionConfig,
+  SwipeDeckMotionEasing,
+  SwipeDeckMotionPreset,
+  SwipeDeckRotationOrigin,
   SwipeDeckProps,
-  SwipeDeckStatic,
   SwipeDirection,
   SwipeEvent,
   SwipeRenderInfo,

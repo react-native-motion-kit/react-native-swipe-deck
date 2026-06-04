@@ -1,4 +1,4 @@
-import { createSwipeDeck } from '@react-native-motion-kit/swipe-deck';
+import { createSwipeDeck, SwipeDeckMotion } from '@react-native-motion-kit/swipe-deck';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -17,7 +17,21 @@ const profiles: Profile[] = Array.from({ length: 150 }, (_, index) => ({
   accent: index % 2 === 0 ? '#7c3aed' : '#0891b2',
 }));
 
-const SwipeDeck = createSwipeDeck<Profile>();
+const SwipeDeck = createSwipeDeck<Profile>({
+  motion: SwipeDeckMotion.tinder({
+    rotation: {
+      origin: 'bottom-center',
+    },
+    liftYFactor: 0.3,
+    dismiss: {
+      threshold: ({ width }) => width * 0.3,
+      velocityThreshold: 800,
+      minDuration: 300,
+      offscreenMultiplier: 1.2,
+      maxDuration: 520,
+    },
+  }),
+});
 
 export default function App() {
   return (
