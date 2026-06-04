@@ -1,6 +1,16 @@
 # @react-native-motion-kit/swipe-deck
 
+[한국어](README.ko.md)
+
 High-performance Tinder-style swipe deck and swipe cards for React Native, powered by Reanimated and Gesture Handler.
+
+## Highlights
+
+- **Small render window**: mounts only the active card and a bounded forward stack.
+- **Item-keyed rendering**: promoted cards keep their React Native view identity.
+- **Typed compound API**: create one typed deck family with `createSwipeDeck<T>()`.
+- **Motion presets**: tune Tinder-style drag, rotation, dismiss, and next-card motion.
+- **Reanimated-first**: gesture and animation state stays on shared values/worklets.
 
 ## Installation
 
@@ -8,9 +18,10 @@ High-performance Tinder-style swipe deck and swipe cards for React Native, power
 npm install @react-native-motion-kit/swipe-deck react-native-gesture-handler react-native-reanimated react-native-worklets
 ```
 
-Follow the Reanimated/Worklets setup for your React Native or Expo version, including adding `react-native-worklets/plugin` as the last Babel plugin.
+Then follow the Reanimated/Worklets setup for your React Native or Expo version.
+Make sure `react-native-worklets/plugin` is the last Babel plugin.
 
-## Usage
+## Quick start
 
 ```tsx
 import { createSwipeDeck, SwipeDeckMotion } from '@react-native-motion-kit/swipe-deck';
@@ -49,19 +60,86 @@ const SwipeDeck = createSwipeDeck<Profile>({
 </SwipeDeck.Root>;
 ```
 
-The deck renders a bounded forward render window only. By default it keeps up to three item-keyed cards mounted from the active card forward, which gives the active and incoming stack enough continuity without rendering the whole data set or backfilling dismissed previous cards. `visibleCardCount` is a maximum budget: values below `3` normalize to `3`, and the actual mounted count never exceeds the remaining data from the active index.
+## Core concepts
 
-`getKey` is required because card identity is part of the rendering contract. The key must be stable for the same item across swipes so promoted cards keep their React Native view identity instead of reusing a different item's text subtree.
+### Bounded forward window
 
-Buffered next cards follow swipe progress by default, scaling toward `1`, fading toward `1`, and translating toward `0` as the active card is dragged. When a swipe commits, the promoted next card keeps its item identity and a new future next item enters the bounded window instead of rendering the dismissed card as a previous card. Tune that behavior with `motion` presets such as `SwipeDeckMotion.tinder()`; factory defaults apply to every root and `Root motion` overrides them per instance. Pass motion as a preset returned from `SwipeDeckMotion.tinder(...)`. Keep motion presets stable with a module-scope constant or `useMemo` so gesture/worklet setup is not recreated by unrelated renders.
+The deck never renders the whole data set.
 
-`rotation.origin` controls the rotation anchor, not the swipe decision or dismiss speed. `center` rotates around the card center. `bottom-center` rotates around the card's bottom-center edge, so the lower part feels almost anchored while the top travels through a larger arc. That makes the same `maxDegrees` feel stronger than `center`, so `SwipeDeckMotion.tinder({ rotation: { origin: 'bottom-center' } })` uses a smaller default rotation angle unless you provide `maxDegrees` explicitly.
+By default, it mounts up to **3 item-keyed cards** from the active index forward:
 
-`dismiss.offscreenMultiplier` controls the successful swipe release target. Successful swipes always dismiss offscreen; the default `1.5` sends the card to `deckWidth * 1.5`, which keeps a full-width card from stopping at the deck edge. When `duration` is omitted, velocity-derived timing is computed from the remaining distance to this target, so larger multipliers can also increase the computed duration within `minDuration` and `maxDuration`. Most apps can omit it and tune only threshold, velocity, duration, and Reanimated easing; set `offscreenMultiplier: 1.8` only when a design needs a longer throw. `dismiss.easing` accepts the same easing value as Reanimated `withTiming`; the default is `Easing.out(Easing.cubic)`.
+1. current card
+2. next card
+3. next buffered card
+
+This keeps the active/incoming stack continuous without backfilling dismissed previous cards.
+
+`visibleCardCount` is a maximum budget:
+
+- values below `3` normalize to `3` when enough data exists;
+- the mounted count never exceeds the remaining data from the active index;
+- even values are kept as-is and are not rounded up.
+
+### Stable item keys
+
+`getKey` is required because card identity is part of the rendering contract.
+
+A key must be:
+
+- stable for the same logical item across swipes;
+- unique across different items.
+
+That lets promoted cards keep their React Native view identity instead of reusing another item's native text subtree.
+
+### Typed compound API
+
+The primary API is compound/slot based:
+
+- `Root` owns data, gesture state, and deck-level options.
+- `Card` defines how each item is rendered.
+- `createSwipeDeck<T>()` creates a typed component family.
+
+```tsx
+const ProfileDeck = createSwipeDeck<Profile>();
+
+<ProfileDeck.Root data={profiles} getKey={(item) => item.id}>
+  <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+</ProfileDeck.Root>;
+```
+
+This keeps `Root`, `Card`, and future slots on the same item type without repeating generics in JSX.
+
+## Motion
+
+### What follows swipe progress?
+
+Buffered next cards animate with swipe progress:
+
+- scale moves toward `1`;
+- opacity moves toward `1`;
+- `translateY` moves toward `0`.
+
+When a swipe commits:
+
+- the dismissed card exits offscreen;
+- the promoted next card keeps its item identity;
+- a new future item enters the bounded window.
+
+Tune this with motion presets such as `SwipeDeckMotion.tinder(...)`.
+
+### Motion precedence
+
+Motion values are resolved in this order:
+
+1. factory motion defaults from `createSwipeDeck({ motion })`;
+2. `Root motion`, which partially overrides only the fields it specifies;
+3. direct root props such as `swipeThreshold` and `velocityThreshold`.
 
 ### Motion preset stability
 
-Prefer keeping motion presets stable with a module-scope constant or `useMemo`. The deck resolves layout-based values such as `threshold`, the offscreen release distance, and `rotation.inputRange` internally, but stable preset references still avoid unnecessary gesture/worklet setup when you pass Reanimated easing functions or spring config objects. Factory motion provides defaults, `Root motion` partially overrides only the fields it specifies, and direct root props such as `swipeThreshold` and `velocityThreshold` take final precedence.
+Prefer keeping motion presets stable with a module-scope constant or `useMemo`.
+
+Stable preset references avoid unnecessary gesture/worklet setup when you pass Reanimated easing functions or spring config objects.
 
 For app-wide or deck-family defaults, define motion outside render and pass it to the factory:
 
@@ -103,7 +181,37 @@ function ProfileScreen({ slowMotion }: { slowMotion: boolean }) {
 }
 ```
 
-### Visible card budget
+### Rotation origin
+
+`rotation.origin` controls the rotation anchor, not swipe recognition or dismiss speed.
+
+| origin          | Feel                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `center`        | Rotates around the card center.                                                                                          |
+| `bottom-center` | Rotates around the bottom-center edge, so the lower part feels almost anchored and the top travels through a larger arc. |
+
+Because the same `maxDegrees` feels stronger with `bottom-center`, the Tinder preset uses a smaller default rotation angle for that origin unless you provide `maxDegrees` explicitly.
+
+### Dismiss target
+
+`dismiss.offscreenMultiplier` controls the successful swipe release target.
+
+- Successful swipes always dismiss offscreen.
+- The default `1.5` sends the card to `deckWidth * 1.5`.
+- Values below `1` are normalized to `1`.
+- If `duration` is omitted, velocity-derived timing is computed from the remaining distance to this target.
+
+Most apps can skip this option and tune only:
+
+- `threshold`
+- `velocityThreshold`
+- `duration`, `minDuration`, `maxDuration`
+- Reanimated `easing`
+
+`dismiss.easing` accepts the same easing value as Reanimated `withTiming`.
+The default is `Easing.out(Easing.cubic)`.
+
+## Visible card budget
 
 ```tsx
 <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
@@ -115,15 +223,25 @@ function ProfileScreen({ slowMotion }: { slowMotion: boolean }) {
 </SwipeDeck.Root>
 ```
 
-- `visibleCardCount={2}` mounts up to `3` cards when data permits.
-- `visibleCardCount={20}` with 10 data items mounts at most the remaining cards from the active index.
-- Even values are kept as the maximum budget; they are not rounded up.
+| Input                                           | Mounted cards                               |
+| ----------------------------------------------- | ------------------------------------------- |
+| `visibleCardCount={2}`                          | Up to `3` cards when enough data exists.    |
+| `visibleCardCount={20}` with 10 remaining items | At most those 10 remaining items.           |
+| even values                                     | Kept as the maximum budget; not rounded up. |
 
 ## API direction
 
-The primary API is compound/slot based: `Root` owns the data and `Card` defines card rendering. Use `createSwipeDeck<T>()` to create a typed component family so `Root`, `Card`, and future slots share the same item type without repeating generics in JSX.
+The MVP keeps the public API focused on `Root` and `Card`, but the longer-term direction is to expand into a registry/controller model for external control.
 
-The MVP intentionally does not expose public `Provider`, `controller` props, `id` registry, triggers, or arbitrary prerender controls. Registry-first external control is tracked as a future design direction in the repo planning docs, not as shipped API.
+Future API directions may include:
+
+- public `Provider` or registry boundary;
+- controller hooks for imperative actions;
+- `id`-based deck registration;
+- trigger components for external swipe controls;
+- more explicit prerender/window controls.
+
+Those pieces are intentionally not part of the first shipped surface yet. The current API keeps the core deck small while leaving room for registry-first external control later.
 
 ## Contributing
 
