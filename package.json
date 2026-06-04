@@ -119,7 +119,14 @@
       "<rootDir>/example/node_modules",
       "<rootDir>/lib/"
     ],
-    "preset": "@react-native/jest-preset"
+    "preset": "@react-native/jest-preset",
+    "resolver": "react-native-worklets/jest/resolver",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest-setup.js"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-reanimated|react-native-worklets)/)"
+    ]
   },
   "packageManager": "yarn@4.15.0",
   "create-react-native-library": {

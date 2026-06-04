@@ -44,6 +44,15 @@
   },
   "overrides": [
     {
+      "files": ["jest-setup.js"],
+      "env": {
+        "jest": true
+      },
+      "rules": {
+        "import/no-unassigned-import": "off"
+      }
+    },
+    {
       "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
       "env": {
         "jest": true

@@ -1,18 +1,5 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { Easing } from 'react-native-reanimated';
-
-jest.mock('react-native-reanimated', () => {
-  const linear = (progress: number) => progress;
-  const cubic = (progress: number) => progress ** 3;
-
-  return {
-    Easing: {
-      linear,
-      cubic,
-      out: (easing: (progress: number) => number) => (progress: number) => 1 - easing(1 - progress),
-    },
-  };
-});
 
 import {
   mergeSwipeDeckMotionPreset,
