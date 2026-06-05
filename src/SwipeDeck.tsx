@@ -29,7 +29,9 @@ import type {
 
 import {
   mergeSwipeDeckMotionPreset,
+  resolveSwipeDeckDismissDestinationDistance,
   resolveSwipeDeckDismissDuration,
+  resolveSwipeDeckGestureStartYRatio,
   resolveSwipeDeckMotionConfig,
 } from './animation';
 import { resolveSwipeDirection } from './directions';
@@ -79,6 +81,7 @@ function Root<T>({
   const activeTranslateY = useSharedValue(0);
   const dragItemIndex = useSharedValue(-1);
   const activeItemIndex = useSharedValue(-1);
+  const gestureStartYRatio = useSharedValue(0.5);
   const isAnimating = useSharedValue(false);
   const dataRef = useRef(data);
   const onSwipeRef = useRef(onSwipe);
@@ -108,7 +111,9 @@ function Root<T>({
         liftYFactor: motionConfig.drag.liftYFactor,
       },
       rotation: {
+        mode: motionConfig.rotation.mode,
         origin: motionConfig.rotation.origin,
+        direction: motionConfig.rotation.direction,
         maxDegrees: motionConfig.rotation.maxDegrees,
         inputRange: motionConfig.rotation.inputRange,
       },
@@ -119,8 +124,10 @@ function Root<T>({
       motionConfig.nextOpacity,
       motionConfig.nextScale,
       motionConfig.nextTranslateY,
+      motionConfig.rotation.direction,
       motionConfig.rotation.inputRange,
       motionConfig.rotation.maxDegrees,
+      motionConfig.rotation.mode,
       motionConfig.rotation.origin,
     ],
   );
@@ -134,7 +141,7 @@ function Root<T>({
   const dismissEasing = motionConfig.dismiss.easing;
   const dismissMaxDuration = motionConfig.dismiss.maxDuration;
   const dismissMinDuration = motionConfig.dismiss.minDuration;
-  const destinationDistance = motionConfig.dismiss.destinationDistance;
+  const dismissOffscreenMultiplier = motionConfig.dismiss.offscreenMultiplier;
   const swipeProgressDistance = motionConfig.swipeProgressDistance;
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
@@ -170,7 +177,20 @@ function Root<T>({
     () =>
       Gesture.Pan()
         .enabled(hasActiveCard && !disabled)
-        .onBegin(() => {
+        .onBegin((event) => {
+          if (isAnimating.get()) {
+            return;
+          }
+
+          gestureStartYRatio.set(
+            resolveSwipeDeckGestureStartYRatio({
+              y: event.y,
+              height: layout.height,
+            }),
+          );
+          dragItemIndex.set(activeItemIndex.get());
+        })
+        .onStart(() => {
           if (isAnimating.get()) {
             return;
           }
@@ -225,6 +245,16 @@ function Root<T>({
           }
 
           isAnimating.set(true);
+          const destinationDistance = resolveSwipeDeckDismissDestinationDistance({
+            offscreenMultiplier: dismissOffscreenMultiplier,
+            layout,
+            rotationMaxDegrees: cardMotionConfig.rotation.maxDegrees,
+            rotationMode: cardMotionConfig.rotation.mode,
+            rotationOrigin: cardMotionConfig.rotation.origin,
+            rotationDirection: cardMotionConfig.rotation.direction,
+            gestureStartYRatio: gestureStartYRatio.get(),
+            swipeDirection: direction,
+          });
           const exitX = direction === 'right' ? destinationDistance : -destinationDistance;
           const resolvedDismissDuration = resolveSwipeDeckDismissDuration({
             translationX: event.translationX,
@@ -266,10 +296,15 @@ function Root<T>({
       activeItemIndex,
       disabled,
       dragItemIndex,
+      gestureStartYRatio,
       hasActiveCard,
       isAnimating,
       layout,
-      destinationDistance,
+      dismissOffscreenMultiplier,
+      cardMotionConfig.rotation.direction,
+      cardMotionConfig.rotation.maxDegrees,
+      cardMotionConfig.rotation.mode,
+      cardMotionConfig.rotation.origin,
       resolvedSwipeThreshold,
       swipeProgress,
       swipeProgressDistance,
@@ -357,6 +392,7 @@ function Root<T>({
               activeTranslateY={activeTranslateY}
               dragItemIndex={dragItemIndex}
               activeItemIndex={activeItemIndex}
+              gestureStartYRatio={gestureStartYRatio}
               motionConfig={cardMotionConfig}
             />
           );

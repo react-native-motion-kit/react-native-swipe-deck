@@ -32,7 +32,7 @@ const profileDeckMotion = SwipeDeckMotion.tinder({
     liftYFactor: 0.15,
   },
   rotation: {
-    origin: 'bottom-center',
+    mode: 'grab-position',
   },
   dismiss: {
     threshold: ({ width }) => width * 0.3,
@@ -148,12 +148,13 @@ SwipeDeckMotion.tinder({
     liftYFactor: 0,
   },
   rotation: {
+    mode: 'fixed',
     origin: 'bottom-center',
   },
 });
 ```
 
-Use `mode: 'horizontal'` with `rotation.origin: 'bottom-center'` for a lower-anchor, left/right-only feel.
+Use `drag.mode: 'horizontal'` with `rotation: { mode: 'fixed', origin: 'bottom-center' }` for a lower-anchor, left/right-only feel.
 
 ### Motion precedence
 
@@ -162,6 +163,8 @@ Motion values are resolved in this order:
 1. factory motion defaults from `createSwipeDeck({ motion })`;
 2. `Root motion`, which partially overrides only the fields it specifies;
 3. direct root props such as `swipeThreshold` and `velocityThreshold`.
+
+Factory and Root motion are deep-merged. Numeric rotation tuning such as `maxDegrees` and `inputRange` is preserved unless the Root motion explicitly overrides it; changing `rotation.mode` does not reset those values to mode defaults.
 
 ### Motion preset stability
 
@@ -174,6 +177,7 @@ For app-wide or deck-family defaults, define motion outside render and pass it t
 ```tsx
 const profileDeckMotion = SwipeDeckMotion.tinder({
   rotation: {
+    mode: 'fixed',
     origin: 'bottom-center',
   },
   dismiss: {
@@ -209,23 +213,57 @@ function ProfileScreen({ slowMotion }: { slowMotion: boolean }) {
 }
 ```
 
-### Rotation origin
+### Rotation
 
-`rotation.origin` controls the rotation anchor, not swipe recognition or dismiss speed.
+`rotation.mode` controls whether the rotation anchor is fixed or resolved from the gesture start position. The default is Tinder-like `mode: 'grab-position'`. Rotation settings do not change swipe recognition. When `dismiss.duration` is omitted, however, velocity-derived dismiss timing can change because the release target is computed from the rotated card geometry.
+
+#### Fixed rotation
+
+Use fixed rotation when every gesture should use the same anchor instead of the default grab-position behavior.
 
 | origin          | Feel                                                                                                                     |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `center`        | Rotates around the card center.                                                                                          |
+| `top-center`    | Rotates around the top-center edge, so the upper part feels anchored and the bottom travels through a larger arc.        |
 | `bottom-center` | Rotates around the bottom-center edge, so the lower part feels almost anchored and the top travels through a larger arc. |
 
-Because the same `maxDegrees` feels stronger with `bottom-center`, the Tinder preset uses a smaller default rotation angle for that origin unless you provide `maxDegrees` explicitly.
+```tsx
+SwipeDeckMotion.tinder({
+  rotation: {
+    mode: 'fixed',
+    origin: 'bottom-center',
+    direction: 'default',
+  },
+});
+```
+
+Use `direction: 'reverse'` when you want the same fixed anchor but the opposite rotation sign.
+
+#### Grab-position rotation
+
+Grab-position rotation is the default Tinder-like behavior. Use it explicitly when you want to override only shared rotation values such as `maxDegrees` or `inputRange`.
+
+```tsx
+SwipeDeckMotion.tinder({
+  rotation: {
+    mode: 'grab-position',
+    direction: 'default',
+    maxDegrees: 25,
+  },
+});
+```
+
+Upper-half grabs use a top-center anchor with the default rotation sign. Lower-half grabs use a bottom-center anchor with the reverse rotation sign. `direction: 'reverse'` flips that mapping. `maxDegrees` and `inputRange` are still configurable, but fixed `origin` is intentionally omitted in this mode.
+
+Because the same `maxDegrees` feels stronger with edge-based rotation, the Tinder preset uses a smaller default rotation angle for `top-center`, `bottom-center`, and `grab-position` unless you provide `maxDegrees` explicitly.
 
 ### Dismiss target
 
 `dismiss.offscreenMultiplier` controls the successful swipe release target.
 
 - Successful swipes always dismiss offscreen.
-- The default `1.5` sends the card to `deckWidth * 1.5`.
+- The default `1.5` sends the card to `clearDistance * 1.5`.
+- `clearDistance` is resolved at release from the actual swipe direction, rotation mode, rotation direction, and gesture start position.
 - Values below `1` are normalized to `1`.
 - If `duration` is omitted, velocity-derived timing is computed from the remaining distance to this target.
 

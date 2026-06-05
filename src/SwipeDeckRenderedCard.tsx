@@ -6,13 +6,19 @@ import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reani
 
 import type {
   SwipeDeckCardProps,
-  SwipeDeckRotationOrigin,
+  SwipeDeckTinderFixedRotationOrigin,
+  SwipeDeckTinderRotationDirection,
+  SwipeDeckTinderRotationMode,
   SwipeDeckTinderDragMode,
   SwipeRenderInfo,
 } from './types';
 import type { SwipeWindowDescriptor } from './windowing';
 
-import { resolveSwipeDeckDragTranslateY } from './animation';
+import {
+  resolveSwipeDeckDragTranslateY,
+  resolveSwipeDeckTinderRotationSign,
+  resolveSwipeDeckTinderTransformOrigin,
+} from './animation';
 
 export type SwipeDeckRenderedCardMotionConfig = {
   nextScale: number;
@@ -23,7 +29,9 @@ export type SwipeDeckRenderedCardMotionConfig = {
     liftYFactor: number;
   };
   rotation: {
-    origin: SwipeDeckRotationOrigin;
+    mode: SwipeDeckTinderRotationMode;
+    origin?: SwipeDeckTinderFixedRotationOrigin;
+    direction?: SwipeDeckTinderRotationDirection;
     maxDegrees: number;
     inputRange: number;
   };
@@ -40,6 +48,7 @@ type SwipeDeckRenderedCardProps<T> = {
   activeTranslateY: SharedValue<number>;
   dragItemIndex: SharedValue<number>;
   activeItemIndex: SharedValue<number>;
+  gestureStartYRatio: SharedValue<number>;
   motionConfig: SwipeDeckRenderedCardMotionConfig;
 };
 
@@ -54,6 +63,7 @@ export function SwipeDeckRenderedCard<T>({
   activeTranslateY,
   dragItemIndex,
   activeItemIndex,
+  gestureStartYRatio,
   motionConfig,
 }: SwipeDeckRenderedCardProps<T>) {
   const { nextScale, nextOpacity, nextTranslateY, drag, rotation } = motionConfig;
@@ -74,12 +84,22 @@ export function SwipeDeckRenderedCard<T>({
         Math.max(translateX / Math.max(rotation.inputRange, 1), -1),
         1,
       );
-      const rotate = `${rotationProgress * rotation.maxDegrees}deg`;
+      const rotationSign = resolveSwipeDeckTinderRotationSign({
+        mode: rotation.mode,
+        direction: rotation.direction,
+        gestureStartYRatio: gestureStartYRatio.get(),
+      });
+      const rotate = `${rotationProgress * rotation.maxDegrees * rotationSign}deg`;
+      const transformOrigin = resolveSwipeDeckTinderTransformOrigin({
+        mode: rotation.mode,
+        origin: rotation.origin,
+        gestureStartYRatio: gestureStartYRatio.get(),
+      });
 
-      if (rotation.origin === 'bottom-center') {
+      if (transformOrigin) {
         return {
           opacity: 1,
-          transformOrigin: ['50%', '100%', 0],
+          transformOrigin,
           transform: [{ translateX }, { translateY }, { rotate }],
         };
       }

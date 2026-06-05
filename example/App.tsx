@@ -24,7 +24,8 @@ const SwipeDeck = createSwipeDeck<Profile>({
       liftYFactor: 0.3,
     },
     rotation: {
-      origin: 'bottom-center',
+      mode: 'grab-position',
+      direction: 'default',
     },
     dismiss: {
       threshold: ({ width }) => width * 0.3,

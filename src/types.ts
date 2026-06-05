@@ -27,9 +27,77 @@ export type SwipeEvent<T> = {
 
 export type SwipeDeckMotionEasing = NonNullable<WithTimingConfig['easing']>;
 
-export type SwipeDeckRotationOrigin = 'center' | 'bottom-center';
+export type SwipeDeckTinderRotationMode = 'fixed' | 'grab-position';
+
+export type SwipeDeckTinderFixedRotationOrigin = 'center' | 'top-center' | 'bottom-center';
+
+export type SwipeDeckTinderRotationDirection = 'default' | 'reverse';
 
 export type SwipeDeckTinderDragMode = 'free' | 'horizontal';
+
+export type SwipeDeckTinderRotationBaseConfig = {
+  /**
+   * Maximum absolute rotation in degrees.
+   *
+   * Defaults to `20` for `center` and `18` for edge-based rotation in
+   * `SwipeDeckMotion.tinder()`.
+   */
+  maxDegrees?: number;
+  /** Horizontal drag distance that maps to `maxDegrees`. */
+  inputRange?: number | ((layout: SwipeDeckLayout) => number);
+};
+
+export type SwipeDeckTinderFixedRotationConfig = SwipeDeckTinderRotationBaseConfig & {
+  /**
+   * Fixed rotation mode.
+   *
+   * Use this when you want to opt out of the default grab-position rotation with a stable
+   * anchor and optional direction override for every gesture.
+   */
+  mode: 'fixed';
+  /**
+   * Fixed rotation anchor.
+   *
+   * `center` rotates around the card center. `top-center` rotates around the top-center edge.
+   * `bottom-center` rotates around the bottom-center edge.
+   *
+   * @default 'center' when `mode` is `fixed`
+   */
+  origin?: SwipeDeckTinderFixedRotationOrigin;
+  /**
+   * Fixed rotation sign.
+   *
+   * `default` keeps the normal swipe rotation. `reverse` flips only the rotation sign while
+   * keeping the same anchor, threshold, dismiss target, and duration calculations.
+   *
+   * @default 'default' when `mode` is `fixed`
+   */
+  direction?: SwipeDeckTinderRotationDirection;
+};
+
+export type SwipeDeckTinderGrabPositionRotationConfig = SwipeDeckTinderRotationBaseConfig & {
+  /**
+   * Gesture-start-position based rotation mode.
+   *
+   * Upper-half grabs use a top-center anchor with the default rotation sign. Lower-half grabs use a
+   * bottom-center anchor with the reverse rotation sign. Set `direction: 'reverse'` to invert that
+   * mapping. `origin` is omitted because the deck resolves it from the gesture start position.
+   */
+  mode: 'grab-position';
+  /**
+   * Grab-position rotation sign mapping.
+   *
+   * `default` matches Tinder-like behavior: upper-half grabs use the default sign and lower-half
+   * grabs use the reverse sign. `reverse` flips that mapping.
+   *
+   * @default 'default'
+   */
+  direction?: SwipeDeckTinderRotationDirection;
+};
+
+export type SwipeDeckTinderRotationConfig =
+  | SwipeDeckTinderFixedRotationConfig
+  | SwipeDeckTinderGrabPositionRotationConfig;
 
 export type SwipeDeckTinderMotionConfig = {
   /**
@@ -74,26 +142,13 @@ export type SwipeDeckTinderMotionConfig = {
      */
     liftYFactor?: number;
   };
-  /** Active card rotation while dragging. */
-  rotation?: {
-    /**
-     * Rotation anchor.
-     *
-     * `center` rotates around the card center. `bottom-center` rotates around the bottom-center
-     * edge, so the lower part feels anchored while the top travels through a larger arc. Because
-     * the same degree value feels stronger with `bottom-center`, the Tinder preset uses a smaller
-     * default `maxDegrees` for that origin unless you provide `maxDegrees` explicitly.
-     */
-    origin?: SwipeDeckRotationOrigin;
-    /**
-     * Maximum absolute rotation in degrees.
-     *
-     * Defaults to `20` for `center` and `18` for `bottom-center` in `SwipeDeckMotion.tinder()`.
-     */
-    maxDegrees?: number;
-    /** Horizontal drag distance that maps to `maxDegrees`. */
-    inputRange?: number | ((layout: SwipeDeckLayout) => number);
-  };
+  /**
+   * Active card rotation while dragging.
+   *
+   * Defaults to Tinder-like `mode: 'grab-position'`. Use `mode: 'fixed'` when every gesture
+   * should use the same anchor and rotation direction.
+   */
+  rotation?: SwipeDeckTinderRotationConfig;
   /** Dismiss motion and swipe recognition defaults. */
   dismiss?: {
     /** Horizontal drag distance required to commit a swipe. Root `swipeThreshold` overrides this. */
@@ -101,14 +156,14 @@ export type SwipeDeckTinderMotionConfig = {
     /** Horizontal velocity required to commit a flick swipe. Root `velocityThreshold` overrides this. */
     velocityThreshold?: number;
     /**
-     * Multiplier applied to deck width for the successful swipe release target.
+     * Multiplier applied to the release-time distance needed to clear the rotated card bounds.
      *
-     * Successful swipes always dismiss offscreen. The default `1.5` sends the card far enough that
-     * a full-width card clears the deck instead of stopping at the edge. When `duration` is
-     * omitted, velocity-derived timing is computed from the remaining distance to this target, so
-     * larger multipliers can also increase the computed duration within `minDuration` and
-     * `maxDuration`. Adjust only when a design needs a shorter or longer throw; values below `1`
-     * are normalized to `1`.
+     * Successful swipes always dismiss offscreen. The deck resolves the minimum clear distance from
+     * the actual swipe direction, rotation mode, rotation direction, and gesture start position,
+     * then multiplies it by this value. When `duration` is omitted, velocity-derived timing is
+     * computed from the remaining distance to this target, so larger multipliers can also increase
+     * the computed duration within `minDuration` and `maxDuration`. Values below `1` are normalized
+     * to `1`.
      *
      * @default 1.5
      */
@@ -143,13 +198,15 @@ export type ResolvedSwipeDeckMotionConfig = {
     liftYFactor: number;
   };
   rotation: {
-    origin: SwipeDeckRotationOrigin;
+    mode: SwipeDeckTinderRotationMode;
+    origin?: SwipeDeckTinderFixedRotationOrigin;
+    direction?: SwipeDeckTinderRotationDirection;
     maxDegrees: number;
     inputRange: number;
   };
   dismiss: {
     threshold?: number;
-    destinationDistance: number;
+    offscreenMultiplier: number;
     velocityThreshold?: number;
     duration?: number;
     minDuration: number;
