@@ -29,6 +29,8 @@ export type SwipeDeckMotionEasing = NonNullable<WithTimingConfig['easing']>;
 
 export type SwipeDeckRotationOrigin = 'center' | 'bottom-center';
 
+export type SwipeDeckTinderDragMode = 'free' | 'horizontal';
+
 export type SwipeDeckTinderMotionConfig = {
   /**
    * Scale applied to the next buffered card when the active card is at rest.
@@ -50,6 +52,28 @@ export type SwipeDeckTinderMotionConfig = {
    * Defaults to `max(layout.width * 0.35, 120)`.
    */
   swipeProgressDistance?: number | ((layout: SwipeDeckLayout) => number);
+  /** Active card translation behavior while dragging. */
+  drag?: {
+    /**
+     * Drag translation mode.
+     *
+     * `free` follows both horizontal and vertical finger movement. `horizontal` ignores vertical
+     * finger movement so the active card moves from horizontal translation only.
+     *
+     * @default 'free'
+     */
+    mode?: SwipeDeckTinderDragMode;
+    /**
+     * Lifts the active card upward by `abs(translationX) * liftYFactor` while dragging.
+     *
+     * With `mode: 'free'`, this lift is subtracted from the finger's vertical movement. With
+     * `mode: 'horizontal'`, vertical finger movement is ignored and only this lift contributes to
+     * the active card's Y translation.
+     *
+     * @default 0
+     */
+    liftYFactor?: number;
+  };
   /** Active card rotation while dragging. */
   rotation?: {
     /**
@@ -70,8 +94,6 @@ export type SwipeDeckTinderMotionConfig = {
     /** Horizontal drag distance that maps to `maxDegrees`. */
     inputRange?: number | ((layout: SwipeDeckLayout) => number);
   };
-  /** Lifts the active card upward by `abs(translationX) * liftYFactor`. */
-  liftYFactor?: number;
   /** Dismiss motion and swipe recognition defaults. */
   dismiss?: {
     /** Horizontal drag distance required to commit a swipe. Root `swipeThreshold` overrides this. */
@@ -116,12 +138,15 @@ export type ResolvedSwipeDeckMotionConfig = {
   nextOpacity: number;
   nextTranslateY: number;
   swipeProgressDistance: number;
+  drag: {
+    mode: SwipeDeckTinderDragMode;
+    liftYFactor: number;
+  };
   rotation: {
     origin: SwipeDeckRotationOrigin;
     maxDegrees: number;
     inputRange: number;
   };
-  liftYFactor: number;
   dismiss: {
     threshold?: number;
     destinationDistance: number;

@@ -5,6 +5,7 @@ export type {
   SwipeDeckFactoryConfig,
   SwipeDeckInstance,
   SwipeDeckLayout,
+  SwipeDeckTinderDragMode,
   SwipeDeckTinderMotionConfig,
   SwipeDeckMotionEasing,
   SwipeDeckMotionPreset,

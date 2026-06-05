@@ -4,19 +4,29 @@ import { Fragment } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
-import type { SwipeDeckCardProps, SwipeDeckRotationOrigin, SwipeRenderInfo } from './types';
+import type {
+  SwipeDeckCardProps,
+  SwipeDeckRotationOrigin,
+  SwipeDeckTinderDragMode,
+  SwipeRenderInfo,
+} from './types';
 import type { SwipeWindowDescriptor } from './windowing';
+
+import { resolveSwipeDeckDragTranslateY } from './animation';
 
 export type SwipeDeckRenderedCardMotionConfig = {
   nextScale: number;
   nextOpacity: number;
   nextTranslateY: number;
+  drag: {
+    mode: SwipeDeckTinderDragMode;
+    liftYFactor: number;
+  };
   rotation: {
     origin: SwipeDeckRotationOrigin;
     maxDegrees: number;
     inputRange: number;
   };
-  liftYFactor: number;
 };
 
 type SwipeDeckRenderedCardProps<T> = {
@@ -46,7 +56,7 @@ export function SwipeDeckRenderedCard<T>({
   activeItemIndex,
   motionConfig,
 }: SwipeDeckRenderedCardProps<T>) {
-  const { nextScale, nextOpacity, nextTranslateY, rotation, liftYFactor } = motionConfig;
+  const { nextScale, nextOpacity, nextTranslateY, drag, rotation } = motionConfig;
 
   const cardAnimatedStyle = useAnimatedStyle(() => {
     const relativeOffset = itemIndex - activeItemIndex.get();
@@ -54,7 +64,12 @@ export function SwipeDeckRenderedCard<T>({
 
     if (isDraggingItem) {
       const translateX = activeTranslateX.get();
-      const translateY = activeTranslateY.get() - Math.abs(translateX) * liftYFactor;
+      const translateY = resolveSwipeDeckDragTranslateY({
+        mode: drag.mode,
+        liftYFactor: drag.liftYFactor,
+        translationX: translateX,
+        translationY: activeTranslateY.get(),
+      });
       const rotationProgress = Math.min(
         Math.max(translateX / Math.max(rotation.inputRange, 1), -1),
         1,

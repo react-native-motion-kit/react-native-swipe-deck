@@ -27,10 +27,13 @@ Make sure `react-native-worklets/plugin` is the last Babel plugin.
 import { createSwipeDeck, SwipeDeckMotion } from '@react-native-motion-kit/swipe-deck';
 
 const profileDeckMotion = SwipeDeckMotion.tinder({
+  drag: {
+    mode: 'horizontal',
+    liftYFactor: 0.15,
+  },
   rotation: {
     origin: 'bottom-center',
   },
-  liftYFactor: 0.15,
   dismiss: {
     threshold: ({ width }) => width * 0.3,
     velocityThreshold: 800,
@@ -126,6 +129,31 @@ When a swipe commits:
 - a new future item enters the bounded window.
 
 Tune this with motion presets such as `SwipeDeckMotion.tinder(...)`.
+
+### Drag mode
+
+`drag.mode` controls how the active card uses finger translation while dragging.
+
+| mode         | Active card movement                                                         |
+| ------------ | ---------------------------------------------------------------------------- |
+| `free`       | Follows both horizontal and vertical finger movement.                        |
+| `horizontal` | Ignores vertical finger movement and moves from horizontal translation only. |
+
+`drag.liftYFactor` lifts the active card upward by `abs(translationX) * liftYFactor`.
+
+```tsx
+SwipeDeckMotion.tinder({
+  drag: {
+    mode: 'horizontal',
+    liftYFactor: 0,
+  },
+  rotation: {
+    origin: 'bottom-center',
+  },
+});
+```
+
+Use `mode: 'horizontal'` with `rotation.origin: 'bottom-center'` for a lower-anchor, left/right-only feel.
 
 ### Motion precedence
 

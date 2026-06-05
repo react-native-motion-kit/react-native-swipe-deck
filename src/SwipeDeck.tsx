@@ -103,15 +103,19 @@ function Root<T>({
       nextScale: motionConfig.nextScale,
       nextOpacity: motionConfig.nextOpacity,
       nextTranslateY: motionConfig.nextTranslateY,
+      drag: {
+        mode: motionConfig.drag.mode,
+        liftYFactor: motionConfig.drag.liftYFactor,
+      },
       rotation: {
         origin: motionConfig.rotation.origin,
         maxDegrees: motionConfig.rotation.maxDegrees,
         inputRange: motionConfig.rotation.inputRange,
       },
-      liftYFactor: motionConfig.liftYFactor,
     }),
     [
-      motionConfig.liftYFactor,
+      motionConfig.drag.liftYFactor,
+      motionConfig.drag.mode,
       motionConfig.nextOpacity,
       motionConfig.nextScale,
       motionConfig.nextTranslateY,

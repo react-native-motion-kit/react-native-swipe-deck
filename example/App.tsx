@@ -19,10 +19,13 @@ const profiles: Profile[] = Array.from({ length: 150 }, (_, index) => ({
 
 const SwipeDeck = createSwipeDeck<Profile>({
   motion: SwipeDeckMotion.tinder({
+    drag: {
+      mode: 'free',
+      liftYFactor: 0.3,
+    },
     rotation: {
       origin: 'bottom-center',
     },
-    liftYFactor: 0.3,
     dismiss: {
       threshold: ({ width }) => width * 0.3,
       velocityThreshold: 800,

@@ -6,6 +6,7 @@ import type {
   SwipeDeckMotionEasing,
   SwipeDeckMotionPreset,
   SwipeDeckRotationOrigin,
+  SwipeDeckTinderDragMode,
   SwipeDeckTinderMotionConfig,
   SwipeDeckTinderMotionPreset,
 } from './types';
@@ -15,6 +16,7 @@ const DEFAULT_DISMISS_MAX_DURATION = 320;
 const DEFAULT_CENTER_MAX_DEGREES = 20;
 const DEFAULT_BOTTOM_CENTER_MAX_DEGREES = 18;
 const DEFAULT_OFFSCREEN_MULTIPLIER = 1.5;
+const DEFAULT_DRAG_MODE: SwipeDeckTinderDragMode = 'free';
 const DEFAULT_DISMISS_EASING: SwipeDeckMotionEasing = Easing.out(Easing.cubic);
 
 function resolveLayoutValue(
@@ -63,6 +65,10 @@ export function mergeSwipeDeckMotionConfig(
   return {
     ...base,
     ...override,
+    drag: {
+      ...base.drag,
+      ...override.drag,
+    },
     rotation: {
       ...base.rotation,
       ...override.rotation,
@@ -82,11 +88,14 @@ function createTinderMotionConfig(
     nextOpacity: 1,
     nextTranslateY: 12,
     swipeProgressDistance: ({ width }) => Math.max(width * 0.35, 120),
+    drag: {
+      mode: DEFAULT_DRAG_MODE,
+      liftYFactor: 0,
+    },
     rotation: {
       origin: 'center',
       inputRange: ({ width }) => Math.max(width, 1),
     },
-    liftYFactor: 0,
     dismiss: {
       offscreenMultiplier: DEFAULT_OFFSCREEN_MULTIPLIER,
       easing: DEFAULT_DISMISS_EASING,
@@ -133,6 +142,7 @@ function resolveTinderMotionConfig(
   layout: SwipeDeckLayout,
 ): ResolvedSwipeDeckMotionConfig {
   const motion = createTinderMotionConfig(motionConfig);
+  const drag = motion.drag ?? {};
   const dismiss = motion.dismiss ?? {};
   const rotation = motion.rotation ?? {};
   const dismissThreshold =
@@ -151,12 +161,15 @@ function resolveTinderMotionConfig(
       layout,
       Math.max(layout.width * 0.35, 120),
     ),
+    drag: {
+      mode: drag.mode ?? DEFAULT_DRAG_MODE,
+      liftYFactor: drag.liftYFactor ?? 0,
+    },
     rotation: {
       origin: rotation.origin ?? 'center',
       maxDegrees: rotation.maxDegrees ?? getDefaultMaxDegrees(rotation.origin),
       inputRange: resolveLayoutValue(rotation.inputRange, layout, Math.max(layout.width, 1)),
     },
-    liftYFactor: motion.liftYFactor ?? 0,
     dismiss: {
       threshold: dismissThreshold,
       destinationDistance: dismissDestinationDistance,
@@ -209,4 +222,24 @@ export function resolveSwipeDeckDismissDuration({
   const velocityDuration = (remainingDistance / velocity) * 1000;
 
   return Math.min(Math.max(velocityDuration, minDuration), maxDuration);
+}
+
+export type ResolveSwipeDeckDragTranslateYArgs = {
+  mode: SwipeDeckTinderDragMode;
+  liftYFactor: number;
+  translationX: number;
+  translationY: number;
+};
+
+export function resolveSwipeDeckDragTranslateY({
+  mode,
+  liftYFactor,
+  translationX,
+  translationY,
+}: ResolveSwipeDeckDragTranslateYArgs): number {
+  'worklet';
+
+  const fingerTranslateY = mode === 'free' ? translationY : 0;
+
+  return fingerTranslateY - Math.abs(translationX) * liftYFactor;
 }

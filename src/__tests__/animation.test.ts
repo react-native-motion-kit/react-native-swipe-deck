@@ -4,6 +4,7 @@ import { Easing } from 'react-native-reanimated';
 import {
   mergeSwipeDeckMotionPreset,
   resolveSwipeDeckDismissDuration,
+  resolveSwipeDeckDragTranslateY,
   resolveSwipeDeckMotionConfig,
   SwipeDeckMotion,
 } from '../animation';
@@ -27,12 +28,15 @@ describe('SwipeDeckMotion', () => {
       nextOpacity: 1,
       nextTranslateY: 12,
       swipeProgressDistance: 120,
+      drag: {
+        mode: 'free',
+        liftYFactor: 0,
+      },
       rotation: {
         origin: 'center',
         maxDegrees: 20,
         inputRange: 300,
       },
-      liftYFactor: 0,
       dismiss: {
         destinationDistance: 450,
         minDuration: 120,
@@ -49,12 +53,15 @@ describe('SwipeDeckMotion', () => {
         nextOpacity: 0.8,
         nextTranslateY: 24,
         swipeProgressDistance: ({ width }) => width / 2,
+        drag: {
+          mode: 'horizontal',
+          liftYFactor: 0.3,
+        },
         rotation: {
           origin: 'bottom-center',
           maxDegrees: 25,
           inputRange: ({ width }) => width * 0.75,
         },
-        liftYFactor: 0.3,
         dismiss: {
           threshold: ({ width }) => width * 0.3,
           offscreenMultiplier: 1.1,
@@ -72,12 +79,15 @@ describe('SwipeDeckMotion', () => {
       nextOpacity: 0.8,
       nextTranslateY: 24,
       swipeProgressDistance: 200,
+      drag: {
+        mode: 'horizontal',
+        liftYFactor: 0.3,
+      },
       rotation: {
         origin: 'bottom-center',
         maxDegrees: 25,
         inputRange: 300,
       },
-      liftYFactor: 0.3,
       dismiss: {
         threshold: 120,
         velocityThreshold: 600,
@@ -124,10 +134,12 @@ describe('SwipeDeckMotion', () => {
 
   it('deep merges factory motion with root overrides', () => {
     const factoryMotion = SwipeDeckMotion.tinder({
+      drag: { mode: 'horizontal', liftYFactor: 0.2 },
       rotation: { origin: 'bottom-center', maxDegrees: 25 },
       dismiss: { velocityThreshold: 600, minDuration: 100 },
     });
     const rootMotion = SwipeDeckMotion.tinder({
+      drag: { liftYFactor: 0.4 },
       rotation: { maxDegrees: 12 },
       dismiss: { maxDuration: 240 },
     });
@@ -135,6 +147,10 @@ describe('SwipeDeckMotion', () => {
     expect(mergeSwipeDeckMotionPreset(factoryMotion, rootMotion)).toMatchObject({
       type: 'tinder',
       config: {
+        drag: {
+          mode: 'horizontal',
+          liftYFactor: 0.4,
+        },
         rotation: {
           origin: 'bottom-center',
           maxDegrees: 12,
@@ -284,5 +300,29 @@ describe('resolveSwipeDeckDismissDuration', () => {
         maxDuration: 320,
       }),
     ).toBe(320);
+  });
+});
+
+describe('resolveSwipeDeckDragTranslateY', () => {
+  it('follows vertical finger movement in free mode', () => {
+    expect(
+      resolveSwipeDeckDragTranslateY({
+        mode: 'free',
+        liftYFactor: 0.25,
+        translationX: 80,
+        translationY: 30,
+      }),
+    ).toBe(10);
+  });
+
+  it('ignores vertical finger movement in horizontal mode', () => {
+    expect(
+      resolveSwipeDeckDragTranslateY({
+        mode: 'horizontal',
+        liftYFactor: 0.25,
+        translationX: 80,
+        translationY: 30,
+      }),
+    ).toBe(-20);
   });
 });
