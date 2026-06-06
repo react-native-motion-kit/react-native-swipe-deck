@@ -328,7 +328,9 @@ export type SwipeDeckInstance<T> = {
   useDeckInteraction: (id?: string) => SwipeDeckInteraction;
 };
 
+export type SwipeDeckStaticRootProps<T> = Omit<SwipeDeckProps<T>, 'id'>;
+
 export type SwipeDeckStatic = {
-  Root: <T>(props: SwipeDeckProps<T>) => ReactElement;
+  Root: <T>(props: SwipeDeckStaticRootProps<T>) => ReactElement;
   Card: <T>(props: SwipeDeckCardProps<T>) => ReactElement | null;
 };

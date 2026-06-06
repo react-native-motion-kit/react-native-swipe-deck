@@ -161,13 +161,13 @@ describe('SwipeDeck factory hooks', () => {
 });
 
 describe('static SwipeDeck surface', () => {
-  it('keeps static root ids local to each root instance', async () => {
+  it('mounts multiple static roots without factory ids', async () => {
     await render(
       <>
-        <SwipeDeck.Root<Profile> data={[adaProfile]} getKey={getProfileKey} id="same">
+        <SwipeDeck.Root<Profile> data={[adaProfile]} getKey={getProfileKey}>
           <SwipeDeck.Card<Profile>>{({ item }) => <Text>{item.name}</Text>}</SwipeDeck.Card>
         </SwipeDeck.Root>
-        <SwipeDeck.Root<Profile> data={[graceProfile]} getKey={getProfileKey} id="same">
+        <SwipeDeck.Root<Profile> data={[graceProfile]} getKey={getProfileKey}>
           <SwipeDeck.Card<Profile>>{({ item }) => <Text>{item.name}</Text>}</SwipeDeck.Card>
         </SwipeDeck.Root>
       </>,

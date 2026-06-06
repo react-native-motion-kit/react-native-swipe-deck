@@ -213,6 +213,7 @@ Create the factory once per deck family and export it from a shared module. Hook
 
 If you only need card rendering and callbacks, you can use the static API without creating a factory instance.
 This is useful for small inline decks, but it does not expose `useDeckState`, `useDeckActions`, or `useDeckInteraction`.
+Static `Root` does not accept `id`; use a factory instance when you need named deck state, actions, or interactions.
 Because static `Root` and `Card` do not share a factory type, pass the item type to `Card` when you want typed render props.
 
 ```tsx

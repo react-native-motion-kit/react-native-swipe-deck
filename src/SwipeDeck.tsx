@@ -23,6 +23,7 @@ import type {
   SwipeDeckLayout,
   SwipeDeckProps,
   SwipeDeckStatic,
+  SwipeDeckStaticRootProps,
   SwipeDirection,
   SwipeDeckMotionPreset,
   SwipeDeckMotionEasing,
@@ -761,7 +762,7 @@ export function createSwipeDeck<T = never>(
 }
 
 const StaticRoot: SwipeDeckStatic['Root'] = function SwipeDeckRoot<T>(
-  props: SwipeDeckProps<T>,
+  props: SwipeDeckStaticRootProps<T>,
 ): ReactElement {
   const registry = useMemo(() => createSwipeDeckRegistry(), []);
 

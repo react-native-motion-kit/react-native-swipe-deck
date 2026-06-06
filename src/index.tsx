@@ -19,6 +19,7 @@ export type {
   SwipeDeckTinderRotationDirection,
   SwipeDeckTinderRotationMode,
   SwipeDeckProps,
+  SwipeDeckStaticRootProps,
   SwipeDeckState,
   SwipeDirection,
   SwipeEvent,
