@@ -21,6 +21,16 @@ npm install @react-native-motion-kit/swipe-deck react-native-gesture-handler rea
 Then follow the Reanimated/Worklets setup for your React Native or Expo version.
 Make sure `react-native-worklets/plugin` is the last Babel plugin.
 
+### Minimum versions
+
+| Package                        | Minimum  |
+| ------------------------------ | -------- |
+| `react`                        | `18.0.0` |
+| `react-native`                 | `0.75.0` |
+| `react-native-gesture-handler` | `2.24.0` |
+| `react-native-reanimated`      | `4.0.0`  |
+| `react-native-worklets`        | `0.5.0`  |
+
 ## Quick start
 
 Create one typed deck family for your item type when you want `Root`, `Card`, external actions, state, and interaction hooks to share the same factory instance.

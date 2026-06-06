@@ -21,6 +21,16 @@ npm install @react-native-motion-kit/swipe-deck react-native-gesture-handler rea
 사용 중인 React Native 또는 Expo 버전에 맞춰 Reanimated/Worklets 설정을 완료하세요.
 Babel 설정에서는 `react-native-worklets/plugin`을 마지막 Babel plugin으로 추가해야 합니다.
 
+### 최소 지원 버전
+
+| Package                        | Minimum  |
+| ------------------------------ | -------- |
+| `react`                        | `18.0.0` |
+| `react-native`                 | `0.75.0` |
+| `react-native-gesture-handler` | `2.24.0` |
+| `react-native-reanimated`      | `4.0.0`  |
+| `react-native-worklets`        | `0.5.0`  |
+
 ## 빠른 시작
 
 `Root`, `Card`, 외부 action, state, interaction hook이 같은 factory instance를 공유해야 한다면 item type에 맞는 typed deck family를 하나 만드세요.
