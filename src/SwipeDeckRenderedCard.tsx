@@ -130,7 +130,25 @@ export function SwipeDeckRenderedCard<T>({
       opacity: 1,
       transform: [{ scale: 1 }, { translateY: 0 }],
     };
-  });
+  }, [
+    activeItemIndex,
+    activeTranslateX,
+    activeTranslateY,
+    drag.liftYFactor,
+    drag.mode,
+    dragItemIndex,
+    gestureStartYRatio,
+    itemIndex,
+    nextOpacity,
+    nextScale,
+    nextTranslateY,
+    rotation.direction,
+    rotation.inputRange,
+    rotation.maxDegrees,
+    rotation.mode,
+    rotation.origin,
+    swipeProgress,
+  ]);
 
   const renderInfo: SwipeRenderInfo<T> = {
     item,

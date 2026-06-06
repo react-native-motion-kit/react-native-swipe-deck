@@ -602,11 +602,11 @@ function Root<T>({
     });
   }, [deckStore, getDeckState, swipeProgrammatically]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     dataRef.current = data;
   }, [data]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     publishDeckStateSnapshot();
   }, [data.length, publishDeckStateSnapshot]);
 
@@ -619,7 +619,7 @@ function Root<T>({
     endReachedRef.current = endReached;
   }, [endReached]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     disabledRef.current = disabled;
     publishDeckStateSnapshot();
   }, [disabled, publishDeckStateSnapshot]);
