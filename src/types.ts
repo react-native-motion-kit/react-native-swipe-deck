@@ -220,8 +220,11 @@ export type SwipeDeckProps<T> = {
   /**
    * Deck instance id inside this factory namespace.
    *
-   * Omit this for the common single-deck case. Use an explicit id when rendering multiple roots
-   * from the same `createSwipeDeck<T>()` factory.
+   * This is not an item key. Use it only for a small, stable set of deck instances rendered
+   * from the same `createSwipeDeck<T>()` factory, such as `"nearby"` or `"recommended"`.
+   * Do not derive it from item ids, timestamps, or rapidly changing route/render values.
+   *
+   * Omit this for the common single-deck case.
    */
   id?: string;
   /**

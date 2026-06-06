@@ -174,10 +174,12 @@ Use an `id` only when you render multiple roots from the same factory:
 const nearbyState = ProfileDeck.useDeckState('nearby');
 ```
 
-`id` is scoped to the factory instance. Two different factories can both use the default id safely,
-but two mounted roots from the same factory and same id are invalid.
+`id` is a factory-scoped deck namespace, not an item key. Two different factories can both
+use the default id safely, but two mounted roots from the same factory and same id are invalid.
 Keep ids stable and low-cardinality, such as screen-level names (`"nearby"` or `"recommended"`).
-Do not derive ids from rapidly changing values or one-off item ids.
+The registry keeps one store per id for the lifetime of the factory so hooks, actions, and
+interaction shared values stay stable. Do not derive ids from item ids, timestamps, values that
+change per render, or one-off route values.
 
 If you prefer shorter names, destructure from the same factory instance and export aliases:
 
@@ -193,7 +195,7 @@ export const {
 } = ProfileDeck;
 ```
 
-Do not call `createSwipeDeck<Profile>()` separately in each file for the same deck. That creates a different registry namespace.
+Create the factory once per deck family and export it from a shared module. Hooks, actions, and interactions only connect to Roots created by that same factory instance. Calling `createSwipeDeck<Profile>()` again creates a separate registry namespace even if the item type and id are the same, so hooks from one factory cannot control Roots from another.
 
 ### Simple inline usage
 

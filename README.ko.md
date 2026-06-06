@@ -175,10 +175,11 @@ function ProfileDeckScreen() {
 const nearbyState = ProfileDeck.useDeckState('nearby');
 ```
 
-`id`는 factory instance 안에서만 비교됩니다. 서로 다른 factory는 둘 다 default id를 써도
-충돌하지 않지만, 같은 factory와 같은 id의 Root 두 개가 동시에 mount되는 것은 잘못된 사용입니다.
+`id`는 item key가 아니라 factory 안에서 deck instance를 구분하는 namespace입니다.
+서로 다른 factory는 둘 다 default id를 써도 충돌하지 않지만, 같은 factory와 같은 id의 Root 두 개가 동시에 mount되는 것은 잘못된 사용입니다.
 id는 `"nearby"`, `"recommended"`처럼 화면/용도 단위의 안정적이고 적은 개수의 값으로 유지하세요.
-매번 바뀌는 값이나 item별 일회성 id에서 deck id를 만들지 않는 것이 좋습니다.
+Registry는 hook, action, interaction shared value의 identity를 안정적으로 유지하기 위해 factory lifetime 동안 id별 store를 유지합니다.
+따라서 item id, timestamp, 매 render마다 바뀌는 값, 일회성 route 값에서 deck id를 만들지 마세요.
 
 짧은 이름을 선호한다면 같은 factory instance에서 destructuring한 alias를 export해도 됩니다.
 
@@ -194,7 +195,7 @@ export const {
 } = ProfileDeck;
 ```
 
-같은 deck을 위해 파일마다 `createSwipeDeck<Profile>()`를 다시 호출하지 마세요. 그렇게 하면 서로 다른 registry namespace가 만들어집니다.
+Factory는 deck family마다 한 번만 만들고 shared module에서 export하세요. Hook, action, interaction은 같은 factory instance에서 만든 Root에만 연결됩니다. item type과 id가 같아도 `createSwipeDeck<Profile>()`를 다시 호출하면 별도 registry namespace가 만들어지므로, 한 factory의 hook으로 다른 factory의 Root를 제어할 수 없습니다.
 
 ### 간단한 inline 사용
 
