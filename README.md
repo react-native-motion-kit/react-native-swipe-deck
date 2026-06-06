@@ -46,21 +46,25 @@ const ProfileDeck = createSwipeDeck<Profile>({
   }),
 });
 
-<ProfileDeck.Root
-  data={profiles}
-  getKey={(item) => item.id}
-  visibleCardCount={3}
-  onSwipe={({ item, direction }) => {
-    console.log(item, direction);
-  }}
-  onEndReached={() => {
-    console.log('No more cards');
-  }}
->
-  <ProfileDeck.Card>
-    {({ item, role, isActive }) => <ProfileCard profile={item} role={role} active={isActive} />}
-  </ProfileDeck.Card>
-</ProfileDeck.Root>;
+function ProfileDeckScreen() {
+  return (
+    <ProfileDeck.Root
+      data={profiles}
+      getKey={(item) => item.id}
+      visibleCardCount={3}
+      onSwipe={({ item, direction }) => {
+        console.log(item, direction);
+      }}
+      onEndReached={() => {
+        console.log('No more cards');
+      }}
+    >
+      <ProfileDeck.Card>
+        {({ item, role, isActive }) => <ProfileCard profile={item} role={role} active={isActive} />}
+      </ProfileDeck.Card>
+    </ProfileDeck.Root>
+  );
+}
 ```
 
 ## Core concepts
@@ -105,9 +109,13 @@ The primary API is compound/slot based:
 ```tsx
 const ProfileDeck = createSwipeDeck<Profile>();
 
-<ProfileDeck.Root data={profiles} getKey={(item) => item.id}>
-  <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
-</ProfileDeck.Root>;
+function ProfileDeckScreen() {
+  return (
+    <ProfileDeck.Root data={profiles} getKey={(item) => item.id}>
+      <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+    </ProfileDeck.Root>
+  );
+}
 ```
 
 This keeps `Root`, `Card`, and future slots on the same item type without repeating generics in JSX.
@@ -159,19 +167,23 @@ function ProfileDeckScreen() {
 Use an `id` only when you render multiple roots from the same factory:
 
 ```tsx
-<ProfileDeck.Root id="recommended" data={recommended} getKey={(item) => item.id}>
-  <ProfileDeck.Card>
-    {({ item }) => <ProfileCard profile={item} />}
-  </ProfileDeck.Card>
-</ProfileDeck.Root>
+function MultiDeckScreen() {
+  const nearbyState = ProfileDeck.useDeckState('nearby');
 
-<ProfileDeck.Root id="nearby" data={nearby} getKey={(item) => item.id}>
-  <ProfileDeck.Card>
-    {({ item }) => <ProfileCard profile={item} />}
-  </ProfileDeck.Card>
-</ProfileDeck.Root>
+  return (
+    <>
+      <ProfileDeck.Root id="recommended" data={recommended} getKey={(item) => item.id}>
+        <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+      </ProfileDeck.Root>
 
-const nearbyState = ProfileDeck.useDeckState('nearby');
+      <ProfileDeck.Root id="nearby" data={nearby} getKey={(item) => item.id}>
+        <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+      </ProfileDeck.Root>
+
+      <Text>{nearbyState.activeIndex + 1}</Text>
+    </>
+  );
+}
 ```
 
 `id` is a factory-scoped deck namespace, not an item key. Two different factories can both
@@ -206,9 +218,13 @@ Because static `Root` and `Card` do not share a factory type, pass the item type
 ```tsx
 import { SwipeDeck } from '@react-native-motion-kit/swipe-deck';
 
-<SwipeDeck.Root data={profiles} getKey={(item) => item.id}>
-  <SwipeDeck.Card<Profile>>{({ item }) => <ProfileCard profile={item} />}</SwipeDeck.Card>
-</SwipeDeck.Root>;
+function InlineDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id}>
+      <SwipeDeck.Card<Profile>>{({ item }) => <ProfileCard profile={item} />}</SwipeDeck.Card>
+    </SwipeDeck.Root>
+  );
+}
 ```
 
 ## Motion
@@ -379,13 +395,21 @@ The default is `Easing.out(Easing.cubic)`.
 ## Visible card budget
 
 ```tsx
-<SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
-  {/* default/minimum budget */}
-</SwipeDeck.Root>
+function CompactDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
+      {/* default/minimum budget */}
+    </SwipeDeck.Root>
+  );
+}
 
-<SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={9}>
-  {/* deeper stacked UI */}
-</SwipeDeck.Root>
+function DeepStackDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={9}>
+      {/* deeper stacked UI */}
+    </SwipeDeck.Root>
+  );
+}
 ```
 
 | Input                                           | Mounted cards                               |

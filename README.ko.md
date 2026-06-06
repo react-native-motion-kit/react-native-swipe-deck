@@ -46,21 +46,25 @@ const ProfileDeck = createSwipeDeck<Profile>({
   }),
 });
 
-<ProfileDeck.Root
-  data={profiles}
-  getKey={(item) => item.id}
-  visibleCardCount={3}
-  onSwipe={({ item, direction }) => {
-    console.log(item, direction);
-  }}
-  onEndReached={() => {
-    console.log('No more cards');
-  }}
->
-  <ProfileDeck.Card>
-    {({ item, role, isActive }) => <ProfileCard profile={item} role={role} active={isActive} />}
-  </ProfileDeck.Card>
-</ProfileDeck.Root>;
+function ProfileDeckScreen() {
+  return (
+    <ProfileDeck.Root
+      data={profiles}
+      getKey={(item) => item.id}
+      visibleCardCount={3}
+      onSwipe={({ item, direction }) => {
+        console.log(item, direction);
+      }}
+      onEndReached={() => {
+        console.log('No more cards');
+      }}
+    >
+      <ProfileDeck.Card>
+        {({ item, role, isActive }) => <ProfileCard profile={item} role={role} active={isActive} />}
+      </ProfileDeck.Card>
+    </ProfileDeck.Root>
+  );
+}
 ```
 
 ## 핵심 개념
@@ -105,9 +109,13 @@ Key는 다음 조건을 만족해야 합니다.
 ```tsx
 const ProfileDeck = createSwipeDeck<Profile>();
 
-<ProfileDeck.Root data={profiles} getKey={(item) => item.id}>
-  <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
-</ProfileDeck.Root>;
+function ProfileDeckScreen() {
+  return (
+    <ProfileDeck.Root data={profiles} getKey={(item) => item.id}>
+      <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+    </ProfileDeck.Root>
+  );
+}
 ```
 
 이렇게 하면 `Root`, `Card`, 앞으로 추가될 slot들이 JSX에서 generic을 반복하지 않고 같은 item type을 공유할 수 있습니다.
@@ -160,19 +168,23 @@ function ProfileDeckScreen() {
 같은 factory에서 여러 Root를 렌더링할 때만 `id`를 사용하세요.
 
 ```tsx
-<ProfileDeck.Root id="recommended" data={recommended} getKey={(item) => item.id}>
-  <ProfileDeck.Card>
-    {({ item }) => <ProfileCard profile={item} />}
-  </ProfileDeck.Card>
-</ProfileDeck.Root>
+function MultiDeckScreen() {
+  const nearbyState = ProfileDeck.useDeckState('nearby');
 
-<ProfileDeck.Root id="nearby" data={nearby} getKey={(item) => item.id}>
-  <ProfileDeck.Card>
-    {({ item }) => <ProfileCard profile={item} />}
-  </ProfileDeck.Card>
-</ProfileDeck.Root>
+  return (
+    <>
+      <ProfileDeck.Root id="recommended" data={recommended} getKey={(item) => item.id}>
+        <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+      </ProfileDeck.Root>
 
-const nearbyState = ProfileDeck.useDeckState('nearby');
+      <ProfileDeck.Root id="nearby" data={nearby} getKey={(item) => item.id}>
+        <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+      </ProfileDeck.Root>
+
+      <Text>{nearbyState.activeIndex + 1}</Text>
+    </>
+  );
+}
 ```
 
 `id`는 item key가 아니라 factory 안에서 deck instance를 구분하는 namespace입니다.
@@ -207,9 +219,13 @@ Static `Root`와 `Card`는 factory처럼 item type을 함께 고정하지 않습
 ```tsx
 import { SwipeDeck } from '@react-native-motion-kit/swipe-deck';
 
-<SwipeDeck.Root data={profiles} getKey={(item) => item.id}>
-  <SwipeDeck.Card<Profile>>{({ item }) => <ProfileCard profile={item} />}</SwipeDeck.Card>
-</SwipeDeck.Root>;
+function InlineDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id}>
+      <SwipeDeck.Card<Profile>>{({ item }) => <ProfileCard profile={item} />}</SwipeDeck.Card>
+    </SwipeDeck.Root>
+  );
+}
 ```
 
 ## Motion
@@ -380,13 +396,21 @@ SwipeDeckMotion.tinder({
 ## Visible card budget
 
 ```tsx
-<SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
-  {/* default/minimum budget */}
-</SwipeDeck.Root>
+function CompactDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
+      {/* default/minimum budget */}
+    </SwipeDeck.Root>
+  );
+}
 
-<SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={9}>
-  {/* deeper stacked UI */}
-</SwipeDeck.Root>
+function DeepStackDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={9}>
+      {/* deeper stacked UI */}
+    </SwipeDeck.Root>
+  );
+}
 ```
 
 | 입력                                           | Mount되는 card                                           |
