@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
-import type { WithSpringConfig, WithTimingConfig } from 'react-native-reanimated';
+import type { SharedValue, WithSpringConfig, WithTimingConfig } from 'react-native-reanimated';
 
 export type SwipeDirection = 'left' | 'right';
 
@@ -218,6 +218,13 @@ export type ResolvedSwipeDeckMotionConfig = {
 
 export type SwipeDeckProps<T> = {
   /**
+   * Deck instance id inside this factory namespace.
+   *
+   * Omit this for the common single-deck case. Use an explicit id when rendering multiple roots
+   * from the same `createSwipeDeck<T>()` factory.
+   */
+  id?: string;
+  /**
    * Ordered items rendered by the deck.
    *
    * Only the bounded forward window is mounted; the full array is never rendered at once.
@@ -277,9 +284,45 @@ export type SwipeDeckFactoryConfig = {
   motion?: SwipeDeckMotionPreset;
 };
 
+export type SwipeDeckState = {
+  /** Current active item index, or `-1` before the deck is attached. */
+  activeIndex: number;
+  /** Total number of items in the attached deck. */
+  count: number;
+  /** Whether an attached deck has consumed all items. Unattached decks are not completed. */
+  isCompleted: boolean;
+  /** Whether a deck action can currently be accepted from React. */
+  canSwipe: boolean;
+};
+
+export type SwipeDeckActions = {
+  /** Programmatically dismiss the active card to the left. Returns whether the action was accepted. */
+  swipeLeft: () => boolean;
+  /** Programmatically dismiss the active card to the right. Returns whether the action was accepted. */
+  swipeRight: () => boolean;
+};
+
+export type SwipeDeckInteraction = {
+  /** Absolute swipe progress from `0` to `1`. */
+  progress: SharedValue<number>;
+  /** Signed swipe progress from `-1` to `1`; left is negative and right is positive. */
+  signedProgress: SharedValue<number>;
+  /** Current swipe direction signal; left is `-1`, idle is `0`, right is `1`. */
+  direction: SharedValue<-1 | 0 | 1>;
+  /** Active card horizontal translation. */
+  translationX: SharedValue<number>;
+  /** Active card vertical translation. */
+  translationY: SharedValue<number>;
+  /** Whether the deck is currently being dragged or dismissed. */
+  isDragging: SharedValue<boolean>;
+};
+
 export type SwipeDeckInstance<T> = {
   Root: (props: SwipeDeckProps<T>) => ReactElement;
   Card: (props: SwipeDeckCardProps<T>) => ReactElement | null;
+  useDeckState: (id?: string) => SwipeDeckState;
+  useDeckActions: (id?: string) => SwipeDeckActions;
+  useDeckInteraction: (id?: string) => SwipeDeckInteraction;
 };
 
 export type SwipeDeckStatic = {

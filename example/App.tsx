@@ -1,7 +1,8 @@
 import { createSwipeDeck, SwipeDeckMotion } from '@react-native-motion-kit/swipe-deck';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
 type Profile = {
   id: string;
@@ -37,6 +38,74 @@ const SwipeDeck = createSwipeDeck<Profile>({
   }),
 });
 
+function CardReactionOverlay() {
+  const { signedProgress } = SwipeDeck.useDeckInteraction();
+
+  const passStyle = useAnimatedStyle(() => {
+    const progress = Math.max(-signedProgress.get(), 0);
+
+    return {
+      opacity: progress,
+      transform: [{ scale: 0.9 + progress * 0.18 }],
+    };
+  });
+
+  const likeStyle = useAnimatedStyle(() => {
+    const progress = Math.max(signedProgress.get(), 0);
+
+    return {
+      opacity: progress,
+      transform: [{ scale: 0.9 + progress * 0.18 }],
+    };
+  });
+
+  return (
+    <View pointerEvents="none" style={styles.reactionOverlay}>
+      <View style={[styles.reactionAnchor, styles.passAnchor]}>
+        <Animated.View style={[styles.reactionBadge, styles.passBadge, passStyle]}>
+          <Text style={styles.reactionText}>PASS</Text>
+        </Animated.View>
+      </View>
+      <View style={[styles.reactionAnchor, styles.likeAnchor]}>
+        <Animated.View style={[styles.reactionBadge, styles.likeBadge, likeStyle]}>
+          <Text style={styles.reactionText}>LOVE</Text>
+        </Animated.View>
+      </View>
+    </View>
+  );
+}
+
+function DeckControls() {
+  const { activeIndex, count, canSwipe, isCompleted } = SwipeDeck.useDeckState();
+  const { swipeLeft, swipeRight } = SwipeDeck.useDeckActions();
+  const current = activeIndex >= 0 ? activeIndex + 1 : 0;
+  const counterText = isCompleted ? 'Done' : `${current} / ${count}`;
+
+  return (
+    <View style={styles.controls}>
+      <Text style={styles.counter}>{counterText}</Text>
+      <View style={styles.actions}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={!canSwipe}
+          onPress={swipeLeft}
+          style={[styles.actionButton, styles.passButton, !canSwipe && styles.disabledButton]}
+        >
+          <Text style={styles.actionText}>Nope</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          disabled={!canSwipe}
+          onPress={swipeRight}
+          style={[styles.actionButton, styles.likeButton, !canSwipe && styles.disabledButton]}
+        >
+          <Text style={styles.actionText}>Like</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -67,6 +136,7 @@ export default function App() {
               {({ item, role, isActive }) => (
                 <View style={[styles.card, { backgroundColor: item.accent }]}>
                   <Text style={styles.role}>{role}</Text>
+                  {isActive ? <CardReactionOverlay /> : null}
                   <View>
                     <Text style={styles.name}>{item.name}</Text>
                     <Text style={styles.bio}>{item.bio}</Text>
@@ -76,6 +146,7 @@ export default function App() {
               )}
             </SwipeDeck.Card>
           </SwipeDeck.Root>
+          <DeckControls />
         </View>
       </View>
     </GestureHandlerRootView>
@@ -115,7 +186,7 @@ const styles = StyleSheet.create({
   deckFrame: {
     flex: 1,
     justifyContent: 'center',
-    paddingBottom: 56,
+    paddingBottom: 104,
   },
   deck: {
     flex: 0,
@@ -163,5 +234,81 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 18,
     textTransform: 'uppercase',
+  },
+  reactionOverlay: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  reactionAnchor: {
+    position: 'absolute',
+    top: 48,
+  },
+  passAnchor: {
+    right: 24,
+    transform: [{ rotate: '12deg' }],
+  },
+  likeAnchor: {
+    left: 24,
+    transform: [{ rotate: '-12deg' }],
+  },
+  reactionBadge: {
+    borderRadius: 18,
+    borderWidth: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  passBadge: {
+    borderColor: '#fb7185',
+  },
+  likeBadge: {
+    borderColor: '#34d399',
+  },
+  reactionText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  controls: {
+    alignItems: 'center',
+    bottom: 24,
+    gap: 14,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+  },
+  counter: {
+    color: '#e4e4e7',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  actionButton: {
+    alignItems: 'center',
+    borderRadius: 999,
+    height: 58,
+    justifyContent: 'center',
+    minWidth: 112,
+    paddingHorizontal: 22,
+  },
+  passButton: {
+    backgroundColor: '#fb7185',
+  },
+  likeButton: {
+    backgroundColor: '#34d399',
+  },
+  disabledButton: {
+    opacity: 0.45,
+  },
+  actionText: {
+    color: '#09090b',
+    fontSize: 16,
+    fontWeight: '900',
   },
 });

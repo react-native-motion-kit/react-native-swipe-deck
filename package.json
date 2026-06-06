@@ -121,11 +121,14 @@
     ],
     "preset": "@react-native/jest-preset",
     "resolver": "react-native-worklets/jest/resolver",
+    "setupFiles": [
+      "react-native-gesture-handler/jestSetup.js"
+    ],
     "setupFilesAfterEnv": [
       "<rootDir>/jest-setup.js"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-reanimated|react-native-worklets)/)"
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-gesture-handler|react-native-reanimated|react-native-worklets)/)"
     ]
   },
   "packageManager": "yarn@4.15.0",

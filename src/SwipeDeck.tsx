@@ -25,6 +25,7 @@ import type {
   SwipeDeckStatic,
   SwipeDirection,
   SwipeDeckMotionPreset,
+  SwipeDeckMotionEasing,
 } from './types';
 
 import {
@@ -34,7 +35,9 @@ import {
   resolveSwipeDeckGestureStartYRatio,
   resolveSwipeDeckMotionConfig,
 } from './animation';
+import { getSwipeDeckState } from './deckState';
 import { resolveSwipeDirection } from './directions';
+import { createSwipeDeckRegistry, type SwipeDeckRegistry } from './registry';
 import { getSwipeRenderItems, getSwipeStackRenderItems } from './rendering';
 import { getSwipeCommit, shouldDeferActiveItemSync, shouldResetEndReached } from './state';
 import { SwipeDeckCard } from './SwipeDeckCard';
@@ -53,11 +56,35 @@ function findCardSlot<T>(children: ReactNode): ReactElement<SwipeDeckCardProps<T
   return null;
 }
 
+function resolveProgressDirection(translationX: number): -1 | 0 | 1 {
+  'worklet';
+
+  if (translationX < 0) {
+    return -1;
+  }
+
+  if (translationX > 0) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function resolveSignedSwipeProgress(translationX: number, distance: number): number {
+  'worklet';
+
+  const direction = resolveProgressDirection(translationX);
+
+  return direction * Math.min(Math.abs(translationX) / Math.max(distance, 1), 1);
+}
+
 type SwipeDeckRootProps<T> = SwipeDeckProps<T> & {
   factoryMotion?: SwipeDeckMotionPreset;
+  registry: SwipeDeckRegistry;
 };
 
 function Root<T>({
+  id,
   data,
   getKey,
   initialIndex = 0,
@@ -72,22 +99,48 @@ function Root<T>({
   onSwipe,
   onIndexChange,
   onEndReached,
+  registry,
 }: SwipeDeckRootProps<T>): ReactElement {
+  const deckStore = useMemo(() => registry.getStore(id), [id, registry]);
+  const interaction = deckStore.interaction;
   const [layout, setLayout] = useState<SwipeDeckLayout>({ width: 0, height: 0 });
   const [activeIndex, setActiveIndex] = useState(() => clampActiveIndex(data.length, initialIndex));
   const [endReached, setEndReached] = useState(false);
-  const swipeProgress = useSharedValue(0);
-  const activeTranslateX = useSharedValue(0);
-  const activeTranslateY = useSharedValue(0);
+  const swipeProgress = interaction.progress;
+  const signedSwipeProgress = interaction.signedProgress;
+  const swipeDirectionSignal = interaction.direction;
+  const activeTranslateX = interaction.translationX;
+  const activeTranslateY = interaction.translationY;
+  const isDragging = interaction.isDragging;
   const dragItemIndex = useSharedValue(-1);
   const activeItemIndex = useSharedValue(-1);
   const gestureStartYRatio = useSharedValue(0.5);
+  const hasHandledGestureEnd = useSharedValue(false);
+  const shouldIgnoreGesture = useSharedValue(false);
+  const runtimeEventId = useSharedValue(0);
   const isAnimating = useSharedValue(false);
   const dataRef = useRef(data);
+  const activeIndexRef = useRef(activeIndex);
+  const endReachedRef = useRef(endReached);
+  const disabledRef = useRef(disabled);
+  const layoutRef = useRef(layout);
+  const runtimeStateRef = useRef({ isAnimating: false, isDragging: false });
+  const runtimeEventIdRef = useRef(0);
   const onSwipeRef = useRef(onSwipe);
   const onIndexChangeRef = useRef(onIndexChange);
   const onEndReachedRef = useRef(onEndReached);
   const pendingCommitResetRef = useRef(false);
+  const dismissRuntimeRef = useRef<{
+    duration?: number;
+    easing: SwipeDeckMotionEasing;
+    maxDuration: number;
+    minDuration: number;
+    offscreenMultiplier: number;
+    rotationDirection: SwipeDeckRenderedCardMotionConfig['rotation']['direction'];
+    rotationMaxDegrees: number;
+    rotationMode: SwipeDeckRenderedCardMotionConfig['rotation']['mode'];
+    rotationOrigin: SwipeDeckRenderedCardMotionConfig['rotation']['origin'];
+  } | null>(null);
   const cardSlot = findCardSlot<T>(children);
   const hasActiveCard = activeIndex >= 0 && activeIndex < data.length;
   const activeRenderItemId = hasActiveCard ? activeIndex : -1;
@@ -144,33 +197,202 @@ function Root<T>({
   const dismissOffscreenMultiplier = motionConfig.dismiss.offscreenMultiplier;
   const swipeProgressDistance = motionConfig.swipeProgressDistance;
 
-  const handleLayout = useCallback((event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    setLayout({ width, height });
+  const getDeckState = useCallback(() => {
+    return getSwipeDeckState({
+      dataLength: dataRef.current.length,
+      activeIndex: activeIndexRef.current,
+      disabled: disabledRef.current,
+      layout: layoutRef.current,
+      isAnimating: runtimeStateRef.current.isAnimating,
+      isDragging: runtimeStateRef.current.isDragging,
+    });
   }, []);
 
-  const commitSwipe = useCallback(
-    (direction: SwipeDirection) => {
-      const currentData = dataRef.current;
-      const commit = getSwipeCommit(currentData.length, activeIndex, endReached);
+  const publishDeckStateSnapshot = useCallback(() => {
+    deckStore.setSnapshot(getDeckState());
+  }, [deckStore, getDeckState]);
 
-      if (!commit) {
+  const applyScheduledRuntimeState = useCallback(
+    (eventId: number, isAnimatingValue: boolean, isDraggingValue: boolean) => {
+      if (eventId < runtimeEventIdRef.current) {
         return;
       }
 
-      const item = currentData[commit.swipedIndex] as T;
-
-      onSwipeRef.current?.({ item, index: commit.swipedIndex, direction });
-      onIndexChangeRef.current?.(commit.nextIndex);
-      pendingCommitResetRef.current = true;
-      setActiveIndex(commit.nextIndex);
-
-      if (commit.shouldEmitEndReached) {
-        setEndReached(true);
-        onEndReachedRef.current?.();
-      }
+      runtimeEventIdRef.current = eventId;
+      runtimeStateRef.current = {
+        isAnimating: isAnimatingValue,
+        isDragging: isDraggingValue,
+      };
+      publishDeckStateSnapshot();
     },
-    [activeIndex, endReached],
+    [publishDeckStateSnapshot],
+  );
+
+  const applyImmediateRuntimeState = useCallback(
+    (isAnimatingValue: boolean, isDraggingValue: boolean) => {
+      const nextEventId = runtimeEventIdRef.current + 1;
+
+      runtimeEventIdRef.current = nextEventId;
+      runtimeEventId.set(nextEventId);
+      runtimeStateRef.current = {
+        isAnimating: isAnimatingValue,
+        isDragging: isDraggingValue,
+      };
+      publishDeckStateSnapshot();
+    },
+    [publishDeckStateSnapshot, runtimeEventId],
+  );
+
+  const handleLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const { width, height } = event.nativeEvent.layout;
+      const nextLayout = { width, height };
+
+      layoutRef.current = nextLayout;
+      setLayout(nextLayout);
+      publishDeckStateSnapshot();
+    },
+    [publishDeckStateSnapshot],
+  );
+
+  const commitSwipe = useCallback((direction: SwipeDirection) => {
+    const currentData = dataRef.current;
+    const commit = getSwipeCommit(
+      currentData.length,
+      activeIndexRef.current,
+      endReachedRef.current,
+    );
+
+    if (!commit) {
+      return;
+    }
+
+    const item = currentData[commit.swipedIndex] as T;
+
+    onSwipeRef.current?.({ item, index: commit.swipedIndex, direction });
+    onIndexChangeRef.current?.(commit.nextIndex);
+    activeIndexRef.current = commit.nextIndex;
+    pendingCommitResetRef.current = true;
+    setActiveIndex(commit.nextIndex);
+
+    if (commit.shouldEmitEndReached) {
+      endReachedRef.current = true;
+      setEndReached(true);
+      onEndReachedRef.current?.();
+    }
+  }, []);
+
+  const resetInteractionAfterDismiss = useCallback(() => {
+    activeTranslateX.set(0);
+    activeTranslateY.set(0);
+    swipeProgress.set(0);
+    signedSwipeProgress.set(0);
+    swipeDirectionSignal.set(0);
+    isDragging.set(false);
+    gestureStartYRatio.set(0.5);
+    dragItemIndex.set(-1);
+  }, [
+    activeTranslateX,
+    activeTranslateY,
+    dragItemIndex,
+    gestureStartYRatio,
+    isDragging,
+    signedSwipeProgress,
+    swipeDirectionSignal,
+    swipeProgress,
+  ]);
+
+  const swipeProgrammatically = useCallback(
+    (direction: SwipeDirection) => {
+      const currentData = dataRef.current;
+      const currentIndex = activeIndexRef.current;
+      const currentLayout = layoutRef.current;
+      const runtime = dismissRuntimeRef.current;
+
+      if (!runtime) {
+        return false;
+      }
+
+      if (disabledRef.current || isAnimating.get() || isDragging.get()) {
+        return false;
+      }
+
+      if (currentLayout.width <= 0 || currentLayout.height <= 0) {
+        return false;
+      }
+
+      if (currentIndex < 0 || currentIndex >= currentData.length) {
+        return false;
+      }
+
+      isAnimating.set(true);
+      isDragging.set(true);
+      applyImmediateRuntimeState(true, true);
+      gestureStartYRatio.set(0.5);
+      dragItemIndex.set(activeItemIndex.get());
+
+      const destinationDistance = resolveSwipeDeckDismissDestinationDistance({
+        offscreenMultiplier: runtime.offscreenMultiplier,
+        layout: currentLayout,
+        rotationMaxDegrees: runtime.rotationMaxDegrees,
+        rotationMode: runtime.rotationMode,
+        rotationOrigin: runtime.rotationOrigin,
+        rotationDirection: runtime.rotationDirection,
+        gestureStartYRatio: 0.5,
+        swipeDirection: direction,
+      });
+      const exitX = direction === 'right' ? destinationDistance : -destinationDistance;
+      const progressDirection = direction === 'right' ? 1 : -1;
+      const resolvedDismissDuration = resolveSwipeDeckDismissDuration({
+        translationX: activeTranslateX.get(),
+        velocityX: 0,
+        destinationX: exitX,
+        duration: runtime.duration,
+        minDuration: runtime.minDuration,
+        maxDuration: runtime.maxDuration,
+      });
+      const dismissTimingConfig = {
+        duration: resolvedDismissDuration,
+        easing: runtime.easing,
+      };
+
+      swipeDirectionSignal.set(progressDirection);
+      signedSwipeProgress.set(withTiming(progressDirection, dismissTimingConfig));
+      swipeProgress.set(withTiming(1, dismissTimingConfig));
+      activeTranslateY.set(withTiming(0, dismissTimingConfig));
+      activeTranslateX.set(
+        withTiming(exitX, dismissTimingConfig, (finished) => {
+          if (finished) {
+            const nextActiveItemIndex = activeItemIndex.get() + 1;
+            activeItemIndex.set(nextActiveItemIndex);
+            activeTranslateX.set(0);
+            activeTranslateY.set(0);
+            swipeProgress.set(0);
+            signedSwipeProgress.set(0);
+            swipeDirectionSignal.set(0);
+            isDragging.set(false);
+            dragItemIndex.set(-1);
+            scheduleOnRN(commitSwipe, direction);
+          }
+        }),
+      );
+
+      return true;
+    },
+    [
+      activeItemIndex,
+      activeTranslateX,
+      activeTranslateY,
+      commitSwipe,
+      dragItemIndex,
+      gestureStartYRatio,
+      isAnimating,
+      isDragging,
+      applyImmediateRuntimeState,
+      signedSwipeProgress,
+      swipeDirectionSignal,
+      swipeProgress,
+    ],
   );
 
   const pan = useMemo(
@@ -178,10 +400,21 @@ function Root<T>({
       Gesture.Pan()
         .enabled(hasActiveCard && !disabled)
         .onBegin((event) => {
+          hasHandledGestureEnd.set(false);
+
           if (isAnimating.get()) {
+            shouldIgnoreGesture.set(true);
             return;
           }
 
+          shouldIgnoreGesture.set(false);
+          const nextRuntimeEventId = runtimeEventId.get() + 1;
+
+          runtimeEventId.set(nextRuntimeEventId);
+          isDragging.set(true);
+          swipeDirectionSignal.set(0);
+          signedSwipeProgress.set(0);
+          scheduleOnRN(applyScheduledRuntimeState, nextRuntimeEventId, false, true);
           gestureStartYRatio.set(
             resolveSwipeDeckGestureStartYRatio({
               y: event.y,
@@ -191,14 +424,14 @@ function Root<T>({
           dragItemIndex.set(activeItemIndex.get());
         })
         .onStart(() => {
-          if (isAnimating.get()) {
+          if (shouldIgnoreGesture.get() || isAnimating.get()) {
             return;
           }
 
           dragItemIndex.set(activeItemIndex.get());
         })
         .onUpdate((event) => {
-          if (isAnimating.get()) {
+          if (shouldIgnoreGesture.get() || isAnimating.get()) {
             return;
           }
 
@@ -211,12 +444,17 @@ function Root<T>({
           swipeProgress.set(
             Math.min(Math.abs(event.translationX) / Math.max(swipeProgressDistance, 1), 1),
           );
+          signedSwipeProgress.set(
+            resolveSignedSwipeProgress(event.translationX, swipeProgressDistance),
+          );
+          swipeDirectionSignal.set(resolveProgressDirection(event.translationX));
         })
         .onEnd((event) => {
-          if (isAnimating.get()) {
+          hasHandledGestureEnd.set(true);
+
+          if (shouldIgnoreGesture.get() || isAnimating.get()) {
             return;
           }
-
           const direction = resolveSwipeDirection({
             translationX: event.translationX,
             velocityX: event.velocityX,
@@ -236,15 +474,25 @@ function Root<T>({
                 if (finished) {
                   dragItemIndex.set(-1);
                   isAnimating.set(false);
+                  isDragging.set(false);
+                  swipeDirectionSignal.set(0);
+                  const nextRuntimeEventId = runtimeEventId.get() + 1;
+
+                  runtimeEventId.set(nextRuntimeEventId);
+                  gestureStartYRatio.set(0.5);
+                  scheduleOnRN(applyScheduledRuntimeState, nextRuntimeEventId, false, false);
                 }
               }),
             );
             activeTranslateY.set(withSpring(0, cancelSpringConfig));
             swipeProgress.set(withSpring(0, cancelSpringConfig));
+            signedSwipeProgress.set(withSpring(0, cancelSpringConfig));
             return;
           }
 
           isAnimating.set(true);
+          isDragging.set(true);
+          scheduleOnRN(applyScheduledRuntimeState, runtimeEventId.get(), true, true);
           const destinationDistance = resolveSwipeDeckDismissDestinationDistance({
             offscreenMultiplier: dismissOffscreenMultiplier,
             layout,
@@ -269,6 +517,8 @@ function Root<T>({
             easing: dismissEasing,
           };
 
+          swipeDirectionSignal.set(direction === 'right' ? 1 : -1);
+          signedSwipeProgress.set(withTiming(direction === 'right' ? 1 : -1, dismissTimingConfig));
           swipeProgress.set(withTiming(1, dismissTimingConfig));
           activeTranslateX.set(
             withTiming(exitX, dismissTimingConfig, (finished) => {
@@ -278,11 +528,37 @@ function Root<T>({
                 activeTranslateX.set(0);
                 activeTranslateY.set(0);
                 swipeProgress.set(0);
+                signedSwipeProgress.set(0);
+                swipeDirectionSignal.set(0);
+                isDragging.set(false);
                 dragItemIndex.set(-1);
                 scheduleOnRN(commitSwipe, direction);
               }
             }),
           );
+        })
+        .onFinalize(() => {
+          if (shouldIgnoreGesture.get()) {
+            shouldIgnoreGesture.set(false);
+            return;
+          }
+
+          if (hasHandledGestureEnd.get() || isAnimating.get()) {
+            return;
+          }
+
+          activeTranslateX.set(0);
+          activeTranslateY.set(0);
+          swipeProgress.set(0);
+          signedSwipeProgress.set(0);
+          swipeDirectionSignal.set(0);
+          isDragging.set(false);
+          dragItemIndex.set(-1);
+          const nextRuntimeEventId = runtimeEventId.get() + 1;
+
+          runtimeEventId.set(nextRuntimeEventId);
+          gestureStartYRatio.set(0.5);
+          scheduleOnRN(applyScheduledRuntimeState, nextRuntimeEventId, false, false);
         }),
     [
       activeTranslateX,
@@ -297,8 +573,12 @@ function Root<T>({
       disabled,
       dragItemIndex,
       gestureStartYRatio,
+      hasHandledGestureEnd,
+      shouldIgnoreGesture,
+      runtimeEventId,
       hasActiveCard,
       isAnimating,
+      isDragging,
       layout,
       dismissOffscreenMultiplier,
       cardMotionConfig.rotation.direction,
@@ -306,15 +586,47 @@ function Root<T>({
       cardMotionConfig.rotation.mode,
       cardMotionConfig.rotation.origin,
       resolvedSwipeThreshold,
+      applyScheduledRuntimeState,
+      signedSwipeProgress,
+      swipeDirectionSignal,
       swipeProgress,
       swipeProgressDistance,
       resolvedVelocityThreshold,
     ],
   );
 
+  useLayoutEffect(() => {
+    return deckStore.attach({
+      getState: getDeckState,
+      swipe: swipeProgrammatically,
+    });
+  }, [deckStore, getDeckState, swipeProgrammatically]);
+
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
+
+  useEffect(() => {
+    publishDeckStateSnapshot();
+  }, [data.length, publishDeckStateSnapshot]);
+
+  useEffect(() => {
+    activeIndexRef.current = activeIndex;
+    publishDeckStateSnapshot();
+  }, [activeIndex, publishDeckStateSnapshot]);
+
+  useEffect(() => {
+    endReachedRef.current = endReached;
+  }, [endReached]);
+
+  useEffect(() => {
+    disabledRef.current = disabled;
+    publishDeckStateSnapshot();
+  }, [disabled, publishDeckStateSnapshot]);
+
+  useEffect(() => {
+    layoutRef.current = layout;
+  }, [layout]);
 
   useEffect(() => {
     onSwipeRef.current = onSwipe;
@@ -327,6 +639,30 @@ function Root<T>({
   useEffect(() => {
     onEndReachedRef.current = onEndReached;
   }, [onEndReached]);
+
+  useEffect(() => {
+    dismissRuntimeRef.current = {
+      duration: dismissDuration,
+      easing: dismissEasing,
+      maxDuration: dismissMaxDuration,
+      minDuration: dismissMinDuration,
+      offscreenMultiplier: dismissOffscreenMultiplier,
+      rotationDirection: cardMotionConfig.rotation.direction,
+      rotationMaxDegrees: cardMotionConfig.rotation.maxDegrees,
+      rotationMode: cardMotionConfig.rotation.mode,
+      rotationOrigin: cardMotionConfig.rotation.origin,
+    };
+  }, [
+    cardMotionConfig.rotation.direction,
+    cardMotionConfig.rotation.maxDegrees,
+    cardMotionConfig.rotation.mode,
+    cardMotionConfig.rotation.origin,
+    dismissDuration,
+    dismissEasing,
+    dismissMaxDuration,
+    dismissMinDuration,
+    dismissOffscreenMultiplier,
+  ]);
 
   useEffect(() => {
     const nextIndex = clampActiveIndex(data.length, activeIndex);
@@ -343,6 +679,8 @@ function Root<T>({
   }, [activeIndex, data.length]);
 
   useLayoutEffect(() => {
+    activeIndexRef.current = activeIndex;
+
     const hasPendingCommitReset = pendingCommitResetRef.current;
 
     if (shouldDeferActiveItemSync(isAnimating.get(), hasPendingCommitReset)) {
@@ -356,19 +694,16 @@ function Root<T>({
     }
 
     pendingCommitResetRef.current = false;
-    activeTranslateX.set(0);
-    activeTranslateY.set(0);
-    swipeProgress.set(0);
-    dragItemIndex.set(-1);
+    resetInteractionAfterDismiss();
     isAnimating.set(false);
+    applyImmediateRuntimeState(false, false);
   }, [
+    activeIndex,
     activeRenderItemId,
-    activeTranslateX,
-    activeTranslateY,
     activeItemIndex,
-    dragItemIndex,
     isAnimating,
-    swipeProgress,
+    resetInteractionAfterDismiss,
+    applyImmediateRuntimeState,
   ]);
 
   if (!cardSlot) {
@@ -402,25 +737,35 @@ function Root<T>({
   );
 }
 
-function createRoot<T>(factoryConfig?: SwipeDeckFactoryConfig) {
+function createRoot<T>(
+  factoryConfig: SwipeDeckFactoryConfig | undefined,
+  registry: SwipeDeckRegistry,
+) {
   return function SwipeDeckRoot(props: SwipeDeckProps<T>): ReactElement {
-    return <Root {...props} factoryMotion={factoryConfig?.motion} />;
+    return <Root {...props} factoryMotion={factoryConfig?.motion} registry={registry} />;
   };
 }
 
 export function createSwipeDeck<T = never>(
   factoryConfig?: SwipeDeckFactoryConfig,
 ): SwipeDeckInstance<T> {
+  const registry = createSwipeDeckRegistry();
+
   return {
-    Root: createRoot<T>(factoryConfig),
+    Root: createRoot<T>(factoryConfig, registry),
     Card: SwipeDeckCard,
+    useDeckState: registry.useDeckState,
+    useDeckActions: registry.useDeckActions,
+    useDeckInteraction: registry.useDeckInteraction,
   };
 }
 
 const StaticRoot: SwipeDeckStatic['Root'] = function SwipeDeckRoot<T>(
   props: SwipeDeckProps<T>,
 ): ReactElement {
-  return <Root {...props} />;
+  const registry = useMemo(() => createSwipeDeckRegistry(), []);
+
+  return <Root {...props} registry={registry} />;
 };
 
 export const SwipeDeck = {

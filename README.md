@@ -23,30 +23,30 @@ Make sure `react-native-worklets/plugin` is the last Babel plugin.
 
 ## Quick start
 
+Create one typed deck family for your item type when you want `Root`, `Card`, external actions, state, and interaction hooks to share the same factory instance.
+
 ```tsx
 import { createSwipeDeck, SwipeDeckMotion } from '@react-native-motion-kit/swipe-deck';
 
-const profileDeckMotion = SwipeDeckMotion.tinder({
-  drag: {
-    mode: 'horizontal',
-    liftYFactor: 0.15,
-  },
-  rotation: {
-    mode: 'grab-position',
-  },
-  dismiss: {
-    threshold: ({ width }) => width * 0.3,
-    velocityThreshold: 800,
-    minDuration: 300,
-    maxDuration: 520,
-  },
+const ProfileDeck = createSwipeDeck<Profile>({
+  motion: SwipeDeckMotion.tinder({
+    drag: {
+      mode: 'horizontal',
+      liftYFactor: 0.15,
+    },
+    rotation: {
+      mode: 'grab-position',
+    },
+    dismiss: {
+      threshold: ({ width }) => width * 0.3,
+      velocityThreshold: 800,
+      minDuration: 300,
+      maxDuration: 520,
+    },
+  }),
 });
 
-const SwipeDeck = createSwipeDeck<Profile>({
-  motion: profileDeckMotion,
-});
-
-<SwipeDeck.Root
+<ProfileDeck.Root
   data={profiles}
   getKey={(item) => item.id}
   visibleCardCount={3}
@@ -57,10 +57,10 @@ const SwipeDeck = createSwipeDeck<Profile>({
     console.log('No more cards');
   }}
 >
-  <SwipeDeck.Card>
+  <ProfileDeck.Card>
     {({ item, role, isActive }) => <ProfileCard profile={item} role={role} active={isActive} />}
-  </SwipeDeck.Card>
-</SwipeDeck.Root>;
+  </ProfileDeck.Card>
+</ProfileDeck.Root>;
 ```
 
 ## Core concepts
@@ -111,6 +111,103 @@ const ProfileDeck = createSwipeDeck<Profile>();
 ```
 
 This keeps `Root`, `Card`, and future slots on the same item type without repeating generics in JSX.
+
+Use this factory pattern when the deck needs a named instance that can be shared by hooks and external UI.
+
+### Deck hooks
+
+Deck-wide values are exposed through factory-scoped hooks instead of card render props.
+
+```tsx
+// profile-deck.ts
+export const ProfileDeck = createSwipeDeck<Profile>();
+```
+
+```tsx
+function ProfileDeckScreen() {
+  const state = ProfileDeck.useDeckState();
+  const actions = ProfileDeck.useDeckActions();
+  const interaction = ProfileDeck.useDeckInteraction();
+
+  return (
+    <ProfileDeck.Root data={profiles} getKey={(item) => item.id}>
+      <ProfileDeck.Card>
+        {({ item }) => (
+          <ProfileCard
+            profile={item}
+            current={state.activeIndex + 1}
+            total={state.count}
+            onLike={actions.swipeRight}
+            swipeProgress={interaction.signedProgress}
+          />
+        )}
+      </ProfileDeck.Card>
+    </ProfileDeck.Root>
+  );
+}
+```
+
+- `useDeckState(id?)` returns React-rendered deck state such as `activeIndex`, `count`,
+  `isCompleted`, and `canSwipe`. Derive the active item from your own `data[activeIndex]`
+  when needed so deck state stays primitive and stable.
+- `useDeckActions(id?)` returns stable actions such as `swipeLeft()` and `swipeRight()`.
+  Actions return `true` when accepted and `false` when the deck is unattached, disabled,
+  animating, unmeasured, or completed.
+- `useDeckInteraction(id?)` returns Reanimated shared values for progress-driven UI. Gesture
+  progress stays on the UI thread and does not rerender React every frame.
+
+Use an `id` only when you render multiple roots from the same factory:
+
+```tsx
+<ProfileDeck.Root id="recommended" data={recommended} getKey={(item) => item.id}>
+  <ProfileDeck.Card>
+    {({ item }) => <ProfileCard profile={item} />}
+  </ProfileDeck.Card>
+</ProfileDeck.Root>
+
+<ProfileDeck.Root id="nearby" data={nearby} getKey={(item) => item.id}>
+  <ProfileDeck.Card>
+    {({ item }) => <ProfileCard profile={item} />}
+  </ProfileDeck.Card>
+</ProfileDeck.Root>
+
+const nearbyState = ProfileDeck.useDeckState('nearby');
+```
+
+`id` is scoped to the factory instance. Two different factories can both use the default id safely,
+but two mounted roots from the same factory and same id are invalid.
+Keep ids stable and low-cardinality, such as screen-level names (`"nearby"` or `"recommended"`).
+Do not derive ids from rapidly changing values or one-off item ids.
+
+If you prefer shorter names, destructure from the same factory instance and export aliases:
+
+```ts
+const ProfileDeck = createSwipeDeck<Profile>();
+
+export const {
+  Root: ProfileDeckRoot,
+  Card: ProfileDeckCard,
+  useDeckState: useProfileDeckState,
+  useDeckActions: useProfileDeckActions,
+  useDeckInteraction: useProfileDeckInteraction,
+} = ProfileDeck;
+```
+
+Do not call `createSwipeDeck<Profile>()` separately in each file for the same deck. That creates a different registry namespace.
+
+### Simple inline usage
+
+If you only need card rendering and callbacks, you can use the static API without creating a factory instance.
+This is useful for small inline decks, but it does not expose `useDeckState`, `useDeckActions`, or `useDeckInteraction`.
+Because static `Root` and `Card` do not share a factory type, pass the item type to `Card` when you want typed render props.
+
+```tsx
+import { SwipeDeck } from '@react-native-motion-kit/swipe-deck';
+
+<SwipeDeck.Root data={profiles} getKey={(item) => item.id}>
+  <SwipeDeck.Card<Profile>>{({ item }) => <ProfileCard profile={item} />}</SwipeDeck.Card>
+</SwipeDeck.Root>;
+```
 
 ## Motion
 
@@ -297,17 +394,22 @@ The default is `Easing.out(Easing.cubic)`.
 
 ## API direction
 
-The MVP keeps the public API focused on `Root` and `Card`, but the longer-term direction is to expand into a registry/controller model for external control.
+The current public API already includes factory-scoped deck hooks and `id`-based deck registration:
+
+- `createSwipeDeck<T>()` creates a typed factory namespace.
+- `Root` and `Card` render the deck.
+- `useDeckState(id?)`, `useDeckActions(id?)`, and `useDeckInteraction(id?)` expose deck-wide state, actions, and Reanimated interaction values from that factory namespace.
+- `id` selects a deck inside the same factory when multiple roots are mounted.
 
 Future API directions may include:
 
-- public `Provider` or registry boundary;
-- controller hooks for imperative actions;
-- `id`-based deck registration;
+- public `Provider` or custom registry boundary;
 - trigger components for external swipe controls;
-- more explicit prerender/window controls.
+- undo/back-swipe APIs;
+- more explicit prerender/window controls;
+- lower-level controller/event APIs when they improve DX without hurting performance.
 
-Those pieces are intentionally not part of the first shipped surface yet. The current API keeps the core deck small while leaving room for registry-first external control later.
+The current shipped surface intentionally avoids a public Provider or trigger component for now. Factory-scoped hooks cover the main external UI use cases while keeping the core deck small.
 
 ## Contributing
 

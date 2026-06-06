@@ -2,7 +2,9 @@ export { SwipeDeckMotion } from './animation';
 export { createSwipeDeck, SwipeDeck } from './SwipeDeck';
 export type {
   SwipeDeckCardProps,
+  SwipeDeckActions,
   SwipeDeckFactoryConfig,
+  SwipeDeckInteraction,
   SwipeDeckInstance,
   SwipeDeckLayout,
   SwipeDeckTinderDragMode,
@@ -17,6 +19,7 @@ export type {
   SwipeDeckTinderRotationDirection,
   SwipeDeckTinderRotationMode,
   SwipeDeckProps,
+  SwipeDeckState,
   SwipeDirection,
   SwipeEvent,
   SwipeRenderInfo,

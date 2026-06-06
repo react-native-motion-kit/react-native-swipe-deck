@@ -1,0 +1,29 @@
+import type { SwipeDeckLayout, SwipeDeckState } from './types';
+
+type SwipeDeckStateInput = {
+  dataLength: number;
+  activeIndex: number;
+  disabled: boolean;
+  layout: SwipeDeckLayout;
+  isAnimating: boolean;
+  isDragging: boolean;
+};
+
+export function getSwipeDeckState({
+  dataLength,
+  activeIndex,
+  disabled,
+  layout,
+  isAnimating,
+  isDragging,
+}: SwipeDeckStateInput): SwipeDeckState {
+  const hasActiveDeckItem = activeIndex >= 0 && activeIndex < dataLength;
+  const hasMeasuredLayout = layout.width > 0 && layout.height > 0;
+
+  return {
+    activeIndex,
+    count: dataLength,
+    isCompleted: activeIndex >= 0 && activeIndex >= dataLength,
+    canSwipe: hasActiveDeckItem && !disabled && hasMeasuredLayout && !isAnimating && !isDragging,
+  };
+}
