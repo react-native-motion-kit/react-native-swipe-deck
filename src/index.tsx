@@ -1,6 +1,13 @@
+export { SwipeDeckActionMotion } from './actionMotion';
 export { SwipeDeckMotion } from './animation';
 export { createSwipeDeck, SwipeDeck } from './SwipeDeck';
 export type {
+  SwipeDeckAction,
+  SwipeDeckActionDirectMotionOptions,
+  SwipeDeckActionDirectMotionRecipe,
+  SwipeDeckActionMotionRecipe,
+  SwipeDeckActionSpringboardMotionOptions,
+  SwipeDeckActionSpringboardMotionRecipe,
   SwipeDeckCardProps,
   SwipeDeckActions,
   SwipeDeckFactoryConfig,

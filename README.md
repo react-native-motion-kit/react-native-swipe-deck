@@ -9,7 +9,7 @@ High-performance Tinder-style swipe deck and swipe cards for React Native, power
 - **Small render window**: mounts only the active card and a bounded forward stack.
 - **Item-keyed rendering**: promoted cards keep their React Native view identity.
 - **Typed compound API**: create one typed deck family with `createSwipeDeck<T>()`.
-- **Motion presets**: tune Tinder-style drag, rotation, dismiss, and next-card motion.
+- **Motion presets**: tune Tinder-style drag, rotation, dismiss, next-card, and action motion.
 - **Reanimated-first**: gesture and animation state stays on shared values/worklets.
 
 ## Installation
@@ -173,6 +173,64 @@ function ProfileDeckScreen() {
   animating, unmeasured, or completed.
 - `useDeckInteraction(id?)` returns Reanimated shared values for progress-driven UI. Gesture
   progress stays on the UI thread and does not rerender React every frame.
+
+### Programmatic action motion
+
+`motion` controls gesture-driven deck feel. `actionMotion` controls only programmatic actions
+from `useDeckActions()`, such as a like/pass button. This keeps button-triggered motion tunable
+without changing manual drag, threshold, or flick behavior.
+
+```tsx
+import {
+  createSwipeDeck,
+  SwipeDeckActionMotion,
+  SwipeDeckMotion,
+} from '@react-native-motion-kit/swipe-deck';
+
+const ProfileDeck = createSwipeDeck<Profile>({
+  motion: SwipeDeckMotion.tinder(),
+  actionMotion: SwipeDeckActionMotion.springboard({
+    anticipationDistance: ({ width }) => width * 0.04,
+    anticipationDuration: 80,
+    dismissDuration: 320,
+  }),
+});
+
+function LikeButton() {
+  const actions = ProfileDeck.useDeckActions();
+
+  return <Pressable onPress={actions.swipeRight}>Like</Pressable>;
+}
+```
+
+Available recipes:
+
+- `SwipeDeckActionMotion.direct(options?)`: dismisses immediately toward the action direction.
+  Omitted values reuse the deck's resolved dismiss duration, easing, and offscreen multiplier.
+- `SwipeDeckActionMotion.springboard(options?)`: moves a little in the opposite direction first,
+  then dismisses offscreen. During the anticipation phase, swipe progress stays neutral so
+  opposite-side overlays do not flash; `interaction.direction` also stays neutral until the
+  dismiss phase starts. Omitted dismiss values reuse the deck's resolved dismiss duration, easing,
+  and offscreen multiplier.
+
+You can override one action call without changing the Root or factory default:
+
+```tsx
+actions.swipeLeft(
+  SwipeDeckActionMotion.direct({
+    duration: 180,
+  }),
+);
+```
+
+`actionMotion` precedence is replacement-based, not deep-merged:
+
+1. factory `actionMotion` from `createSwipeDeck({ actionMotion })`;
+2. `Root actionMotion`, which replaces the factory default for that Root;
+3. per-call recipe passed to `swipeLeft(recipe)` or `swipeRight(recipe)`.
+
+Actions are callback-safe. If a React Native press event is passed to `swipeRight` or `swipeLeft`,
+the event argument is ignored and the configured action motion is used.
 
 Use an `id` only when you render multiple roots from the same factory:
 

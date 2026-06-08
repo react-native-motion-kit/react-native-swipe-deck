@@ -12,11 +12,12 @@ import React, {
 } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import type { SwipeDeckRenderedCardMotionConfig } from './SwipeDeckRenderedCard';
 import type {
+  SwipeDeckActionMotionRecipe,
   SwipeDeckCardProps,
   SwipeDeckFactoryConfig,
   SwipeDeckInstance,
@@ -29,6 +30,7 @@ import type {
   SwipeDeckMotionEasing,
 } from './types';
 
+import { resolveSwipeDeckActionMotion, resolveSwipeDeckActionMotionRecipe } from './actionMotion';
 import {
   mergeSwipeDeckMotionPreset,
   resolveSwipeDeckDismissDestinationDistance,
@@ -80,6 +82,7 @@ function resolveSignedSwipeProgress(translationX: number, distance: number): num
 }
 
 type SwipeDeckRootProps<T> = SwipeDeckProps<T> & {
+  factoryActionMotion?: SwipeDeckActionMotionRecipe;
   factoryMotion?: SwipeDeckMotionPreset;
   registry: SwipeDeckRegistry;
 };
@@ -93,6 +96,8 @@ function Root<T>({
   swipeThreshold,
   velocityThreshold,
   motion,
+  actionMotion,
+  factoryActionMotion,
   factoryMotion,
   visibleCardCount,
   containerStyle,
@@ -132,6 +137,12 @@ function Root<T>({
   const onSwipeRef = useRef(onSwipe);
   const onIndexChangeRef = useRef(onIndexChange);
   const onEndReachedRef = useRef(onEndReached);
+  const actionMotionRef = useRef<SwipeDeckActionMotionRecipe | undefined>(
+    resolveSwipeDeckActionMotionRecipe({
+      defaultActionMotion: factoryActionMotion,
+      rootActionMotion: actionMotion,
+    }),
+  );
   const pendingCommitResetRef = useRef(false);
   const dismissRuntimeRef = useRef<{
     duration?: number;
@@ -316,15 +327,67 @@ function Root<T>({
     swipeProgress,
   ]);
 
+  const completeSwipeDismiss = useCallback(
+    (
+      finished: boolean | undefined,
+      currentAttachmentGeneration: number,
+      direction: SwipeDirection,
+    ) => {
+      'worklet';
+
+      if (!finished || currentAttachmentGeneration !== attachmentGeneration.get()) {
+        return;
+      }
+
+      const nextActiveItemIndex = activeItemIndex.get() + 1;
+
+      activeItemIndex.set(nextActiveItemIndex);
+      activeTranslateX.set(0);
+      activeTranslateY.set(0);
+      swipeProgress.set(0);
+      signedSwipeProgress.set(0);
+      swipeDirectionSignal.set(0);
+      isDragging.set(false);
+      dragItemIndex.set(-1);
+      scheduleOnRN(commitSwipeIfCurrent, currentAttachmentGeneration, direction);
+    },
+    [
+      activeItemIndex,
+      activeTranslateX,
+      activeTranslateY,
+      attachmentGeneration,
+      commitSwipeIfCurrent,
+      dragItemIndex,
+      isDragging,
+      signedSwipeProgress,
+      swipeDirectionSignal,
+      swipeProgress,
+    ],
+  );
+
   const swipeProgrammatically = useCallback(
-    (direction: SwipeDirection) => {
+    (direction: SwipeDirection, motionOverride?: SwipeDeckActionMotionRecipe) => {
       const currentData = dataRef.current;
       const currentIndex = activeIndexRef.current;
       const currentLayout = layoutRef.current;
       const runtime = dismissRuntimeRef.current;
+      const actionRuntime = runtime
+        ? resolveSwipeDeckActionMotion({
+            fallback: {
+              dismissDuration: runtime.duration,
+              dismissEasing: runtime.easing,
+              offscreenMultiplier: runtime.offscreenMultiplier,
+            },
+            layout: currentLayout,
+            recipe: resolveSwipeDeckActionMotionRecipe({
+              defaultActionMotion: actionMotionRef.current,
+              actionMotion: motionOverride,
+            }),
+          })
+        : null;
       const currentAttachmentGeneration = attachmentGenerationRef.current;
 
-      if (!runtime) {
+      if (!runtime || !actionRuntime) {
         return false;
       }
 
@@ -347,7 +410,7 @@ function Root<T>({
       dragItemIndex.set(activeItemIndex.get());
 
       const destinationDistance = resolveSwipeDeckDismissDestinationDistance({
-        offscreenMultiplier: runtime.offscreenMultiplier,
+        offscreenMultiplier: actionRuntime.offscreenMultiplier,
         layout: currentLayout,
         rotationMaxDegrees: runtime.rotationMaxDegrees,
         rotationMode: runtime.rotationMode,
@@ -362,38 +425,64 @@ function Root<T>({
         translationX: activeTranslateX.get(),
         velocityX: 0,
         destinationX: exitX,
-        duration: runtime.duration,
+        duration: actionRuntime.dismissDuration,
         minDuration: runtime.minDuration,
         maxDuration: runtime.maxDuration,
       });
       const dismissTimingConfig = {
         duration: resolvedDismissDuration,
-        easing: runtime.easing,
+        easing: actionRuntime.dismissEasing,
       };
+      const handleDismissCompletion = (finished: boolean | undefined) => {
+        'worklet';
+
+        completeSwipeDismiss(finished, currentAttachmentGeneration, direction);
+      };
+
+      if (actionRuntime.type === 'springboard') {
+        const anticipationTimingConfig = {
+          duration: actionRuntime.anticipationDuration,
+          easing: actionRuntime.anticipationEasing,
+        };
+        const anticipationX = -progressDirection * actionRuntime.anticipationDistance;
+        const handleAnticipationCompletion = (finished: boolean | undefined) => {
+          'worklet';
+
+          if (!finished || currentAttachmentGeneration !== attachmentGeneration.get()) {
+            return;
+          }
+
+          swipeDirectionSignal.set(progressDirection);
+        };
+
+        swipeDirectionSignal.set(0);
+        signedSwipeProgress.set(
+          withSequence(
+            withTiming(0, anticipationTimingConfig),
+            withTiming(progressDirection, dismissTimingConfig),
+          ),
+        );
+        swipeProgress.set(
+          withSequence(withTiming(0, anticipationTimingConfig), withTiming(1, dismissTimingConfig)),
+        );
+        activeTranslateY.set(
+          withSequence(withTiming(0, anticipationTimingConfig), withTiming(0, dismissTimingConfig)),
+        );
+        activeTranslateX.set(
+          withSequence(
+            withTiming(anticipationX, anticipationTimingConfig, handleAnticipationCompletion),
+            withTiming(exitX, dismissTimingConfig, handleDismissCompletion),
+          ),
+        );
+
+        return true;
+      }
 
       swipeDirectionSignal.set(progressDirection);
       signedSwipeProgress.set(withTiming(progressDirection, dismissTimingConfig));
       swipeProgress.set(withTiming(1, dismissTimingConfig));
       activeTranslateY.set(withTiming(0, dismissTimingConfig));
-      activeTranslateX.set(
-        withTiming(exitX, dismissTimingConfig, (finished) => {
-          if (!finished || currentAttachmentGeneration !== attachmentGeneration.get()) {
-            return;
-          }
-
-          const nextActiveItemIndex = activeItemIndex.get() + 1;
-
-          activeItemIndex.set(nextActiveItemIndex);
-          activeTranslateX.set(0);
-          activeTranslateY.set(0);
-          swipeProgress.set(0);
-          signedSwipeProgress.set(0);
-          swipeDirectionSignal.set(0);
-          isDragging.set(false);
-          dragItemIndex.set(-1);
-          scheduleOnRN(commitSwipeIfCurrent, currentAttachmentGeneration, direction);
-        }),
-      );
+      activeTranslateX.set(withTiming(exitX, dismissTimingConfig, handleDismissCompletion));
 
       return true;
     },
@@ -402,7 +491,7 @@ function Root<T>({
       activeTranslateX,
       activeTranslateY,
       attachmentGeneration,
-      commitSwipeIfCurrent,
+      completeSwipeDismiss,
       dragItemIndex,
       gestureStartYRatio,
       isAnimating,
@@ -543,21 +632,9 @@ function Root<T>({
           swipeProgress.set(withTiming(1, dismissTimingConfig));
           activeTranslateX.set(
             withTiming(exitX, dismissTimingConfig, (finished) => {
-              if (!finished || currentAttachmentGeneration !== attachmentGeneration.get()) {
-                return;
-              }
+              'worklet';
 
-              const nextActiveItemIndex = activeItemIndex.get() + 1;
-
-              activeItemIndex.set(nextActiveItemIndex);
-              activeTranslateX.set(0);
-              activeTranslateY.set(0);
-              swipeProgress.set(0);
-              signedSwipeProgress.set(0);
-              swipeDirectionSignal.set(0);
-              isDragging.set(false);
-              dragItemIndex.set(-1);
-              scheduleOnRN(commitSwipeIfCurrent, currentAttachmentGeneration, direction);
+              completeSwipeDismiss(finished, currentAttachmentGeneration, direction);
             }),
           );
         })
@@ -589,7 +666,7 @@ function Root<T>({
       activeTranslateY,
       attachmentGeneration,
       cancelSpringConfig,
-      commitSwipeIfCurrent,
+      completeSwipeDismiss,
       dismissDuration,
       dismissEasing,
       dismissMaxDuration,
@@ -677,6 +754,13 @@ function Root<T>({
   useEffect(() => {
     onEndReachedRef.current = onEndReached;
   }, [onEndReached]);
+
+  useLayoutEffect(() => {
+    actionMotionRef.current = resolveSwipeDeckActionMotionRecipe({
+      defaultActionMotion: factoryActionMotion,
+      rootActionMotion: actionMotion,
+    });
+  }, [actionMotion, factoryActionMotion]);
 
   useEffect(() => {
     dismissRuntimeRef.current = {
@@ -780,7 +864,14 @@ function createRoot<T>(
   registry: SwipeDeckRegistry,
 ) {
   return function SwipeDeckRoot(props: SwipeDeckProps<T>): ReactElement {
-    return <Root {...props} factoryMotion={factoryConfig?.motion} registry={registry} />;
+    return (
+      <Root
+        {...props}
+        factoryActionMotion={factoryConfig?.actionMotion}
+        factoryMotion={factoryConfig?.motion}
+        registry={registry}
+      />
+    );
   };
 }
 

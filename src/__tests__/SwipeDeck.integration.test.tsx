@@ -3,7 +3,7 @@ import { fireEvent, render, screen, userEvent } from '@testing-library/react-nat
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { createSwipeDeck, SwipeDeck } from '../SwipeDeck';
+import { createSwipeDeck, SwipeDeck, SwipeDeckActionMotion } from '../index';
 
 type Profile = {
   id: string;
@@ -157,6 +157,78 @@ describe('SwipeDeck factory hooks', () => {
     await user.press(screen.getByRole('button', { name: 'Force swipe right' }));
 
     expect(await screen.findByText('action:false')).toBeOnTheScreen();
+  });
+
+  it('accepts callback-safe and per-call action motion actions', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>({
+      actionMotion: SwipeDeckActionMotion.springboard({
+        anticipationDistance: 18,
+      }),
+    });
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const actions = ProfileDeck.useDeckActions();
+      const [lastActionResult, setLastActionResult] = useState('none');
+
+      return (
+        <View>
+          <Text>
+            state:{state.activeIndex}:{String(state.isCompleted)}
+          </Text>
+          <Text>action:{lastActionResult}</Text>
+          <Pressable
+            accessibilityLabel="Callback swipe right"
+            accessibilityRole="button"
+            onPress={actions.swipeRight}
+          >
+            <Text>Callback swipe right</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Direct swipe left"
+            accessibilityRole="button"
+            onPress={() =>
+              setLastActionResult(
+                String(
+                  actions.swipeLeft(
+                    SwipeDeckActionMotion.direct({
+                      duration: 180,
+                    }),
+                  ),
+                ),
+              )
+            }
+          >
+            <Text>Direct swipe left</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function Example() {
+      return (
+        <>
+          <DeckControls />
+          <ProfileDeck.Root data={profiles} getKey={getProfileKey}>
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    await user.press(screen.getByRole('button', { name: 'Callback swipe right' }));
+
+    expect(await screen.findByText('state:1:false')).toBeOnTheScreen();
+    expect(screen.getByText('Grace')).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Direct swipe left' }));
+
+    expect(await screen.findByText('action:true')).toBeOnTheScreen();
+    expect(await screen.findByText('state:2:true')).toBeOnTheScreen();
   });
 });
 

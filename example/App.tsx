@@ -1,8 +1,12 @@
-import { createSwipeDeck, SwipeDeckMotion } from '@react-native-motion-kit/swipe-deck';
+import {
+  createSwipeDeck,
+  SwipeDeckActionMotion,
+  SwipeDeckMotion,
+} from '@react-native-motion-kit/swipe-deck';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle } from 'react-native-reanimated';
 
 type Profile = {
   id: string;
@@ -26,7 +30,8 @@ const SwipeDeck = createSwipeDeck<Profile>({
     },
     rotation: {
       mode: 'grab-position',
-      direction: 'default',
+      direction: 'reverse',
+      maxDegrees: 25,
     },
     dismiss: {
       threshold: ({ width }) => width * 0.3,
@@ -35,6 +40,13 @@ const SwipeDeck = createSwipeDeck<Profile>({
       offscreenMultiplier: 1.2,
       maxDuration: 520,
     },
+  }),
+  actionMotion: SwipeDeckActionMotion.springboard({
+    anticipationDistance: 40,
+    anticipationDuration: 160,
+    dismissDuration: 500,
+    anticipationEasing: Easing.out(Easing.quad),
+    dismissEasing: Easing.in(Easing.cubic),
   }),
 });
 
@@ -88,7 +100,13 @@ function DeckControls() {
         <Pressable
           accessibilityRole="button"
           disabled={!canSwipe}
-          onPress={swipeLeft}
+          onPress={() =>
+            swipeLeft(
+              SwipeDeckActionMotion.direct({
+                duration: 240,
+              }),
+            )
+          }
           style={[styles.actionButton, styles.passButton, !canSwipe && styles.disabledButton]}
         >
           <Text style={styles.actionText}>Nope</Text>

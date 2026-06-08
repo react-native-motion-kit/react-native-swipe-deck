@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { GestureResponderEvent, StyleProp, ViewStyle } from 'react-native';
 import type { SharedValue, WithSpringConfig, WithTimingConfig } from 'react-native-reanimated';
 
 export type SwipeDirection = 'left' | 'right';
@@ -188,6 +188,50 @@ export type SwipeDeckTinderMotionPreset = {
 
 export type SwipeDeckMotionPreset = SwipeDeckTinderMotionPreset;
 
+type SwipeDeckActionMotionKind = 'swipe-deck-action-motion';
+
+export type SwipeDeckActionDirectMotionOptions = {
+  /** Fixed programmatic dismiss duration. Omit to reuse the resolved deck dismiss duration rules. */
+  duration?: number;
+  /** Reanimated `withTiming` easing for the programmatic dismiss phase. */
+  easing?: SwipeDeckMotionEasing;
+  /** Programmatic offscreen target multiplier. Omit to reuse the resolved deck dismiss multiplier. */
+  offscreenMultiplier?: number;
+};
+
+export type SwipeDeckActionSpringboardMotionOptions = {
+  /**
+   * Opposite-direction anticipation distance before dismissing.
+   *
+   * Defaults to `layout.width * 0.04`.
+   */
+  anticipationDistance?: number | ((layout: SwipeDeckLayout) => number);
+  /** Anticipation phase duration in milliseconds. Defaults to `80`. */
+  anticipationDuration?: number;
+  /** Anticipation phase easing. Omit to reuse the resolved action dismiss easing. */
+  anticipationEasing?: SwipeDeckMotionEasing;
+  /** Fixed dismiss duration after anticipation. Omit to reuse the resolved deck dismiss duration rules. */
+  dismissDuration?: number;
+  /** Dismiss phase easing. Omit to reuse the resolved deck dismiss easing. */
+  dismissEasing?: SwipeDeckMotionEasing;
+  /** Programmatic offscreen target multiplier. Omit to reuse the resolved deck dismiss multiplier. */
+  offscreenMultiplier?: number;
+};
+
+export type SwipeDeckActionDirectMotionRecipe = SwipeDeckActionDirectMotionOptions & {
+  readonly kind: SwipeDeckActionMotionKind;
+  readonly type: 'direct';
+};
+
+export type SwipeDeckActionSpringboardMotionRecipe = SwipeDeckActionSpringboardMotionOptions & {
+  readonly kind: SwipeDeckActionMotionKind;
+  readonly type: 'springboard';
+};
+
+export type SwipeDeckActionMotionRecipe =
+  | SwipeDeckActionDirectMotionRecipe
+  | SwipeDeckActionSpringboardMotionRecipe;
+
 export type ResolvedSwipeDeckMotionConfig = {
   nextScale: number;
   nextOpacity: number;
@@ -249,6 +293,8 @@ export type SwipeDeckProps<T> = {
   velocityThreshold?: number;
   /** Motion preset for this deck instance. Overrides factory motion defaults. */
   motion?: SwipeDeckMotionPreset;
+  /** Programmatic swipe motion recipe for actions such as `swipeLeft()` and `swipeRight()`. */
+  actionMotion?: SwipeDeckActionMotionRecipe;
   /**
    * Maximum number of cards kept mounted from the active card forward.
    *
@@ -285,6 +331,13 @@ export type SwipeDeckFactoryConfig = {
    * `Root`. A `Root motion` prop still wins for one-off overrides.
    */
   motion?: SwipeDeckMotionPreset;
+  /**
+   * Default programmatic swipe motion used by all roots created from this factory.
+   *
+   * A `Root actionMotion` prop replaces this default for that root. Per-call action recipes replace
+   * both factory and root defaults for that invocation only.
+   */
+  actionMotion?: SwipeDeckActionMotionRecipe;
 };
 
 export type SwipeDeckState = {
@@ -298,11 +351,20 @@ export type SwipeDeckState = {
   canSwipe: boolean;
 };
 
+export type SwipeDeckAction = {
+  /** Programmatically dismiss the active card. Returns whether the action was accepted. */
+  (): boolean;
+  /** Programmatically dismiss the active card with a one-call action motion override. */
+  (motion: SwipeDeckActionMotionRecipe): boolean;
+  /** Callback-safe overload: event-like arguments are ignored at runtime. */
+  (event: GestureResponderEvent): boolean;
+};
+
 export type SwipeDeckActions = {
   /** Programmatically dismiss the active card to the left. Returns whether the action was accepted. */
-  swipeLeft: () => boolean;
+  swipeLeft: SwipeDeckAction;
   /** Programmatically dismiss the active card to the right. Returns whether the action was accepted. */
-  swipeRight: () => boolean;
+  swipeRight: SwipeDeckAction;
 };
 
 export type SwipeDeckInteraction = {

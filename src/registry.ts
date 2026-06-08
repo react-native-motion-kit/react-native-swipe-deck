@@ -2,18 +2,21 @@ import { useMemo, useSyncExternalStore } from 'react';
 import { makeMutable } from 'react-native-reanimated';
 
 import type {
+  SwipeDeckActionMotionRecipe,
   SwipeDeckActions,
   SwipeDeckInteraction,
   SwipeDeckState,
   SwipeDirection,
 } from './types';
 
+import { isSwipeDeckActionMotionRecipe } from './actionMotion';
+
 const DEFAULT_DECK_KEY = Symbol('default-deck');
 const DEFAULT_DECK_LABEL = '__default__';
 
 type SwipeDeckRootController = {
   getState: () => SwipeDeckState;
-  swipe: (direction: SwipeDirection) => boolean;
+  swipe: (direction: SwipeDirection, motion?: SwipeDeckActionMotionRecipe) => boolean;
 };
 
 type SwipeDeckStore = {
@@ -139,8 +142,16 @@ function createStore(label: string): SwipeDeckStore {
   const controllerSlot = createControllerSlot(label);
   const interaction = createInteraction();
   const actions: SwipeDeckActions = {
-    swipeLeft: () => controllerSlot.getController()?.swipe('left') ?? false,
-    swipeRight: () => controllerSlot.getController()?.swipe('right') ?? false,
+    swipeLeft: (motionOrEvent?: unknown) => {
+      const motion = isSwipeDeckActionMotionRecipe(motionOrEvent) ? motionOrEvent : undefined;
+
+      return controllerSlot.getController()?.swipe('left', motion) ?? false;
+    },
+    swipeRight: (motionOrEvent?: unknown) => {
+      const motion = isSwipeDeckActionMotionRecipe(motionOrEvent) ? motionOrEvent : undefined;
+
+      return controllerSlot.getController()?.swipe('right', motion) ?? false;
+    },
   };
 
   return {

@@ -1,5 +1,8 @@
+import type { GestureResponderEvent } from 'react-native';
+
 import { describe, expect, it, jest } from '@jest/globals';
 
+import { SwipeDeckActionMotion } from '../actionMotion';
 import { createSwipeDeckRegistry } from '../registry';
 
 describe('createSwipeDeckRegistry', () => {
@@ -79,7 +82,7 @@ describe('createSwipeDeckRegistry', () => {
       canSwipe: true,
     });
     expect(store.actions.swipeRight()).toBe(true);
-    expect(swipe).toHaveBeenCalledWith('right');
+    expect(swipe).toHaveBeenCalledWith('right', undefined);
 
     expect(() =>
       store.attach({
@@ -97,6 +100,34 @@ describe('createSwipeDeckRegistry', () => {
       canSwipe: false,
     });
     expect(store.actions.swipeLeft()).toBe(false);
+  });
+
+  it('passes action motion recipes and ignores callback event arguments', () => {
+    const registry = createSwipeDeckRegistry();
+    const store = registry.getStore();
+    const swipe = jest.fn(() => true);
+    const springboardMotion = SwipeDeckActionMotion.springboard({
+      anticipationDistance: 24,
+    });
+    const detach = store.attach({
+      getState: () => ({
+        activeIndex: 0,
+        count: 1,
+        isCompleted: false,
+        canSwipe: true,
+      }),
+      swipe,
+    });
+
+    expect(store.actions.swipeRight(springboardMotion)).toBe(true);
+    expect(store.actions.swipeLeft({ nativeEvent: {} } as unknown as GestureResponderEvent)).toBe(
+      true,
+    );
+
+    expect(swipe).toHaveBeenNthCalledWith(1, 'right', springboardMotion);
+    expect(swipe).toHaveBeenNthCalledWith(2, 'left', undefined);
+
+    detach();
   });
 
   it('allows remounting the same factory id after cleanup', () => {
