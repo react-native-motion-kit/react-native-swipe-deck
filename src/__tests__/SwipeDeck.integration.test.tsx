@@ -499,6 +499,58 @@ describe('SwipeDeck factory hooks', () => {
     expect(screen.getByText('Ada')).toBeOnTheScreen();
   });
 
+  it('resets interaction state without undo history after a canceled pan gesture', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const onSwipe = jest.fn();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const interaction = ProfileDeck.useDeckInteraction();
+      const [interactionText, setInteractionText] = useState('0:0:0');
+
+      useEffect(() => {
+        setInteractionText(
+          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}`,
+        );
+      }, [interaction, state.activeIndex, state.canSwipe, state.canUndo]);
+
+      return (
+        <View>
+          <Text>
+            state:{state.activeIndex}:{String(state.canSwipe)}:{String(state.canUndo)}:
+            {String(state.isCompleted)}
+          </Text>
+          <Text>interaction:{interactionText}</Text>
+        </View>
+      );
+    }
+
+    function Example() {
+      return (
+        <>
+          <DeckControls />
+          <ProfileDeck.Root data={profiles} getKey={getProfileKey} onSwipe={onSwipe} undoEnabled>
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    fireGestureHandler(getByGestureTestId('swipe-deck-pan'), [
+      { state: 2, y: 250 },
+      { state: 4, translationX: 30, translationY: 8, velocityX: 0, y: 250 },
+      { state: 5, translationX: 30, translationY: 8, velocityX: 0, y: 250 },
+    ]);
+
+    expect(await screen.findByText('state:0:true:false:false')).toBeOnTheScreen();
+    expect(screen.getByText('interaction:0:0:0')).toBeOnTheScreen();
+    expect(screen.getByText('Ada')).toBeOnTheScreen();
+    expect(onSwipe).not.toHaveBeenCalled();
+  });
+
   it('keeps accepted swipes in LIFO undo history', async () => {
     const ProfileDeck = createSwipeDeck<Profile>();
     const user = userEvent.setup();

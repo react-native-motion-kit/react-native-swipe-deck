@@ -11,7 +11,7 @@ import React, {
   useState,
 } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector } from 'react-native-gesture-handler';
 import {
   cancelAnimation,
   useSharedValue,
@@ -38,10 +38,8 @@ import type {
 import {
   resolveSwipeDeckDismissDestinationDistance,
   resolveSwipeDeckDismissDuration,
-  resolveSwipeDeckGestureStartYRatio,
 } from './animation';
 import { getSwipeDeckState } from './deckState';
-import { resolveSwipeDirection } from './directions';
 import { createSwipeDeckRegistry, type SwipeDeckRegistry } from './registry';
 import { getSwipeDeckStackRenderItems } from './rendering';
 import { getSwipeCommit, shouldDeferActiveItemSync, shouldResetEndReached } from './state';
@@ -49,8 +47,6 @@ import { SwipeDeckCard } from './SwipeDeckCard';
 import { SwipeDeckRenderedCard } from './SwipeDeckRenderedCard';
 import {
   getActiveRenderItemId,
-  resolveProgressDirection,
-  resolveSignedSwipeProgress,
   resolveSwipeDeckProgrammaticActionMotion,
   resolveSwipeDeckProgrammaticUndoMotion,
 } from './swipeDeckRuntime';
@@ -67,6 +63,7 @@ import {
   type SwipeDeckUndoKeyIndex,
 } from './undoHistory';
 import { type ResolvedSwipeDeckUndoMotion } from './undoMotion';
+import { useSwipeDeckGestureRuntime } from './useSwipeDeckGestureRuntime';
 import { useSwipeDeckMotionRuntime } from './useSwipeDeckMotionRuntime';
 import { clampActiveIndex } from './windowing';
 
@@ -144,8 +141,6 @@ function Root<T>({
   const undoFromTranslateX = useSharedValue(0);
   const activeItemIndex = useSharedValue(-1);
   const gestureStartYRatio = useSharedValue(0.5);
-  const hasHandledGestureEnd = useSharedValue(false);
-  const shouldIgnoreGesture = useSharedValue(false);
   const attachmentGeneration = useSharedValue(0);
   const runtimeEventId = useSharedValue(0);
   const isAnimating = useSharedValue(false);
@@ -783,200 +778,35 @@ function Root<T>({
     ],
   );
 
-  const pan = useMemo(
-    () =>
-      Gesture.Pan()
-        .withTestId('swipe-deck-pan')
-        .enabled(hasActiveCard && !disabled)
-        .onBegin((event) => {
-          hasHandledGestureEnd.set(false);
-
-          if (isAnimating.get()) {
-            shouldIgnoreGesture.set(true);
-            return;
-          }
-
-          shouldIgnoreGesture.set(false);
-          const nextRuntimeEventId = runtimeEventId.get() + 1;
-
-          runtimeEventId.set(nextRuntimeEventId);
-          isDragging.set(true);
-          swipeDirectionSignal.set(0);
-          signedSwipeProgress.set(0);
-          scheduleOnRN(applyScheduledRuntimeState, nextRuntimeEventId, false, true);
-          gestureStartYRatio.set(
-            resolveSwipeDeckGestureStartYRatio({
-              y: event.y,
-              height: layout.height,
-            }),
-          );
-          dragItemIndex.set(activeItemIndex.get());
-        })
-        .onStart(() => {
-          if (shouldIgnoreGesture.get() || isAnimating.get()) {
-            return;
-          }
-
-          dragItemIndex.set(activeItemIndex.get());
-        })
-        .onUpdate((event) => {
-          if (shouldIgnoreGesture.get() || isAnimating.get()) {
-            return;
-          }
-
-          if (dragItemIndex.get() < 0) {
-            dragItemIndex.set(activeItemIndex.get());
-          }
-
-          activeTranslateX.set(event.translationX);
-          activeTranslateY.set(event.translationY);
-          swipeProgress.set(
-            Math.min(Math.abs(event.translationX) / Math.max(swipeProgressDistance, 1), 1),
-          );
-          signedSwipeProgress.set(
-            resolveSignedSwipeProgress(event.translationX, swipeProgressDistance),
-          );
-          swipeDirectionSignal.set(resolveProgressDirection(event.translationX));
-        })
-        .onEnd((event) => {
-          hasHandledGestureEnd.set(true);
-
-          if (shouldIgnoreGesture.get() || isAnimating.get()) {
-            return;
-          }
-          const direction = resolveSwipeDirection({
-            translationX: event.translationX,
-            velocityX: event.velocityX,
-            disabled: disabled || !hasActiveCard,
-            layout,
-            swipeThreshold: resolvedSwipeThreshold,
-            velocityThreshold: resolvedVelocityThreshold,
-          });
-
-          if (dragItemIndex.get() < 0) {
-            dragItemIndex.set(activeItemIndex.get());
-          }
-
-          if (!direction) {
-            activeTranslateX.set(
-              withSpring(0, cancelSpringConfig, (finished) => {
-                if (finished) {
-                  dragItemIndex.set(-1);
-                  isAnimating.set(false);
-                  isDragging.set(false);
-                  swipeDirectionSignal.set(0);
-                  const nextRuntimeEventId = runtimeEventId.get() + 1;
-
-                  runtimeEventId.set(nextRuntimeEventId);
-                  gestureStartYRatio.set(0.5);
-                  scheduleOnRN(applyScheduledRuntimeState, nextRuntimeEventId, false, false);
-                }
-              }),
-            );
-            activeTranslateY.set(withSpring(0, cancelSpringConfig));
-            swipeProgress.set(withSpring(0, cancelSpringConfig));
-            signedSwipeProgress.set(withSpring(0, cancelSpringConfig));
-            return;
-          }
-
-          isAnimating.set(true);
-          isDragging.set(true);
-          const currentAttachmentGeneration = attachmentGeneration.get();
-
-          scheduleOnRN(applyScheduledRuntimeState, runtimeEventId.get(), true, true);
-          const destinationDistance = resolveSwipeDeckDismissDestinationDistance({
-            offscreenMultiplier: dismissOffscreenMultiplier,
-            layout,
-            rotationMaxDegrees: cardMotionConfig.rotation.maxDegrees,
-            rotationMode: cardMotionConfig.rotation.mode,
-            rotationOrigin: cardMotionConfig.rotation.origin,
-            rotationDirection: cardMotionConfig.rotation.direction,
-            gestureStartYRatio: gestureStartYRatio.get(),
-            swipeDirection: direction,
-          });
-          const exitX = direction === 'right' ? destinationDistance : -destinationDistance;
-          const resolvedDismissDuration = resolveSwipeDeckDismissDuration({
-            translationX: event.translationX,
-            velocityX: event.velocityX,
-            destinationX: exitX,
-            duration: dismissDuration,
-            minDuration: dismissMinDuration,
-            maxDuration: dismissMaxDuration,
-          });
-          const dismissTimingConfig = {
-            duration: resolvedDismissDuration,
-            easing: dismissEasing,
-          };
-
-          swipeDirectionSignal.set(direction === 'right' ? 1 : -1);
-          signedSwipeProgress.set(withTiming(direction === 'right' ? 1 : -1, dismissTimingConfig));
-          swipeProgress.set(withTiming(1, dismissTimingConfig));
-          activeTranslateX.set(
-            withTiming(exitX, dismissTimingConfig, (finished) => {
-              'worklet';
-
-              completeSwipeDismiss(finished, currentAttachmentGeneration, direction);
-            }),
-          );
-        })
-        .onFinalize(() => {
-          if (shouldIgnoreGesture.get()) {
-            shouldIgnoreGesture.set(false);
-            return;
-          }
-
-          if (hasHandledGestureEnd.get() || isAnimating.get()) {
-            return;
-          }
-
-          activeTranslateX.set(0);
-          activeTranslateY.set(0);
-          swipeProgress.set(0);
-          signedSwipeProgress.set(0);
-          swipeDirectionSignal.set(0);
-          isDragging.set(false);
-          dragItemIndex.set(-1);
-          const nextRuntimeEventId = runtimeEventId.get() + 1;
-
-          runtimeEventId.set(nextRuntimeEventId);
-          gestureStartYRatio.set(0.5);
-          scheduleOnRN(applyScheduledRuntimeState, nextRuntimeEventId, false, false);
-        }),
-    [
-      activeTranslateX,
-      activeTranslateY,
-      attachmentGeneration,
-      cancelSpringConfig,
-      completeSwipeDismiss,
-      dismissDuration,
-      dismissEasing,
-      dismissMaxDuration,
-      dismissMinDuration,
-      activeItemIndex,
-      disabled,
-      dragItemIndex,
-      gestureStartYRatio,
-      hasHandledGestureEnd,
-      shouldIgnoreGesture,
-      runtimeEventId,
-      hasActiveCard,
-      isAnimating,
-      isDragging,
-      layout,
-      dismissOffscreenMultiplier,
-      cardMotionConfig.rotation.direction,
-      cardMotionConfig.rotation.maxDegrees,
-      cardMotionConfig.rotation.mode,
-      cardMotionConfig.rotation.origin,
-      resolvedSwipeThreshold,
-      applyScheduledRuntimeState,
-      signedSwipeProgress,
-      swipeDirectionSignal,
-      swipeProgress,
-      swipeProgressDistance,
-      resolvedVelocityThreshold,
-    ],
-  );
+  const pan = useSwipeDeckGestureRuntime({
+    activeItemIndex,
+    activeTranslateX,
+    activeTranslateY,
+    applyScheduledRuntimeState,
+    attachmentGeneration,
+    cancelSpringConfig,
+    cardMotionConfig,
+    completeSwipeDismiss,
+    disabled,
+    dismissDuration,
+    dismissEasing,
+    dismissMaxDuration,
+    dismissMinDuration,
+    dismissOffscreenMultiplier,
+    dragItemIndex,
+    gestureStartYRatio,
+    hasActiveCard,
+    isAnimating,
+    isDragging,
+    layout,
+    resolvedSwipeThreshold,
+    resolvedVelocityThreshold,
+    runtimeEventId,
+    signedSwipeProgress,
+    swipeDirectionSignal,
+    swipeProgress,
+    swipeProgressDistance,
+  });
 
   useLayoutEffect(() => {
     const currentAttachmentGeneration = attachmentGenerationRef.current + 1;
