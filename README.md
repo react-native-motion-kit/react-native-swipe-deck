@@ -166,11 +166,13 @@ function ProfileDeckScreen() {
 ```
 
 - `useDeckState(id?)` returns React-rendered deck state such as `activeIndex`, `count`,
-  `isCompleted`, and `canSwipe`. Derive the active item from your own `data[activeIndex]`
-  when needed so deck state stays primitive and stable.
-- `useDeckActions(id?)` returns stable actions such as `swipeLeft()` and `swipeRight()`.
-  Actions return `true` when accepted and `false` when the deck is unattached, disabled,
-  animating, unmeasured, or completed.
+  `isCompleted`, `canSwipe`, and `canUndo`. Derive the active item from your own
+  `data[activeIndex]` when needed so deck state stays primitive and stable.
+- `useDeckActions(id?)` returns stable actions such as `swipeLeft()`, `swipeRight()`,
+  and `undo()`.
+  Swipe actions return `true` when accepted and `false` when the deck is unattached, disabled,
+  animating, unmeasured, or completed. `undo()` returns `true` when `canUndo` is true, including
+  after the deck is completed.
 - `useDeckInteraction(id?)` returns Reanimated shared values for progress-driven UI. Gesture
   progress stays on the UI thread and does not rerender React every frame.
 
@@ -232,6 +234,80 @@ actions.swipeLeft(
 Actions are callback-safe. If a React Native press event is passed to `swipeRight` or `swipeLeft`,
 the event argument is ignored and the configured action motion is used.
 
+### Undo / back swipe motion
+
+Undo is opt-in. Add `undoEnabled` to a Root when that deck exposes undo/back-swipe UX. When
+enabled, each successful swipe stores one key/index/direction metadata entry in a LIFO undo stack.
+Lookups use a key-to-index map for the current `data`, and invalid entries are pruned when data or
+keys change. When omitted, successful swipes do not store undo metadata, `canUndo` stays `false`,
+and `actions.undo()` returns `false`.
+
+When accepted, the deck temporarily renders the main stack from the restored index, animates that
+real current card from the side it originally left, then commits the restored index.
+
+```tsx
+import { createSwipeDeck, SwipeDeckUndoMotion } from '@react-native-motion-kit/swipe-deck';
+
+const ProfileDeck = createSwipeDeck<Profile>({
+  undoMotion: SwipeDeckUndoMotion.spring({
+    springConfig: {
+      damping: 36,
+      stiffness: 300,
+      mass: 3,
+    },
+  }),
+});
+
+function ProfileDeckExample() {
+  return (
+    <ProfileDeck.Root data={profiles} getKey={(item) => item.id} undoEnabled>
+      <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+    </ProfileDeck.Root>
+  );
+}
+
+function UndoButton() {
+  const state = ProfileDeck.useDeckState();
+  const actions = ProfileDeck.useDeckActions();
+
+  return (
+    <Pressable disabled={!state.canUndo} onPress={actions.undo}>
+      <Text>Undo</Text>
+    </Pressable>
+  );
+}
+```
+
+Undo is disabled by default so decks that do not expose undo controls pay no undo-history cost.
+With `undoEnabled`, repeated undo restores previously swiped cards in LIFO order while their keys
+remain present in `data`. Long-running undo-enabled decks retain one metadata entry per accepted
+swipe until that entry is undone or pruned by data changes. Undo motion uses zero-duration
+`SwipeDeckUndoMotion.timing()` by default, so the card is restored immediately unless you opt into a
+custom motion.
+
+Available recipes:
+
+- `SwipeDeckUndoMotion.spring(options?)`: restores the card with Reanimated `withSpring`.
+- `SwipeDeckUndoMotion.timing(options?)`: restores the card with deterministic `withTiming`.
+
+Both recipes accept:
+
+- `from: 'auto' | 'left' | 'right'`: `auto` returns from the original swipe direction.
+- `entryDistance`: number or layout callback for the offscreen start distance.
+
+`timing` also accepts `duration` and `easing`; its default duration is `0`. `spring` accepts `springConfig`.
+
+Undo motion precedence is replacement-based:
+
+1. factory `undoMotion` from `createSwipeDeck({ undoMotion })`;
+2. `Root undoMotion`, which replaces the factory default for that Root;
+3. per-call recipe passed to `actions.undo(recipe)`.
+
+Undo is callback-safe. If a React Native press event is passed to `undo`, the event argument is
+ignored and the configured undo motion is used. During undo restore, public interaction values
+(`progress`, `signedProgress`, `direction`, `translationX`, `translationY`) remain neutral, so
+progress-driven swipe overlays do not flash.
+
 Use an `id` only when you render multiple roots from the same factory:
 
 ```tsx
@@ -259,7 +335,8 @@ use the default id safely, but two mounted roots from the same factory and same 
 Keep ids stable and low-cardinality, such as screen-level names (`"nearby"` or `"recommended"`).
 The registry keeps one store per id for the lifetime of the factory so hooks, actions, and
 interaction shared values stay stable. Do not derive ids from item ids, timestamps, values that
-change per render, or one-off route values.
+change per render, or one-off route values. Create factories and ids outside render paths; dynamic
+factories or dynamic ids create long-lived namespaces that the registry intentionally keeps stable.
 
 If you prefer shorter names, destructure from the same factory instance and export aliases:
 
@@ -494,13 +571,13 @@ The current public API already includes factory-scoped deck hooks and `id`-based
 - `createSwipeDeck<T>()` creates a typed factory namespace.
 - `Root` and `Card` render the deck.
 - `useDeckState(id?)`, `useDeckActions(id?)`, and `useDeckInteraction(id?)` expose deck-wide state, actions, and Reanimated interaction values from that factory namespace.
+- `SwipeDeckUndoMotion` and `actions.undo()` provide preset-based undo/back-swipe behavior.
 - `id` selects a deck inside the same factory when multiple roots are mounted.
 
 Future API directions may include:
 
 - public `Provider` or custom registry boundary;
 - trigger components for external swipe controls;
-- undo/back-swipe APIs;
 - more explicit prerender/window controls;
 - lower-level controller/event APIs when they improve DX without hurting performance.
 

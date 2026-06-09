@@ -7,9 +7,11 @@ import type {
   SwipeDeckInteraction,
   SwipeDeckState,
   SwipeDirection,
+  SwipeDeckUndoMotionRecipe,
 } from './types';
 
 import { isSwipeDeckActionMotionRecipe } from './actionMotion';
+import { isSwipeDeckUndoMotionRecipe } from './undoMotion';
 
 const DEFAULT_DECK_KEY = Symbol('default-deck');
 const DEFAULT_DECK_LABEL = '__default__';
@@ -17,6 +19,7 @@ const DEFAULT_DECK_LABEL = '__default__';
 type SwipeDeckRootController = {
   getState: () => SwipeDeckState;
   swipe: (direction: SwipeDirection, motion?: SwipeDeckActionMotionRecipe) => boolean;
+  undo: (motion?: SwipeDeckUndoMotionRecipe) => boolean;
 };
 
 type SwipeDeckStore = {
@@ -53,6 +56,7 @@ function createInitialState(): SwipeDeckState {
     count: 0,
     isCompleted: false,
     canSwipe: false,
+    canUndo: false,
   };
 }
 
@@ -81,7 +85,8 @@ function isSameState(left: SwipeDeckState, right: SwipeDeckState): boolean {
     left.activeIndex === right.activeIndex &&
     left.count === right.count &&
     left.isCompleted === right.isCompleted &&
-    left.canSwipe === right.canSwipe
+    left.canSwipe === right.canSwipe &&
+    left.canUndo === right.canUndo
   );
 }
 
@@ -151,6 +156,11 @@ function createStore(label: string): SwipeDeckStore {
       const motion = isSwipeDeckActionMotionRecipe(motionOrEvent) ? motionOrEvent : undefined;
 
       return controllerSlot.getController()?.swipe('right', motion) ?? false;
+    },
+    undo: (motionOrEvent?: unknown) => {
+      const motion = isSwipeDeckUndoMotionRecipe(motionOrEvent) ? motionOrEvent : undefined;
+
+      return controllerSlot.getController()?.undo(motion) ?? false;
     },
   };
 

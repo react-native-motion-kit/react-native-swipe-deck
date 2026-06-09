@@ -1,6 +1,11 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { getSwipeRenderItems, getSwipeStackRenderItems } from '../rendering';
+import {
+  getSwipeDeckStackRenderItems,
+  getSwipeRenderItems,
+  getSwipeStackRenderItems,
+  getSwipeUndoRenderItems,
+} from '../rendering';
 import { getSwipeCommit, shouldDeferActiveItemSync, shouldResetEndReached } from '../state';
 
 const getProfileKey = (item: { id: string }) => item.id;
@@ -40,6 +45,74 @@ describe('getSwipeRenderItems', () => {
   it('creates no render info for empty or completed decks', () => {
     expect(getSwipeRenderItems([], 0, getProfileKey)).toEqual([]);
     expect(getSwipeRenderItems(profiles, 150, getProfileKey)).toEqual([]);
+  });
+
+  it('creates undo render info as a restored current plus old stack slots', () => {
+    const items = getSwipeUndoRenderItems({
+      data: profiles,
+      currentIndex: 2,
+      getKey: getProfileKey,
+      restoredIndex: 1,
+    });
+
+    expect(items.map((item) => item.index)).toEqual([1, 2, 3]);
+    expect(items.map((item) => item.offset)).toEqual([0, 1, 2]);
+    expect(items.map((item) => item.role)).toEqual(['current', 'next', 'next']);
+    expect(items.map((item) => item.isActive)).toEqual([true, false, false]);
+    expect(items.map((item) => item.transition)).toEqual([
+      undefined,
+      { fromOffset: 0, toOffset: 1 },
+      { fromOffset: 1, toOffset: 2 },
+    ]);
+  });
+
+  it('skips the restored index from the old stack when data reorder moves it after current', () => {
+    const items = getSwipeUndoRenderItems({
+      data: profiles,
+      currentIndex: 1,
+      getKey: getProfileKey,
+      restoredIndex: 2,
+    });
+
+    expect(items.map((item) => item.index)).toEqual([2, 1, 3]);
+    expect(items.map((item) => item.itemKey)).toEqual(['profile-2', 'profile-1', 'profile-3']);
+    expect(items.map((item) => item.transition)).toEqual([
+      undefined,
+      { fromOffset: 0, toOffset: 1 },
+      { fromOffset: 2, toOffset: 2 },
+    ]);
+  });
+
+  it('resolves undo stack render items from the current key instead of a stale index', () => {
+    const reorderedProfiles = [
+      profiles[1] as { id: string; name: string },
+      profiles[0] as { id: string; name: string },
+    ];
+    const items = getSwipeDeckStackRenderItems({
+      data: reorderedProfiles,
+      activeIndex: 0,
+      getKey: getProfileKey,
+      undoKey: 'profile-0',
+    });
+
+    expect(items.map((item) => item.itemKey)).toEqual(['profile-1', 'profile-0']);
+    expect(items.at(-1)).toMatchObject({ itemKey: 'profile-0', isActive: true, offset: 0 });
+  });
+
+  it('treats an empty string undo key as a valid item key', () => {
+    const emptyKeyProfiles = [
+      { id: '', name: 'Empty key' },
+      { id: 'profile-1', name: 'Profile 1' },
+    ];
+    const items = getSwipeDeckStackRenderItems({
+      data: emptyKeyProfiles,
+      activeIndex: 1,
+      getKey: getProfileKey,
+      undoKey: '',
+    });
+
+    expect(items.map((item) => item.itemKey)).toEqual(['profile-1', '']);
+    expect(items.at(-1)).toMatchObject({ itemKey: '', isActive: true, offset: 0 });
   });
 
   it('keeps render identity tied to item keys during next-to-current promotion', () => {

@@ -2,6 +2,7 @@ import {
   createSwipeDeck,
   SwipeDeckActionMotion,
   SwipeDeckMotion,
+  SwipeDeckUndoMotion,
 } from '@react-native-motion-kit/swipe-deck';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -48,6 +49,13 @@ const SwipeDeck = createSwipeDeck<Profile>({
     anticipationEasing: Easing.out(Easing.quad),
     dismissEasing: Easing.in(Easing.cubic),
   }),
+  undoMotion: SwipeDeckUndoMotion.spring({
+    springConfig: {
+      damping: 36,
+      stiffness: 300,
+      mass: 3,
+    },
+  }),
 });
 
 function CardReactionOverlay() {
@@ -88,8 +96,8 @@ function CardReactionOverlay() {
 }
 
 function DeckControls() {
-  const { activeIndex, count, canSwipe, isCompleted } = SwipeDeck.useDeckState();
-  const { swipeLeft, swipeRight } = SwipeDeck.useDeckActions();
+  const { activeIndex, count, canSwipe, canUndo, isCompleted } = SwipeDeck.useDeckState();
+  const { swipeLeft, swipeRight, undo } = SwipeDeck.useDeckActions();
   const current = activeIndex >= 0 ? activeIndex + 1 : 0;
   const counterText = isCompleted ? 'Done' : `${current} / ${count}`;
 
@@ -97,6 +105,14 @@ function DeckControls() {
     <View style={styles.controls}>
       <Text style={styles.counter}>{counterText}</Text>
       <View style={styles.actions}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={!canUndo}
+          onPress={undo}
+          style={[styles.iconButton, styles.undoButton, !canUndo && styles.disabledButton]}
+        >
+          <Text style={styles.iconText}>Undo</Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           disabled={!canSwipe}
@@ -141,6 +157,7 @@ export default function App() {
           <SwipeDeck.Root
             data={profiles}
             getKey={(item) => item.id}
+            undoEnabled
             visibleCardCount={3}
             containerStyle={styles.deck}
             onSwipe={({ item, direction }) => {
@@ -321,12 +338,28 @@ const styles = StyleSheet.create({
   likeButton: {
     backgroundColor: '#34d399',
   },
+  undoButton: {
+    backgroundColor: '#fbbf24',
+  },
+  iconButton: {
+    alignItems: 'center',
+    borderRadius: 999,
+    height: 58,
+    justifyContent: 'center',
+    minWidth: 88,
+    paddingHorizontal: 18,
+  },
   disabledButton: {
     opacity: 0.45,
   },
   actionText: {
     color: '#09090b',
     fontSize: 16,
+    fontWeight: '900',
+  },
+  iconText: {
+    color: '#09090b',
+    fontSize: 14,
     fontWeight: '900',
   },
 });

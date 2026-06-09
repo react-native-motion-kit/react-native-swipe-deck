@@ -1,6 +1,7 @@
 export { SwipeDeckActionMotion } from './actionMotion';
 export { SwipeDeckMotion } from './animation';
 export { createSwipeDeck, SwipeDeck } from './SwipeDeck';
+export { SwipeDeckUndoMotion } from './undoMotion';
 export type {
   SwipeDeckAction,
   SwipeDeckActionDirectMotionOptions,
@@ -14,6 +15,13 @@ export type {
   SwipeDeckInteraction,
   SwipeDeckInstance,
   SwipeDeckLayout,
+  SwipeDeckUndoAction,
+  SwipeDeckUndoMotionFrom,
+  SwipeDeckUndoMotionRecipe,
+  SwipeDeckUndoSpringMotionOptions,
+  SwipeDeckUndoSpringMotionRecipe,
+  SwipeDeckUndoTimingMotionOptions,
+  SwipeDeckUndoTimingMotionRecipe,
   SwipeDeckTinderDragMode,
   SwipeDeckTinderMotionConfig,
   SwipeDeckMotionEasing,
@@ -32,4 +40,5 @@ export type {
   SwipeEvent,
   SwipeRenderInfo,
   SwipeRole,
+  UndoEvent,
 } from './types';

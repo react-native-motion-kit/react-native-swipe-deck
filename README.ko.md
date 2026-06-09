@@ -166,12 +166,11 @@ function ProfileDeckScreen() {
 }
 ```
 
-- `useDeckState(id?)`는 `activeIndex`, `count`, `isCompleted`, `canSwipe` 같은 React
-  렌더링용 deck state를 반환합니다. 현재 item이 필요하면 deck state가 primitive하고 stable하게
-  유지되도록 사용자의 `data[activeIndex]`에서 직접 계산하세요.
-- `useDeckActions(id?)`는 `swipeLeft()`, `swipeRight()` 같은 stable action을 반환합니다.
-  action은 실행이 받아들여지면 `true`, deck이 아직 연결되지 않았거나 disabled/animating/layout
-  미측정/완료 상태라면 `false`를 반환합니다.
+- `useDeckState(id?)`는 `activeIndex`, `count`, `isCompleted`, `canSwipe`, `canUndo` 같은 React 렌더링용 deck state를 반환합니다.
+  현재 item이 필요하면 deck state가 primitive하고 stable하게 유지되도록 사용자의 `data[activeIndex]`에서 직접 계산하세요.
+- `useDeckActions(id?)`는 `swipeLeft()`, `swipeRight()`, `undo()` 같은 stable action을 반환합니다.
+  swipe action은 실행이 받아들여지면 `true`, deck이 아직 연결되지 않았거나 disabled/animating/layout 미측정/완료 상태라면 `false`를 반환합니다.
+  `undo()`는 deck이 완료된 뒤에도 `canUndo`가 true라면 `true`를 반환합니다.
 - `useDeckInteraction(id?)`는 progress 기반 UI를 위한 Reanimated shared value를 반환합니다.
   gesture progress는 UI thread에 남고, 매 frame React rerender를 만들지 않습니다.
 
@@ -233,6 +232,80 @@ actions.swipeLeft(
 Action은 callback으로 바로 넘겨도 안전합니다. React Native press event가 `swipeRight` 또는
 `swipeLeft`로 전달되면 그 event 인자는 무시하고 설정된 action motion을 사용합니다.
 
+### Undo / back swipe motion
+
+Undo는 opt-in입니다. 해당 deck에서 undo/back-swipe UX를 제공할 때 Root에 `undoEnabled`를
+추가하세요. 활성화되면 성공한 swipe마다 key/index/direction metadata entry 하나를 LIFO undo stack에
+저장합니다. Lookup은 현재 `data`에 대한 key-to-index map을 사용하고, data나 key가 바뀌면 invalid
+entry를 prune합니다. 생략하면 성공한 swipe도 undo metadata를 저장하지 않고, `canUndo`는 `false`를
+유지하며, `actions.undo()`는 `false`를 반환합니다.
+
+Undo가 받아들여지면 deck은 main stack을 restored index 기준으로 잠시 렌더링하고, 그 실제 current
+card를 카드가 원래 나갔던 방향에서 다시 중앙으로 들어오도록 animation한 뒤 restored index를
+commit합니다.
+
+```tsx
+import { createSwipeDeck, SwipeDeckUndoMotion } from '@react-native-motion-kit/swipe-deck';
+
+const ProfileDeck = createSwipeDeck<Profile>({
+  undoMotion: SwipeDeckUndoMotion.spring({
+    springConfig: {
+      damping: 36,
+      stiffness: 300,
+      mass: 3,
+    },
+  }),
+});
+
+function ProfileDeckExample() {
+  return (
+    <ProfileDeck.Root data={profiles} getKey={(item) => item.id} undoEnabled>
+      <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+    </ProfileDeck.Root>
+  );
+}
+
+function UndoButton() {
+  const state = ProfileDeck.useDeckState();
+  const actions = ProfileDeck.useDeckActions();
+
+  return (
+    <Pressable disabled={!state.canUndo} onPress={actions.undo}>
+      <Text>Undo</Text>
+    </Pressable>
+  );
+}
+```
+
+Undo는 기본적으로 비활성화되어 있으므로 undo control을 노출하지 않는 deck은 undo history 비용을
+내지 않습니다. `undoEnabled`를 켜면 key가 `data`에 남아 있는 동안 이전 swipe들을 LIFO 순서로 반복
+복원할 수 있습니다. 오래 실행되는 undo-enabled deck은 해당 entry가 undo되거나 data 변경으로 prune될
+때까지 accepted swipe마다 metadata entry 하나를 유지합니다. 기본 undo motion은 zero-duration
+`SwipeDeckUndoMotion.timing()`을 사용하므로, 별도 motion을 설정하지 않으면 card를 즉시 복원합니다.
+
+제공되는 recipe는 다음과 같습니다.
+
+- `SwipeDeckUndoMotion.spring(options?)`: Reanimated `withSpring`으로 card를 복원합니다.
+- `SwipeDeckUndoMotion.timing(options?)`: deterministic한 `withTiming`으로 card를 복원합니다.
+
+두 recipe는 공통으로 다음 옵션을 받습니다.
+
+- `from: 'auto' | 'left' | 'right'`: `auto`는 원래 swipe된 방향에서 card를 되돌립니다.
+- `entryDistance`: 화면 밖 시작 거리를 number 또는 layout callback으로 지정합니다.
+
+`timing`은 `duration`, `easing`을 추가로 받고 기본 duration은 `0`입니다. `spring`은 `springConfig`를 받습니다.
+
+`undoMotion` 우선순위는 replacement 방식입니다.
+
+1. `createSwipeDeck({ undoMotion })`의 factory `undoMotion`
+2. 해당 Root에서 factory default를 대체하는 `Root undoMotion`
+3. `actions.undo(recipe)`에 넘긴 per-call recipe
+
+Undo도 callback으로 바로 넘겨도 안전합니다. React Native press event가 `undo`로 전달되면 그
+event 인자는 무시하고 설정된 undo motion을 사용합니다. Undo restore 중 public interaction 값
+(`progress`, `signedProgress`, `direction`, `translationX`, `translationY`)은 중립으로 유지되어,
+progress 기반 swipe overlay가 순간적으로 깜빡이지 않습니다.
+
 같은 factory에서 여러 Root를 렌더링할 때만 `id`를 사용하세요.
 
 ```tsx
@@ -260,6 +333,8 @@ function MultiDeckScreen() {
 id는 `"nearby"`, `"recommended"`처럼 화면/용도 단위의 안정적이고 적은 개수의 값으로 유지하세요.
 Registry는 hook, action, interaction shared value의 identity를 안정적으로 유지하기 위해 factory lifetime 동안 id별 store를 유지합니다.
 따라서 item id, timestamp, 매 render마다 바뀌는 값, 일회성 route 값에서 deck id를 만들지 마세요.
+Factory와 id는 render path 밖에서 안정적으로 만들고 유지하세요. 동적 factory나 동적 id는 registry가
+의도적으로 안정적으로 유지하는 long-lived namespace를 계속 만들 수 있습니다.
 
 짧은 이름을 선호한다면 같은 factory instance에서 destructuring한 alias를 export해도 됩니다.
 
@@ -495,13 +570,13 @@ function DeepStackDeck() {
 - `createSwipeDeck<T>()`는 typed factory namespace를 만듭니다.
 - `Root`와 `Card`는 deck을 렌더링합니다.
 - `useDeckState(id?)`, `useDeckActions(id?)`, `useDeckInteraction(id?)`는 해당 factory namespace에서 deck 전체 state, action, Reanimated interaction 값을 제공합니다.
+- `SwipeDeckUndoMotion`과 `actions.undo()`는 preset 기반 undo/back-swipe 동작을 제공합니다.
 - `id`는 같은 factory 안에서 여러 Root를 mount할 때 어떤 deck을 바라볼지 선택합니다.
 
 앞으로의 API 방향에는 다음이 포함될 수 있습니다.
 
 - public `Provider` 또는 custom registry boundary
 - 외부 swipe control을 위한 trigger component
-- undo/back-swipe API
 - 더 명시적인 prerender/window control
 - 성능을 해치지 않으면서 DX를 개선할 수 있는 lower-level controller/event API
 

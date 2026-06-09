@@ -4,6 +4,17 @@ import { describe, expect, it, jest } from '@jest/globals';
 
 import { SwipeDeckActionMotion } from '../actionMotion';
 import { createSwipeDeckRegistry } from '../registry';
+import { SwipeDeckUndoMotion } from '../undoMotion';
+
+function createAttachedState(canUndo = false) {
+  return {
+    activeIndex: 0,
+    count: 1,
+    isCompleted: false,
+    canSwipe: true,
+    canUndo,
+  };
+}
 
 describe('createSwipeDeckRegistry', () => {
   it('scopes default deck ids by registry instance', () => {
@@ -28,9 +39,11 @@ describe('createSwipeDeckRegistry', () => {
       count: 0,
       isCompleted: false,
       canSwipe: false,
+      canUndo: false,
     });
     expect(store.actions.swipeLeft()).toBe(false);
     expect(store.actions.swipeRight()).toBe(false);
+    expect(store.actions.undo()).toBe(false);
   });
 
   it('keeps actions and interaction stable for hook-before-root consumers', () => {
@@ -50,6 +63,7 @@ describe('createSwipeDeckRegistry', () => {
       count: 1,
       isCompleted: false,
       canSwipe: true,
+      canUndo: false,
     };
     const unsubscribe = store.subscribe(listener);
 
@@ -71,8 +85,10 @@ describe('createSwipeDeckRegistry', () => {
         count: 1,
         isCompleted: false,
         canSwipe: true,
+        canUndo: false,
       }),
       swipe,
+      undo: () => false,
     });
 
     expect(store.getSnapshot()).toEqual({
@@ -80,6 +96,7 @@ describe('createSwipeDeckRegistry', () => {
       count: 1,
       isCompleted: false,
       canSwipe: true,
+      canUndo: false,
     });
     expect(store.actions.swipeRight()).toBe(true);
     expect(swipe).toHaveBeenCalledWith('right', undefined);
@@ -88,6 +105,7 @@ describe('createSwipeDeckRegistry', () => {
       store.attach({
         getState: () => store.getSnapshot(),
         swipe: () => false,
+        undo: () => false,
       }),
     ).toThrow('SwipeDeck.Root with id "__default__" is already mounted');
 
@@ -98,6 +116,7 @@ describe('createSwipeDeckRegistry', () => {
       count: 0,
       isCompleted: false,
       canSwipe: false,
+      canUndo: false,
     });
     expect(store.actions.swipeLeft()).toBe(false);
   });
@@ -115,8 +134,10 @@ describe('createSwipeDeckRegistry', () => {
         count: 1,
         isCompleted: false,
         canSwipe: true,
+        canUndo: true,
       }),
       swipe,
+      undo: () => false,
     });
 
     expect(store.actions.swipeRight(springboardMotion)).toBe(true);
@@ -130,17 +151,37 @@ describe('createSwipeDeckRegistry', () => {
     detach();
   });
 
+  it('passes undo motion recipes and ignores callback event arguments', () => {
+    const registry = createSwipeDeckRegistry();
+    const store = registry.getStore();
+    const undo = jest.fn(() => true);
+    const springMotion = SwipeDeckUndoMotion.spring({
+      springConfig: {
+        damping: 14,
+      },
+    });
+    const detach = store.attach({
+      getState: () => createAttachedState(true),
+      swipe: () => false,
+      undo,
+    });
+
+    expect(store.actions.undo(springMotion)).toBe(true);
+    expect(store.actions.undo({ nativeEvent: {} } as unknown as GestureResponderEvent)).toBe(true);
+
+    expect(undo).toHaveBeenNthCalledWith(1, springMotion);
+    expect(undo).toHaveBeenNthCalledWith(2, undefined);
+
+    detach();
+  });
+
   it('allows remounting the same factory id after cleanup', () => {
     const registry = createSwipeDeckRegistry();
     const store = registry.getStore('nearby');
     const controller = {
-      getState: () => ({
-        activeIndex: 0,
-        count: 1,
-        isCompleted: false,
-        canSwipe: true,
-      }),
+      getState: () => createAttachedState(),
       swipe: () => true,
+      undo: () => false,
     };
 
     const firstDetach = store.attach(controller);
@@ -162,8 +203,10 @@ describe('createSwipeDeckRegistry', () => {
         count: 1,
         isCompleted: false,
         canSwipe: true,
+        canUndo: false,
       }),
       swipe: () => true,
+      undo: () => false,
     });
 
     store.interaction.progress.set(1);

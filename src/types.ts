@@ -25,6 +25,13 @@ export type SwipeEvent<T> = {
   direction: SwipeDirection;
 };
 
+export type UndoEvent<T> = {
+  item: T;
+  index: number;
+  /** Direction the item originally swiped out before it was restored. */
+  direction: SwipeDirection;
+};
+
 export type SwipeDeckMotionEasing = NonNullable<WithTimingConfig['easing']>;
 
 export type SwipeDeckTinderRotationMode = 'fixed' | 'grab-position';
@@ -232,6 +239,64 @@ export type SwipeDeckActionMotionRecipe =
   | SwipeDeckActionDirectMotionRecipe
   | SwipeDeckActionSpringboardMotionRecipe;
 
+type SwipeDeckUndoMotionKind = 'swipe-deck-undo-motion';
+
+export type SwipeDeckUndoMotionFrom = 'auto' | SwipeDirection;
+
+export type SwipeDeckUndoSpringMotionOptions = {
+  /**
+   * Side the restored card should enter from.
+   *
+   * `auto` uses the original swipe direction so a right-swiped card returns from the right.
+   *
+   * @default 'auto'
+   */
+  from?: SwipeDeckUndoMotionFrom;
+  /**
+   * Offscreen entry distance before restoring to center.
+   *
+   * Defaults to the same rotated-card clear distance used by programmatic dismiss.
+   */
+  entryDistance?: number | ((layout: SwipeDeckLayout) => number);
+  /** Reanimated `withSpring` config used for the restore phase. */
+  springConfig?: WithSpringConfig;
+};
+
+export type SwipeDeckUndoTimingMotionOptions = {
+  /**
+   * Side the restored card should enter from.
+   *
+   * `auto` uses the original swipe direction so a right-swiped card returns from the right.
+   *
+   * @default 'auto'
+   */
+  from?: SwipeDeckUndoMotionFrom;
+  /**
+   * Offscreen entry distance before restoring to center.
+   *
+   * Defaults to the same rotated-card clear distance used by programmatic dismiss.
+   */
+  entryDistance?: number | ((layout: SwipeDeckLayout) => number);
+  /** Fixed restore duration. */
+  duration?: number;
+  /** Reanimated `withTiming` easing. */
+  easing?: SwipeDeckMotionEasing;
+};
+
+export type SwipeDeckUndoSpringMotionRecipe = SwipeDeckUndoSpringMotionOptions & {
+  readonly kind: SwipeDeckUndoMotionKind;
+  readonly type: 'spring';
+};
+
+export type SwipeDeckUndoTimingMotionRecipe = SwipeDeckUndoTimingMotionOptions & {
+  readonly kind: SwipeDeckUndoMotionKind;
+  readonly type: 'timing';
+};
+
+export type SwipeDeckUndoMotionRecipe =
+  | SwipeDeckUndoSpringMotionRecipe
+  | SwipeDeckUndoTimingMotionRecipe;
+
 export type ResolvedSwipeDeckMotionConfig = {
   nextScale: number;
   nextOpacity: number;
@@ -295,6 +360,17 @@ export type SwipeDeckProps<T> = {
   motion?: SwipeDeckMotionPreset;
   /** Programmatic swipe motion recipe for actions such as `swipeLeft()` and `swipeRight()`. */
   actionMotion?: SwipeDeckActionMotionRecipe;
+  /** Programmatic undo restore motion recipe for `actions.undo()`. */
+  undoMotion?: SwipeDeckUndoMotionRecipe;
+  /**
+   * Enables undo stack tracking for `actions.undo()`.
+   *
+   * When omitted, successful swipes do not store undo metadata, `canUndo` remains `false`, and
+   * `actions.undo()` returns `false`. Enable this only for decks that expose undo/back-swipe UX.
+   *
+   * @default false
+   */
+  undoEnabled?: boolean;
   /**
    * Maximum number of cards kept mounted from the active card forward.
    *
@@ -312,6 +388,7 @@ export type SwipeDeckProps<T> = {
   containerStyle?: StyleProp<ViewStyle>;
   children: ReactNode;
   onSwipe?: (event: SwipeEvent<T>) => void;
+  onUndo?: (event: UndoEvent<T>) => void;
   onIndexChange?: (index: number) => void;
   onEndReached?: () => void;
 };
@@ -338,6 +415,13 @@ export type SwipeDeckFactoryConfig = {
    * both factory and root defaults for that invocation only.
    */
   actionMotion?: SwipeDeckActionMotionRecipe;
+  /**
+   * Default programmatic undo restore motion used by all roots created from this factory.
+   *
+   * A `Root undoMotion` prop replaces this default for that root. Per-call undo recipes replace
+   * both factory and root defaults for that invocation only.
+   */
+  undoMotion?: SwipeDeckUndoMotionRecipe;
 };
 
 export type SwipeDeckState = {
@@ -349,6 +433,8 @@ export type SwipeDeckState = {
   isCompleted: boolean;
   /** Whether a deck action can currently be accepted from React. */
   canSwipe: boolean;
+  /** Whether the latest valid swipe history entry can currently be restored. */
+  canUndo: boolean;
 };
 
 export type SwipeDeckAction = {
@@ -360,11 +446,22 @@ export type SwipeDeckAction = {
   (event: GestureResponderEvent): boolean;
 };
 
+export type SwipeDeckUndoAction = {
+  /** Programmatically restore the latest swiped card. Returns whether the action was accepted. */
+  (): boolean;
+  /** Programmatically restore with a one-call undo motion override. */
+  (motion: SwipeDeckUndoMotionRecipe): boolean;
+  /** Callback-safe overload: event-like arguments are ignored at runtime. */
+  (event: GestureResponderEvent): boolean;
+};
+
 export type SwipeDeckActions = {
   /** Programmatically dismiss the active card to the left. Returns whether the action was accepted. */
   swipeLeft: SwipeDeckAction;
   /** Programmatically dismiss the active card to the right. Returns whether the action was accepted. */
   swipeRight: SwipeDeckAction;
+  /** Programmatically restore the latest swiped card. Returns whether the action was accepted. */
+  undo: SwipeDeckUndoAction;
 };
 
 export type SwipeDeckInteraction = {

@@ -12,12 +12,14 @@ describe('getSwipeDeckState', () => {
         layout: { width: 300, height: 500 },
         isAnimating: false,
         isDragging: false,
+        hasUndoHistory: true,
       }),
     ).toEqual({
       activeIndex: 0,
       count: 2,
       isCompleted: false,
       canSwipe: true,
+      canUndo: true,
     });
   });
 
@@ -30,12 +32,14 @@ describe('getSwipeDeckState', () => {
         layout: { width: 300, height: 500 },
         isAnimating: false,
         isDragging: false,
+        hasUndoHistory: false,
       }),
     ).toEqual({
       activeIndex: 0,
       count: 0,
       isCompleted: true,
       canSwipe: false,
+      canUndo: false,
     });
   });
 
@@ -48,7 +52,34 @@ describe('getSwipeDeckState', () => {
         layout: { width: 0, height: 500 },
         isAnimating: false,
         isDragging: false,
+        hasUndoHistory: true,
       }).canSwipe,
+    ).toBe(false);
+  });
+
+  it('rejects undo when layout is not measured or runtime is busy', () => {
+    expect(
+      getSwipeDeckState({
+        dataLength: 2,
+        activeIndex: 1,
+        disabled: false,
+        layout: { width: 0, height: 500 },
+        isAnimating: false,
+        isDragging: false,
+        hasUndoHistory: true,
+      }).canUndo,
+    ).toBe(false);
+
+    expect(
+      getSwipeDeckState({
+        dataLength: 2,
+        activeIndex: 1,
+        disabled: false,
+        layout: { width: 300, height: 500 },
+        isAnimating: true,
+        isDragging: false,
+        hasUndoHistory: true,
+      }).canUndo,
     ).toBe(false);
   });
 });

@@ -4,6 +4,7 @@ import { Fragment } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
+import type { SwipeRenderTransition } from './rendering';
 import type {
   SwipeDeckCardProps,
   SwipeDeckTinderFixedRotationOrigin,
@@ -19,6 +20,8 @@ import {
   resolveSwipeDeckTinderRotationSign,
   resolveSwipeDeckTinderTransformOrigin,
 } from './animation';
+
+const STACK_TRANSFORM_ORIGIN: [string, string, number] = ['50%', '0%', 0];
 
 export type SwipeDeckRenderedCardMotionConfig = {
   nextScale: number;
@@ -42,11 +45,15 @@ type SwipeDeckRenderedCardProps<T> = {
   itemKey: string;
   item: T;
   descriptor: SwipeWindowDescriptor;
+  transition?: SwipeRenderTransition;
   cardSlot: ReactElement<SwipeDeckCardProps<T>>;
   swipeProgress: SharedValue<number>;
   activeTranslateX: SharedValue<number>;
   activeTranslateY: SharedValue<number>;
   dragItemIndex: SharedValue<number>;
+  undoItemKey?: string;
+  undoProgress: SharedValue<number>;
+  undoFromTranslateX: SharedValue<number>;
   activeItemIndex: SharedValue<number>;
   gestureStartYRatio: SharedValue<number>;
   motionConfig: SwipeDeckRenderedCardMotionConfig;
@@ -57,11 +64,15 @@ export function SwipeDeckRenderedCard<T>({
   itemKey,
   item,
   descriptor,
+  transition,
   cardSlot,
   swipeProgress,
   activeTranslateX,
   activeTranslateY,
   dragItemIndex,
+  undoItemKey,
+  undoProgress,
+  undoFromTranslateX,
   activeItemIndex,
   gestureStartYRatio,
   motionConfig,
@@ -70,16 +81,21 @@ export function SwipeDeckRenderedCard<T>({
 
   const cardAnimatedStyle = useAnimatedStyle(() => {
     const relativeOffset = itemIndex - activeItemIndex.get();
-    const isDraggingItem = dragItemIndex.get() === itemIndex;
+    const isUndoItem = undoItemKey === itemKey;
+    const isDraggingItem = isUndoItem || dragItemIndex.get() === itemIndex;
 
     if (isDraggingItem) {
-      const translateX = activeTranslateX.get();
-      const translateY = resolveSwipeDeckDragTranslateY({
-        mode: drag.mode,
-        liftYFactor: drag.liftYFactor,
-        translationX: translateX,
-        translationY: activeTranslateY.get(),
-      });
+      const translateX = isUndoItem
+        ? undoFromTranslateX.get() * undoProgress.get()
+        : activeTranslateX.get();
+      const translateY = isUndoItem
+        ? 0
+        : resolveSwipeDeckDragTranslateY({
+            mode: drag.mode,
+            liftYFactor: drag.liftYFactor,
+            translationX: translateX,
+            translationY: activeTranslateY.get(),
+          });
       const rotationProgress = Math.min(
         Math.max(translateX / Math.max(rotation.inputRange, 1), -1),
         1,
@@ -110,6 +126,19 @@ export function SwipeDeckRenderedCard<T>({
       };
     }
 
+    if (transition) {
+      const clampedUndoProgress = Math.min(Math.max(undoProgress.get(), 0), 1);
+      const nextDepth =
+        transition.fromOffset * clampedUndoProgress +
+        transition.toOffset * (1 - clampedUndoProgress);
+
+      return {
+        opacity: nextOpacity ** nextDepth,
+        transformOrigin: STACK_TRANSFORM_ORIGIN,
+        transform: [{ scale: nextScale ** nextDepth }, { translateY: nextTranslateY * nextDepth }],
+      };
+    }
+
     if (relativeOffset < 0) {
       return {
         opacity: 0,
@@ -122,6 +151,7 @@ export function SwipeDeckRenderedCard<T>({
 
       return {
         opacity: nextOpacity ** nextDepth,
+        transformOrigin: STACK_TRANSFORM_ORIGIN,
         transform: [{ scale: nextScale ** nextDepth }, { translateY: nextTranslateY * nextDepth }],
       };
     }
@@ -148,6 +178,10 @@ export function SwipeDeckRenderedCard<T>({
     rotation.mode,
     rotation.origin,
     swipeProgress,
+    transition,
+    undoFromTranslateX,
+    undoItemKey,
+    undoProgress,
   ]);
 
   const renderInfo: SwipeRenderInfo<T> = {
