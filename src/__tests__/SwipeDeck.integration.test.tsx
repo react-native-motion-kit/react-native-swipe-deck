@@ -790,6 +790,60 @@ describe('SwipeDeck factory hooks', () => {
     expect(await screen.findByText('action:false')).toBeOnTheScreen();
   });
 
+  it('does not publish a mixed undo snapshot when data pruning removes undo history', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const observedStates = jest.fn();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const actions = ProfileDeck.useDeckActions();
+      const stateText = `state:${state.activeIndex}:${state.count}:${String(state.canSwipe)}:${String(
+        state.canUndo,
+      )}:${String(state.isCompleted)}`;
+
+      useEffect(() => {
+        observedStates(stateText);
+      }, [stateText]);
+
+      return (
+        <View>
+          <Text>{stateText}</Text>
+          <Pressable
+            accessibilityLabel="Swipe right"
+            accessibilityRole="button"
+            onPress={actions.swipeRight}
+          >
+            <Text>Swipe right</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function Example({ deckData }: { deckData: Profile[] }) {
+      return (
+        <>
+          <DeckControls />
+          <ProfileDeck.Root data={deckData} getKey={getProfileKey} undoEnabled>
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    const renderResult = await render(<Example deckData={profiles} />);
+    await measureDeckFromVisibleCard('Ada');
+
+    await user.press(screen.getByRole('button', { name: 'Swipe right' }));
+
+    expect(await screen.findByText('state:1:2:true:true:false')).toBeOnTheScreen();
+
+    await renderResult.rerender(<Example deckData={[graceProfile]} />);
+
+    expect(await screen.findByText('state:1:1:false:false:true')).toBeOnTheScreen();
+    expect(observedStates).not.toHaveBeenCalledWith('state:1:2:true:false:false');
+  });
+
   it('preserves valid undo history across reorder and restores by current key index', async () => {
     const ProfileDeck = createSwipeDeck<Profile>({
       undoMotion: SwipeDeckUndoMotion.timing({

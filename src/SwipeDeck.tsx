@@ -12,13 +12,7 @@ import React, {
 } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
-import {
-  cancelAnimation,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import { cancelAnimation, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import type {
@@ -48,23 +42,10 @@ import { SwipeDeckRenderedCard } from './SwipeDeckRenderedCard';
 import {
   getActiveRenderItemId,
   resolveSwipeDeckProgrammaticActionMotion,
-  resolveSwipeDeckProgrammaticUndoMotion,
 } from './swipeDeckRuntime';
-import {
-  appendSwipeDeckUndoHistoryEntry,
-  createSwipeDeckUndoHistoryEntry,
-  createSwipeDeckUndoKeyIndex,
-  hasValidSwipeDeckUndoHistoryEntry,
-  pruneSwipeDeckUndoHistory,
-  removeSwipeDeckUndoHistoryEntryByToken,
-  resolveLatestSwipeDeckUndoHistoryEntry,
-  resolveSwipeDeckUndoRestoreTarget,
-  type SwipeDeckUndoHistoryEntry,
-  type SwipeDeckUndoKeyIndex,
-} from './undoHistory';
-import { type ResolvedSwipeDeckUndoMotion } from './undoMotion';
 import { useSwipeDeckGestureRuntime } from './useSwipeDeckGestureRuntime';
 import { useSwipeDeckMotionRuntime } from './useSwipeDeckMotionRuntime';
+import { useSwipeDeckUndoRuntime } from './useSwipeDeckUndoRuntime';
 import { clampActiveIndex } from './windowing';
 
 function findCardSlot<T>(children: ReactNode): ReactElement<SwipeDeckCardProps<T>> | null {
@@ -84,20 +65,6 @@ type SwipeDeckRootProps<T> = SwipeDeckProps<T> & {
   factoryMotion?: SwipeDeckMotionPreset;
   factoryUndoMotion?: SwipeDeckUndoMotionRecipe;
   registry: SwipeDeckRegistry;
-};
-
-type UndoTransition = {
-  index: number;
-  key: string;
-  motion: ResolvedSwipeDeckUndoMotion;
-  runId: number;
-};
-
-type PendingUndoRestore = {
-  direction: SwipeDirection;
-  key: string;
-  runId: number;
-  token: number;
 };
 
 function Root<T>({
@@ -129,7 +96,6 @@ function Root<T>({
   const [layout, setLayout] = useState<SwipeDeckLayout>({ width: 0, height: 0 });
   const [activeIndex, setActiveIndex] = useState(() => clampActiveIndex(data.length, initialIndex));
   const [endReached, setEndReached] = useState(false);
-  const [undoTransition, setUndoTransition] = useState<UndoTransition | null>(null);
   const swipeProgress = interaction.progress;
   const signedSwipeProgress = interaction.signedProgress;
   const swipeDirectionSignal = interaction.direction;
@@ -150,17 +116,10 @@ function Root<T>({
   const endReachedRef = useRef(endReached);
   const disabledRef = useRef(disabled);
   const layoutRef = useRef(layout);
-  const undoHistoryRef = useRef<SwipeDeckUndoHistoryEntry[]>([]);
-  const undoKeyIndexRef = useRef<SwipeDeckUndoKeyIndex>(
-    undoEnabled ? createSwipeDeckUndoKeyIndex(data, getKey) : new Map(),
-  );
-  const undoEnabledRef = useRef(undoEnabled);
-  const undoHistoryTokenRef = useRef(0);
-  const pendingUndoRestoreRef = useRef<PendingUndoRestore | null>(null);
+  const hasUndoHistoryRef = useRef<() => boolean>(() => false);
   const attachmentGenerationRef = useRef(0);
   const runtimeStateRef = useRef({ isAnimating: false, isDragging: false });
   const runtimeEventIdRef = useRef(0);
-  const restoreRunIdRef = useRef(0);
   const onSwipeRef = useRef(onSwipe);
   const onUndoRef = useRef(onUndo);
   const onIndexChangeRef = useRef(onIndexChange);
@@ -169,14 +128,6 @@ function Root<T>({
   const cardSlot = findCardSlot<T>(children);
   const hasActiveCard = getActiveRenderItemId(data.length, activeIndex) >= 0;
   const activeRenderItemId = getActiveRenderItemId(data.length, activeIndex);
-  const stackRenderItems = getSwipeDeckStackRenderItems({
-    data,
-    activeIndex,
-    getKey,
-    undoIndex: undoTransition?.index,
-    undoKey: undoTransition?.key,
-    visibleCardCount,
-  });
   const {
     actionMotionRef,
     cardMotionConfig,
@@ -211,20 +162,8 @@ function Root<T>({
       layout: layoutRef.current,
       isAnimating: runtimeStateRef.current.isAnimating,
       isDragging: runtimeStateRef.current.isDragging,
-      hasUndoHistory:
-        undoEnabledRef.current &&
-        hasValidSwipeDeckUndoHistoryEntry(undoHistoryRef.current, undoKeyIndexRef.current),
+      hasUndoHistory: hasUndoHistoryRef.current(),
     });
-  }, []);
-
-  const pruneUndoHistoryForCurrentData = useCallback(() => {
-    const previousHistoryLength = undoHistoryRef.current.length;
-
-    undoHistoryRef.current = undoEnabledRef.current
-      ? pruneSwipeDeckUndoHistory(undoHistoryRef.current, undoKeyIndexRef.current)
-      : [];
-
-    return previousHistoryLength !== undoHistoryRef.current.length;
   }, []);
 
   const publishDeckStateSnapshot = useCallback(() => {
@@ -276,60 +215,6 @@ function Root<T>({
     [publishDeckStateSnapshot, runtimeEventId],
   );
 
-  const cancelPendingUndoRestore = useCallback(() => {
-    pendingUndoRestoreRef.current = null;
-    setUndoTransition(null);
-    cancelActiveInteractionAnimations();
-    cancelAnimation(undoProgress);
-    swipeProgress.set(0);
-    signedSwipeProgress.set(0);
-    swipeDirectionSignal.set(0);
-    activeTranslateX.set(0);
-    activeTranslateY.set(0);
-    activeItemIndex.set(getActiveRenderItemId(dataRef.current.length, activeIndexRef.current));
-    dragItemIndex.set(-1);
-    undoProgress.set(0);
-    undoFromTranslateX.set(0);
-    isDragging.set(false);
-    gestureStartYRatio.set(0.5);
-    isAnimating.set(false);
-    applyImmediateRuntimeState(false, false);
-  }, [
-    activeItemIndex,
-    activeTranslateX,
-    activeTranslateY,
-    applyImmediateRuntimeState,
-    cancelActiveInteractionAnimations,
-    dragItemIndex,
-    gestureStartYRatio,
-    isAnimating,
-    isDragging,
-    signedSwipeProgress,
-    swipeDirectionSignal,
-    swipeProgress,
-    undoFromTranslateX,
-    undoProgress,
-  ]);
-
-  const cancelPendingUndoRestoreIfInvalid = useCallback(() => {
-    const pendingRestore = pendingUndoRestoreRef.current;
-
-    if (!pendingRestore) {
-      return false;
-    }
-
-    const isPendingHistoryValid = undoHistoryRef.current.some(
-      (entry) => entry.token === pendingRestore.token,
-    );
-
-    if (isPendingHistoryValid) {
-      return false;
-    }
-
-    cancelPendingUndoRestore();
-    return true;
-  }, [cancelPendingUndoRestore]);
-
   const handleLayout = useCallback(
     (event: LayoutChangeEvent) => {
       const { width, height } = event.nativeEvent.layout;
@@ -342,45 +227,78 @@ function Root<T>({
     [publishDeckStateSnapshot],
   );
 
-  const commitSwipe = useCallback((direction: SwipeDirection) => {
-    const currentData = dataRef.current;
-    const commit = getSwipeCommit(
-      currentData.length,
-      activeIndexRef.current,
-      endReachedRef.current,
-    );
+  useLayoutEffect(() => {
+    dataRef.current = data;
+    getKeyRef.current = getKey;
+    publishDeckStateSnapshot();
+  }, [data, getKey, publishDeckStateSnapshot]);
 
-    if (!commit) {
-      return;
-    }
+  // Undo owns history and restore animation lifecycle; Root keeps shared render, registry,
+  // and deck-state snapshot plumbing so swipe/action/undo continue to publish one store.
+  const { recordSwipeForUndo, undoProgrammatically, undoTransition } = useSwipeDeckUndoRuntime({
+    activeIndexRef,
+    activeItemIndex,
+    activeTranslateX,
+    activeTranslateY,
+    applyImmediateRuntimeState,
+    attachmentGeneration,
+    attachmentGenerationRef,
+    cancelActiveInteractionAnimations,
+    data,
+    disabledRef,
+    dismissRuntimeRef,
+    dragItemIndex,
+    endReachedRef,
+    gestureStartYRatio,
+    getKey,
+    hasUndoHistoryRef,
+    isAnimating,
+    isDragging,
+    layoutRef,
+    onIndexChangeRef,
+    onUndoRef,
+    publishDeckStateSnapshot,
+    setActiveIndex,
+    setEndReached,
+    signedSwipeProgress,
+    swipeDirectionSignal,
+    swipeProgress,
+    undoEnabled,
+    undoFromTranslateX,
+    undoMotionRef,
+    undoProgress,
+  });
 
-    const item = currentData[commit.swipedIndex] as T;
-
-    if (undoEnabledRef.current) {
-      undoHistoryRef.current = appendSwipeDeckUndoHistoryEntry(
-        undoHistoryRef.current,
-        createSwipeDeckUndoHistoryEntry({
-          token: undoHistoryTokenRef.current + 1,
-          item,
-          index: commit.swipedIndex,
-          direction,
-          getKey: getKeyRef.current,
-        }),
+  const commitSwipe = useCallback(
+    (direction: SwipeDirection) => {
+      const currentData = dataRef.current;
+      const commit = getSwipeCommit(
+        currentData.length,
+        activeIndexRef.current,
+        endReachedRef.current,
       );
-      undoHistoryTokenRef.current += 1;
-    }
-    onSwipeRef.current?.({ item, index: commit.swipedIndex, direction });
-    onIndexChangeRef.current?.(commit.nextIndex);
-    activeIndexRef.current = commit.nextIndex;
-    pendingCommitResetRef.current = true;
-    setActiveIndex(commit.nextIndex);
 
-    if (commit.shouldEmitEndReached) {
-      endReachedRef.current = true;
-      setEndReached(true);
-      onEndReachedRef.current?.();
-    }
-  }, []);
+      if (!commit) {
+        return;
+      }
+
+      const item = currentData[commit.swipedIndex] as T;
+
+      recordSwipeForUndo({ item, index: commit.swipedIndex, direction });
+      onSwipeRef.current?.({ item, index: commit.swipedIndex, direction });
+      onIndexChangeRef.current?.(commit.nextIndex);
+      activeIndexRef.current = commit.nextIndex;
+      pendingCommitResetRef.current = true;
+      setActiveIndex(commit.nextIndex);
+
+      if (commit.shouldEmitEndReached) {
+        endReachedRef.current = true;
+        setEndReached(true);
+        onEndReachedRef.current?.();
+      }
+    },
+    [recordSwipeForUndo],
+  );
 
   const commitSwipeIfCurrent = useCallback(
     (generation: number, direction: SwipeDirection) => {
@@ -450,199 +368,6 @@ function Root<T>({
       signedSwipeProgress,
       swipeDirectionSignal,
       swipeProgress,
-    ],
-  );
-
-  const completeUndoRestoreIfCurrent = useCallback(
-    (currentAttachmentGeneration: number, runId: number) => {
-      const pendingRestore = pendingUndoRestoreRef.current;
-
-      if (currentAttachmentGeneration !== attachmentGenerationRef.current) {
-        return;
-      }
-
-      if (!pendingRestore || pendingRestore.runId !== runId) {
-        return;
-      }
-
-      const currentData = dataRef.current;
-      const restoreTarget = resolveSwipeDeckUndoRestoreTarget({
-        data: currentData,
-        getKey: getKeyRef.current,
-        key: pendingRestore.key,
-        keyIndex: undoKeyIndexRef.current,
-      });
-
-      if (!restoreTarget) {
-        undoHistoryRef.current = removeSwipeDeckUndoHistoryEntryByToken(
-          undoHistoryRef.current,
-          pendingRestore.token,
-        );
-        pendingUndoRestoreRef.current = null;
-        setUndoTransition(null);
-        activeItemIndex.set(getActiveRenderItemId(currentData.length, activeIndexRef.current));
-        activeTranslateX.set(0);
-        activeTranslateY.set(0);
-        swipeProgress.set(0);
-        signedSwipeProgress.set(0);
-        swipeDirectionSignal.set(0);
-        dragItemIndex.set(-1);
-        undoProgress.set(0);
-        undoFromTranslateX.set(0);
-        isDragging.set(false);
-        gestureStartYRatio.set(0.5);
-        isAnimating.set(false);
-        applyImmediateRuntimeState(false, false);
-        return;
-      }
-
-      const { index: restoredIndex, item: restoredItem } = restoreTarget;
-      const isPendingHistoryValid = undoHistoryRef.current.some(
-        (entry) => entry.token === pendingRestore.token,
-      );
-
-      if (!isPendingHistoryValid) {
-        cancelPendingUndoRestore();
-        return;
-      }
-
-      undoHistoryRef.current = removeSwipeDeckUndoHistoryEntryByToken(
-        undoHistoryRef.current,
-        pendingRestore.token,
-      );
-      pendingUndoRestoreRef.current = null;
-      endReachedRef.current = false;
-      setEndReached(false);
-      activeIndexRef.current = restoredIndex;
-      activeItemIndex.set(restoredIndex);
-      swipeProgress.set(0);
-      signedSwipeProgress.set(0);
-      swipeDirectionSignal.set(0);
-      activeTranslateX.set(0);
-      activeTranslateY.set(0);
-      dragItemIndex.set(-1);
-      undoProgress.set(0);
-      undoFromTranslateX.set(0);
-      isDragging.set(false);
-      gestureStartYRatio.set(0.5);
-      setActiveIndex(restoredIndex);
-      setUndoTransition(null);
-      isAnimating.set(false);
-      applyImmediateRuntimeState(false, false);
-      onUndoRef.current?.({
-        item: restoredItem,
-        index: restoredIndex,
-        direction: pendingRestore.direction,
-      });
-      onIndexChangeRef.current?.(restoredIndex);
-    },
-    [
-      activeItemIndex,
-      activeTranslateX,
-      activeTranslateY,
-      applyImmediateRuntimeState,
-      cancelPendingUndoRestore,
-      dragItemIndex,
-      gestureStartYRatio,
-      isAnimating,
-      isDragging,
-      signedSwipeProgress,
-      swipeDirectionSignal,
-      swipeProgress,
-      undoFromTranslateX,
-      undoProgress,
-    ],
-  );
-
-  const undoProgrammatically = useCallback(
-    (motionOverride?: SwipeDeckUndoMotionRecipe) => {
-      const currentData = dataRef.current;
-      const currentLayout = layoutRef.current;
-      const runtime = dismissRuntimeRef.current;
-
-      if (!undoEnabledRef.current) {
-        return false;
-      }
-
-      const didPruneHistory = pruneUndoHistoryForCurrentData();
-      const resolvedHistory = resolveLatestSwipeDeckUndoHistoryEntry(
-        undoHistoryRef.current,
-        currentData,
-        undoKeyIndexRef.current,
-      );
-
-      if (!runtime || !resolvedHistory) {
-        if (didPruneHistory) {
-          publishDeckStateSnapshot();
-        }
-
-        return false;
-      }
-
-      if (disabledRef.current || isAnimating.get() || isDragging.get()) {
-        return false;
-      }
-
-      if (currentLayout.width <= 0 || currentLayout.height <= 0) {
-        return false;
-      }
-
-      const undoRuntime = resolveSwipeDeckProgrammaticUndoMotion({
-        defaultUndoMotion: undoMotionRef.current,
-        direction: resolvedHistory.entry.direction,
-        layout: currentLayout,
-        runtime,
-        undoMotion: motionOverride,
-      });
-      const nextRunId = restoreRunIdRef.current + 1;
-
-      restoreRunIdRef.current = nextRunId;
-      pendingUndoRestoreRef.current = {
-        direction: resolvedHistory.entry.direction,
-        key: resolvedHistory.entry.key,
-        runId: nextRunId,
-        token: resolvedHistory.entry.token,
-      };
-      cancelActiveInteractionAnimations();
-      isAnimating.set(true);
-      applyImmediateRuntimeState(true, false);
-      swipeProgress.set(0);
-      signedSwipeProgress.set(0);
-      swipeDirectionSignal.set(0);
-      activeTranslateX.set(0);
-      activeTranslateY.set(0);
-      isDragging.set(false);
-      dragItemIndex.set(-1);
-      gestureStartYRatio.set(0.5);
-      cancelAnimation(undoProgress);
-      undoProgress.set(1);
-      undoFromTranslateX.set(undoRuntime.from.translateX);
-      setUndoTransition({
-        index: resolvedHistory.index,
-        key: resolvedHistory.entry.key,
-        motion: undoRuntime,
-        runId: nextRunId,
-      });
-      return true;
-    },
-    [
-      activeTranslateX,
-      activeTranslateY,
-      applyImmediateRuntimeState,
-      cancelActiveInteractionAnimations,
-      dismissRuntimeRef,
-      dragItemIndex,
-      gestureStartYRatio,
-      isAnimating,
-      isDragging,
-      pruneUndoHistoryForCurrentData,
-      publishDeckStateSnapshot,
-      signedSwipeProgress,
-      swipeDirectionSignal,
-      swipeProgress,
-      undoFromTranslateX,
-      undoMotionRef,
-      undoProgress,
     ],
   );
 
@@ -808,6 +533,15 @@ function Root<T>({
     swipeProgressDistance,
   });
 
+  const stackRenderItems = getSwipeDeckStackRenderItems({
+    data,
+    activeIndex,
+    getKey,
+    undoIndex: undoTransition?.index,
+    undoKey: undoTransition?.key,
+    visibleCardCount,
+  });
+
   useLayoutEffect(() => {
     const currentAttachmentGeneration = attachmentGenerationRef.current + 1;
 
@@ -828,102 +562,6 @@ function Root<T>({
       detach();
     };
   }, [attachmentGeneration, deckStore, getDeckState, swipeProgrammatically, undoProgrammatically]);
-
-  useLayoutEffect(() => {
-    if (!undoTransition) {
-      return;
-    }
-
-    const pendingRestore = pendingUndoRestoreRef.current;
-
-    if (!pendingRestore || pendingRestore.runId !== undoTransition.runId) {
-      return;
-    }
-
-    const currentAttachmentGeneration = attachmentGenerationRef.current;
-    const undoMotionRuntime = undoTransition.motion;
-
-    cancelActiveInteractionAnimations();
-    cancelAnimation(undoProgress);
-    dragItemIndex.set(-1);
-    gestureStartYRatio.set(0.5);
-    swipeProgress.set(0);
-    signedSwipeProgress.set(0);
-    swipeDirectionSignal.set(0);
-    activeTranslateX.set(0);
-    activeTranslateY.set(0);
-    undoProgress.set(1);
-    undoFromTranslateX.set(undoMotionRuntime.from.translateX);
-
-    const handleRestoreCompletion = (finished: boolean | undefined) => {
-      'worklet';
-
-      if (!finished || currentAttachmentGeneration !== attachmentGeneration.get()) {
-        return;
-      }
-
-      scheduleOnRN(completeUndoRestoreIfCurrent, currentAttachmentGeneration, undoTransition.runId);
-    };
-
-    if (undoMotionRuntime.type === 'timing') {
-      const timingConfig = {
-        duration: undoMotionRuntime.duration,
-        easing: undoMotionRuntime.easing,
-      };
-
-      undoProgress.set(withTiming(0, timingConfig, handleRestoreCompletion));
-      return;
-    }
-
-    undoProgress.set(withSpring(0, undoMotionRuntime.springConfig, handleRestoreCompletion));
-  }, [
-    activeItemIndex,
-    activeTranslateX,
-    activeTranslateY,
-    attachmentGeneration,
-    cancelActiveInteractionAnimations,
-    completeUndoRestoreIfCurrent,
-    dragItemIndex,
-    gestureStartYRatio,
-    signedSwipeProgress,
-    swipeDirectionSignal,
-    swipeProgress,
-    undoTransition,
-    undoFromTranslateX,
-    undoProgress,
-  ]);
-
-  useLayoutEffect(() => {
-    undoEnabledRef.current = undoEnabled;
-    undoKeyIndexRef.current = undoEnabled
-      ? createSwipeDeckUndoKeyIndex(dataRef.current, getKeyRef.current)
-      : new Map();
-    pruneUndoHistoryForCurrentData();
-    cancelPendingUndoRestoreIfInvalid();
-    publishDeckStateSnapshot();
-  }, [
-    cancelPendingUndoRestoreIfInvalid,
-    pruneUndoHistoryForCurrentData,
-    publishDeckStateSnapshot,
-    undoEnabled,
-  ]);
-
-  useLayoutEffect(() => {
-    dataRef.current = data;
-    getKeyRef.current = getKey;
-    undoKeyIndexRef.current = undoEnabledRef.current
-      ? createSwipeDeckUndoKeyIndex(data, getKey)
-      : new Map();
-    pruneUndoHistoryForCurrentData();
-    cancelPendingUndoRestoreIfInvalid();
-    publishDeckStateSnapshot();
-  }, [
-    cancelPendingUndoRestoreIfInvalid,
-    data,
-    getKey,
-    pruneUndoHistoryForCurrentData,
-    publishDeckStateSnapshot,
-  ]);
 
   useEffect(() => {
     activeIndexRef.current = activeIndex;
