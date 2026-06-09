@@ -708,6 +708,9 @@ function Root<T>({
       isDragging.set(false);
       dragItemIndex.set(-1);
       gestureStartYRatio.set(0.5);
+      cancelAnimation(undoProgress);
+      undoProgress.set(1);
+      undoFromTranslateX.set(undoRuntime.from.translateX);
       setUndoTransition({
         index: resolvedHistory.index,
         key: resolvedHistory.entry.key,
@@ -730,6 +733,8 @@ function Root<T>({
       signedSwipeProgress,
       swipeDirectionSignal,
       swipeProgress,
+      undoFromTranslateX,
+      undoProgress,
     ],
   );
 
