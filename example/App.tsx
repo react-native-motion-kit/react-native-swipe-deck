@@ -160,6 +160,9 @@ export default function App() {
             undoEnabled
             visibleCardCount={3}
             containerStyle={styles.deck}
+            onUndo={({ item, direction }) => {
+              console.log(`Undid ${item.name} ${direction}`);
+            }}
             onSwipe={({ item, direction }) => {
               console.log(`Swiped ${item.name} ${direction}`);
             }}
