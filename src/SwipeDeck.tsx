@@ -21,7 +21,6 @@ import {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { SwipeDeckRenderedCardMotionConfig } from './SwipeDeckRenderedCard';
 import type {
   SwipeDeckActionMotionRecipe,
   SwipeDeckCardProps,
@@ -33,17 +32,13 @@ import type {
   SwipeDeckStaticRootProps,
   SwipeDirection,
   SwipeDeckMotionPreset,
-  SwipeDeckMotionEasing,
   SwipeDeckUndoMotionRecipe,
 } from './types';
 
-import { resolveSwipeDeckActionMotionRecipe } from './actionMotion';
 import {
-  mergeSwipeDeckMotionPreset,
   resolveSwipeDeckDismissDestinationDistance,
   resolveSwipeDeckDismissDuration,
   resolveSwipeDeckGestureStartYRatio,
-  resolveSwipeDeckMotionConfig,
 } from './animation';
 import { getSwipeDeckState } from './deckState';
 import { resolveSwipeDirection } from './directions';
@@ -71,7 +66,8 @@ import {
   type SwipeDeckUndoHistoryEntry,
   type SwipeDeckUndoKeyIndex,
 } from './undoHistory';
-import { resolveSwipeDeckUndoMotionRecipe, type ResolvedSwipeDeckUndoMotion } from './undoMotion';
+import { type ResolvedSwipeDeckUndoMotion } from './undoMotion';
+import { useSwipeDeckMotionRuntime } from './useSwipeDeckMotionRuntime';
 import { clampActiveIndex } from './windowing';
 
 function findCardSlot<T>(children: ReactNode): ReactElement<SwipeDeckCardProps<T>> | null {
@@ -174,30 +170,7 @@ function Root<T>({
   const onUndoRef = useRef(onUndo);
   const onIndexChangeRef = useRef(onIndexChange);
   const onEndReachedRef = useRef(onEndReached);
-  const actionMotionRef = useRef<SwipeDeckActionMotionRecipe | undefined>(
-    resolveSwipeDeckActionMotionRecipe({
-      defaultActionMotion: factoryActionMotion,
-      rootActionMotion: actionMotion,
-    }),
-  );
-  const undoMotionRef = useRef<SwipeDeckUndoMotionRecipe | undefined>(
-    resolveSwipeDeckUndoMotionRecipe({
-      defaultUndoMotion: factoryUndoMotion,
-      rootUndoMotion: undoMotion,
-    }),
-  );
   const pendingCommitResetRef = useRef(false);
-  const dismissRuntimeRef = useRef<{
-    duration?: number;
-    easing: SwipeDeckMotionEasing;
-    maxDuration: number;
-    minDuration: number;
-    offscreenMultiplier: number;
-    rotationDirection: SwipeDeckRenderedCardMotionConfig['rotation']['direction'];
-    rotationMaxDegrees: number;
-    rotationMode: SwipeDeckRenderedCardMotionConfig['rotation']['mode'];
-    rotationOrigin: SwipeDeckRenderedCardMotionConfig['rotation']['origin'];
-  } | null>(null);
   const cardSlot = findCardSlot<T>(children);
   const hasActiveCard = getActiveRenderItemId(data.length, activeIndex) >= 0;
   const activeRenderItemId = getActiveRenderItemId(data.length, activeIndex);
@@ -209,56 +182,31 @@ function Root<T>({
     undoKey: undoTransition?.key,
     visibleCardCount,
   });
-  const motionConfig = useMemo(() => {
-    const rootMotion = mergeSwipeDeckMotionPreset(factoryMotion, motion);
-
-    return resolveSwipeDeckMotionConfig(rootMotion, {
-      width: layout.width,
-      height: layout.height,
-    });
-  }, [factoryMotion, layout.height, layout.width, motion]);
-  const cardMotionConfig = useMemo<SwipeDeckRenderedCardMotionConfig>(
-    () => ({
-      nextScale: motionConfig.nextScale,
-      nextOpacity: motionConfig.nextOpacity,
-      nextTranslateY: motionConfig.nextTranslateY,
-      drag: {
-        mode: motionConfig.drag.mode,
-        liftYFactor: motionConfig.drag.liftYFactor,
-      },
-      rotation: {
-        mode: motionConfig.rotation.mode,
-        origin: motionConfig.rotation.origin,
-        direction: motionConfig.rotation.direction,
-        maxDegrees: motionConfig.rotation.maxDegrees,
-        inputRange: motionConfig.rotation.inputRange,
-      },
-    }),
-    [
-      motionConfig.drag.liftYFactor,
-      motionConfig.drag.mode,
-      motionConfig.nextOpacity,
-      motionConfig.nextScale,
-      motionConfig.nextTranslateY,
-      motionConfig.rotation.direction,
-      motionConfig.rotation.inputRange,
-      motionConfig.rotation.maxDegrees,
-      motionConfig.rotation.mode,
-      motionConfig.rotation.origin,
-    ],
-  );
-  const resolvedSwipeThreshold =
-    typeof swipeThreshold === 'function'
-      ? swipeThreshold(layout)
-      : (swipeThreshold ?? motionConfig.dismiss.threshold);
-  const resolvedVelocityThreshold = velocityThreshold ?? motionConfig.dismiss.velocityThreshold;
-  const cancelSpringConfig = motionConfig.cancelSpringConfig;
-  const dismissDuration = motionConfig.dismiss.duration;
-  const dismissEasing = motionConfig.dismiss.easing;
-  const dismissMaxDuration = motionConfig.dismiss.maxDuration;
-  const dismissMinDuration = motionConfig.dismiss.minDuration;
-  const dismissOffscreenMultiplier = motionConfig.dismiss.offscreenMultiplier;
-  const swipeProgressDistance = motionConfig.swipeProgressDistance;
+  const {
+    actionMotionRef,
+    cardMotionConfig,
+    cancelSpringConfig,
+    dismissDuration,
+    dismissEasing,
+    dismissMaxDuration,
+    dismissMinDuration,
+    dismissOffscreenMultiplier,
+    dismissRuntimeRef,
+    resolvedSwipeThreshold,
+    resolvedVelocityThreshold,
+    swipeProgressDistance,
+    undoMotionRef,
+  } = useSwipeDeckMotionRuntime({
+    actionMotion,
+    factoryActionMotion,
+    factoryMotion,
+    factoryUndoMotion,
+    layout,
+    motion,
+    swipeThreshold,
+    undoMotion,
+    velocityThreshold,
+  });
 
   const getDeckState = useCallback(() => {
     return getSwipeDeckState({
@@ -687,6 +635,7 @@ function Root<T>({
       activeTranslateY,
       applyImmediateRuntimeState,
       cancelActiveInteractionAnimations,
+      dismissRuntimeRef,
       dragItemIndex,
       gestureStartYRatio,
       isAnimating,
@@ -697,6 +646,7 @@ function Root<T>({
       swipeDirectionSignal,
       swipeProgress,
       undoFromTranslateX,
+      undoMotionRef,
       undoProgress,
     ],
   );
@@ -815,11 +765,13 @@ function Root<T>({
       return true;
     },
     [
+      actionMotionRef,
       activeItemIndex,
       activeTranslateX,
       activeTranslateY,
       attachmentGeneration,
       completeSwipeDismiss,
+      dismissRuntimeRef,
       dragItemIndex,
       gestureStartYRatio,
       isAnimating,
@@ -1176,44 +1128,6 @@ function Root<T>({
   useEffect(() => {
     onEndReachedRef.current = onEndReached;
   }, [onEndReached]);
-
-  useLayoutEffect(() => {
-    actionMotionRef.current = resolveSwipeDeckActionMotionRecipe({
-      defaultActionMotion: factoryActionMotion,
-      rootActionMotion: actionMotion,
-    });
-  }, [actionMotion, factoryActionMotion]);
-
-  useLayoutEffect(() => {
-    undoMotionRef.current = resolveSwipeDeckUndoMotionRecipe({
-      defaultUndoMotion: factoryUndoMotion,
-      rootUndoMotion: undoMotion,
-    });
-  }, [factoryUndoMotion, undoMotion]);
-
-  useEffect(() => {
-    dismissRuntimeRef.current = {
-      duration: dismissDuration,
-      easing: dismissEasing,
-      maxDuration: dismissMaxDuration,
-      minDuration: dismissMinDuration,
-      offscreenMultiplier: dismissOffscreenMultiplier,
-      rotationDirection: cardMotionConfig.rotation.direction,
-      rotationMaxDegrees: cardMotionConfig.rotation.maxDegrees,
-      rotationMode: cardMotionConfig.rotation.mode,
-      rotationOrigin: cardMotionConfig.rotation.origin,
-    };
-  }, [
-    cardMotionConfig.rotation.direction,
-    cardMotionConfig.rotation.maxDegrees,
-    cardMotionConfig.rotation.mode,
-    cardMotionConfig.rotation.origin,
-    dismissDuration,
-    dismissEasing,
-    dismissMaxDuration,
-    dismissMinDuration,
-    dismissOffscreenMultiplier,
-  ]);
 
   useEffect(() => {
     const nextIndex = clampActiveIndex(data.length, activeIndex);

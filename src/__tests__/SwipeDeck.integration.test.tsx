@@ -261,6 +261,74 @@ describe('SwipeDeck factory hooks', () => {
     expect(await screen.findByText('state:2:true')).toBeOnTheScreen();
   });
 
+  it('refreshes root action motion before immediate post-rerender actions observe interaction state', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const actions = ProfileDeck.useDeckActions();
+      const interaction = ProfileDeck.useDeckInteraction();
+      const [probe, setProbe] = useState('none');
+
+      return (
+        <View>
+          <Text>probe:{probe}</Text>
+          <Pressable
+            accessibilityLabel="Probe swipe right"
+            accessibilityRole="button"
+            onPress={() => {
+              const accepted = actions.swipeRight();
+
+              setProbe(`${String(accepted)}:${interaction.direction.get()}`);
+            }}
+          >
+            <Text>Probe swipe right</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function Example({
+      actionMotion,
+    }: {
+      actionMotion:
+        | ReturnType<typeof SwipeDeckActionMotion.direct>
+        | ReturnType<typeof SwipeDeckActionMotion.springboard>;
+    }) {
+      return (
+        <>
+          <DeckControls />
+          <ProfileDeck.Root
+            actionMotion={actionMotion}
+            data={[adaProfile, graceProfile, linusProfile]}
+            getKey={getProfileKey}
+          >
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    const renderResult = await render(
+      <Example actionMotion={SwipeDeckActionMotion.direct({ duration: 120 })} />,
+    );
+    await measureDeckFromVisibleCard('Ada');
+
+    await user.press(screen.getByRole('button', { name: 'Probe swipe right' }));
+
+    expect(await screen.findByText('probe:true:1')).toBeOnTheScreen();
+    expect(screen.getByText('Grace')).toBeOnTheScreen();
+
+    await renderResult.rerender(
+      <Example actionMotion={SwipeDeckActionMotion.springboard({ anticipationDuration: 120 })} />,
+    );
+
+    await user.press(screen.getByRole('button', { name: 'Probe swipe right' }));
+
+    expect(await screen.findByText('probe:true:0')).toBeOnTheScreen();
+    expect(screen.getByText('Linus')).toBeOnTheScreen();
+  });
+
   it('restores the latest swiped card through callback-safe undo actions', async () => {
     const ProfileDeck = createSwipeDeck<Profile>({
       undoMotion: SwipeDeckUndoMotion.timing({
