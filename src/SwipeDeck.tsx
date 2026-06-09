@@ -67,6 +67,7 @@ import {
   pruneSwipeDeckUndoHistory,
   removeSwipeDeckUndoHistoryEntryByToken,
   resolveLatestSwipeDeckUndoHistoryEntry,
+  resolveSwipeDeckUndoRestoreTarget,
   type SwipeDeckUndoHistoryEntry,
   type SwipeDeckUndoKeyIndex,
 } from './undoHistory';
@@ -522,13 +523,14 @@ function Root<T>({
       }
 
       const currentData = dataRef.current;
-      const restoredIndex = undoKeyIndexRef.current.get(pendingRestore.key) ?? -1;
-      const restoredItem = restoredIndex >= 0 ? currentData[restoredIndex] : undefined;
-      const isRestoredItemValid =
-        restoredItem !== undefined &&
-        getKeyRef.current(restoredItem, restoredIndex) === pendingRestore.key;
+      const restoreTarget = resolveSwipeDeckUndoRestoreTarget({
+        data: currentData,
+        getKey: getKeyRef.current,
+        key: pendingRestore.key,
+        keyIndex: undoKeyIndexRef.current,
+      });
 
-      if (!isRestoredItemValid) {
+      if (!restoreTarget) {
         undoHistoryRef.current = removeSwipeDeckUndoHistoryEntryByToken(
           undoHistoryRef.current,
           pendingRestore.token,
@@ -551,6 +553,7 @@ function Root<T>({
         return;
       }
 
+      const { index: restoredIndex, item: restoredItem } = restoreTarget;
       const isPendingHistoryValid = undoHistoryRef.current.some(
         (entry) => entry.token === pendingRestore.token,
       );

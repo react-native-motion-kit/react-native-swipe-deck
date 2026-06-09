@@ -8,6 +8,7 @@ import {
   pruneSwipeDeckUndoHistory,
   removeSwipeDeckUndoHistoryEntryByToken,
   resolveLatestSwipeDeckUndoHistoryEntry,
+  resolveSwipeDeckUndoRestoreTarget,
   type SwipeDeckUndoHistoryEntry,
 } from '../undoHistory';
 
@@ -104,6 +105,63 @@ describe('undo history helpers', () => {
     ).toMatchObject({
       index: 2,
       item: graceProfile,
+    });
+  });
+
+  it('resolves an undo restore target by current key index', () => {
+    const data = [graceProfile, adaProfile];
+
+    expect(
+      resolveSwipeDeckUndoRestoreTarget({
+        data,
+        getKey: getProfileKey,
+        key: 'ada',
+        keyIndex: createSwipeDeckUndoKeyIndex(data, getProfileKey),
+      }),
+    ).toEqual({
+      index: 1,
+      item: adaProfile,
+    });
+  });
+
+  it('returns null when the restore target key is missing', () => {
+    const data = [adaProfile];
+
+    expect(
+      resolveSwipeDeckUndoRestoreTarget({
+        data,
+        getKey: getProfileKey,
+        key: 'missing',
+        keyIndex: createSwipeDeckUndoKeyIndex(data, getProfileKey),
+      }),
+    ).toBeNull();
+  });
+
+  it('returns null when a stale key index points to a different current item key', () => {
+    expect(
+      resolveSwipeDeckUndoRestoreTarget({
+        data: [graceProfile],
+        getKey: getProfileKey,
+        key: 'ada',
+        keyIndex: new Map([['ada', 0]]),
+      }),
+    ).toBeNull();
+  });
+
+  it('resolves an empty string restore target key', () => {
+    const emptyKeyProfile = { id: '', name: 'Empty' };
+    const data = [emptyKeyProfile];
+
+    expect(
+      resolveSwipeDeckUndoRestoreTarget({
+        data,
+        getKey: getProfileKey,
+        key: '',
+        keyIndex: createSwipeDeckUndoKeyIndex(data, getProfileKey),
+      }),
+    ).toEqual({
+      index: 0,
+      item: emptyKeyProfile,
     });
   });
 

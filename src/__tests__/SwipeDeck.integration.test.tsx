@@ -371,6 +371,14 @@ describe('SwipeDeck factory hooks', () => {
       item: profiles[0],
     });
     expect(onIndexChange.mock.calls).toEqual([[1], [0]]);
+    const undoCallOrder = onUndo.mock.invocationCallOrder[0];
+    const restoreIndexChangeCallOrder = onIndexChange.mock.invocationCallOrder[1];
+
+    if (undoCallOrder === undefined || restoreIndexChangeCallOrder === undefined) {
+      throw new Error('Expected undo and restore index-change callback order to be recorded.');
+    }
+
+    expect(undoCallOrder).toBeLessThan(restoreIndexChangeCallOrder);
   });
 
   it('tracks undo history from committed pan gestures when undo is enabled', async () => {

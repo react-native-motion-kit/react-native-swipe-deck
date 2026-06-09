@@ -24,6 +24,18 @@ type CreateSwipeDeckUndoHistoryEntryArgs<T> = {
   getKey: (item: T, index: number) => string;
 };
 
+type ResolveSwipeDeckUndoRestoreTargetArgs<T> = {
+  data: readonly T[];
+  getKey: (item: T, index: number) => string;
+  key: string;
+  keyIndex: SwipeDeckUndoKeyIndex;
+};
+
+type SwipeDeckUndoRestoreTarget<T> = {
+  index: number;
+  item: T;
+};
+
 export function createSwipeDeckUndoHistoryEntry<T>({
   token,
   item,
@@ -58,6 +70,26 @@ export function createSwipeDeckUndoKeyIndex<T>(
 
 function findItemIndexByKey(key: string, keyIndex: SwipeDeckUndoKeyIndex): number {
   return keyIndex.get(key) ?? -1;
+}
+
+export function resolveSwipeDeckUndoRestoreTarget<T>({
+  data,
+  getKey,
+  key,
+  keyIndex,
+}: ResolveSwipeDeckUndoRestoreTargetArgs<T>): SwipeDeckUndoRestoreTarget<T> | null {
+  const index = findItemIndexByKey(key, keyIndex);
+  const item = index >= 0 ? data[index] : undefined;
+
+  if (item === undefined) {
+    return null;
+  }
+
+  if (getKey(item, index) !== key) {
+    return null;
+  }
+
+  return { index, item };
 }
 
 export function resolveLatestSwipeDeckUndoHistoryEntry<T>(
