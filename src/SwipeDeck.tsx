@@ -37,7 +37,7 @@ import type {
   SwipeDeckUndoMotionRecipe,
 } from './types';
 
-import { resolveSwipeDeckActionMotion, resolveSwipeDeckActionMotionRecipe } from './actionMotion';
+import { resolveSwipeDeckActionMotionRecipe } from './actionMotion';
 import {
   mergeSwipeDeckMotionPreset,
   resolveSwipeDeckDismissDestinationDistance,
@@ -56,6 +56,8 @@ import {
   getActiveRenderItemId,
   resolveProgressDirection,
   resolveSignedSwipeProgress,
+  resolveSwipeDeckProgrammaticActionMotion,
+  resolveSwipeDeckProgrammaticUndoMotion,
 } from './swipeDeckRuntime';
 import {
   appendSwipeDeckUndoHistoryEntry,
@@ -68,11 +70,7 @@ import {
   type SwipeDeckUndoHistoryEntry,
   type SwipeDeckUndoKeyIndex,
 } from './undoHistory';
-import {
-  resolveSwipeDeckUndoMotion,
-  resolveSwipeDeckUndoMotionRecipe,
-  type ResolvedSwipeDeckUndoMotion,
-} from './undoMotion';
+import { resolveSwipeDeckUndoMotionRecipe, type ResolvedSwipeDeckUndoMotion } from './undoMotion';
 import { clampActiveIndex } from './windowing';
 
 function findCardSlot<T>(children: ReactNode): ReactElement<SwipeDeckCardProps<T>> | null {
@@ -643,25 +641,12 @@ function Root<T>({
         return false;
       }
 
-      const undoRecipe = resolveSwipeDeckUndoMotionRecipe({
+      const undoRuntime = resolveSwipeDeckProgrammaticUndoMotion({
         defaultUndoMotion: undoMotionRef.current,
+        direction: resolvedHistory.entry.direction,
+        layout: currentLayout,
+        runtime,
         undoMotion: motionOverride,
-      });
-      const defaultEntryDistance = resolveSwipeDeckDismissDestinationDistance({
-        offscreenMultiplier: runtime.offscreenMultiplier,
-        layout: currentLayout,
-        rotationMaxDegrees: runtime.rotationMaxDegrees,
-        rotationMode: runtime.rotationMode,
-        rotationOrigin: runtime.rotationOrigin,
-        rotationDirection: runtime.rotationDirection,
-        gestureStartYRatio: 0.5,
-        swipeDirection: resolvedHistory.entry.direction,
-      });
-      const undoRuntime = resolveSwipeDeckUndoMotion({
-        defaultEntryDistance,
-        layout: currentLayout,
-        originalDirection: resolvedHistory.entry.direction,
-        recipe: undoRecipe,
       });
       const nextRunId = restoreRunIdRef.current + 1;
 
@@ -719,20 +704,12 @@ function Root<T>({
       const currentIndex = activeIndexRef.current;
       const currentLayout = layoutRef.current;
       const runtime = dismissRuntimeRef.current;
-      const actionRuntime = runtime
-        ? resolveSwipeDeckActionMotion({
-            fallback: {
-              dismissDuration: runtime.duration,
-              dismissEasing: runtime.easing,
-              offscreenMultiplier: runtime.offscreenMultiplier,
-            },
-            layout: currentLayout,
-            recipe: resolveSwipeDeckActionMotionRecipe({
-              defaultActionMotion: actionMotionRef.current,
-              actionMotion: motionOverride,
-            }),
-          })
-        : null;
+      const actionRuntime = resolveSwipeDeckProgrammaticActionMotion({
+        actionMotion: motionOverride,
+        defaultActionMotion: actionMotionRef.current,
+        layout: currentLayout,
+        runtime,
+      });
       const currentAttachmentGeneration = attachmentGenerationRef.current;
 
       if (!runtime || !actionRuntime) {
