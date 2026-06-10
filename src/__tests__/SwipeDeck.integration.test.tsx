@@ -111,6 +111,82 @@ describe('SwipeDeck factory hooks', () => {
     expect(onIndexChange).toHaveBeenCalledWith(1);
   });
 
+  it('publishes final reset state after a programmatic swipe commit', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const onSwipe = jest.fn();
+    const onIndexChange = jest.fn();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const actions = ProfileDeck.useDeckActions();
+      const interaction = ProfileDeck.useDeckInteraction();
+      const [lastActionResult, setLastActionResult] = useState('none');
+      const [interactionText, setInteractionText] = useState('0:0:0');
+
+      useEffect(() => {
+        setInteractionText(
+          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}`,
+        );
+      }, [interaction, state.activeIndex, state.canSwipe, state.isCompleted]);
+
+      return (
+        <View>
+          <Text>
+            state:{state.activeIndex}:{state.count}:{String(state.canSwipe)}:
+            {String(state.isCompleted)}
+          </Text>
+          <Text>interaction:{interactionText}</Text>
+          <Text>action:{lastActionResult}</Text>
+          <Pressable
+            accessibilityLabel="Force swipe right"
+            accessibilityRole="button"
+            onPress={() => setLastActionResult(String(actions.swipeRight()))}
+          >
+            <Text>Force swipe right</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function Example() {
+      return (
+        <>
+          <DeckControls />
+          <ProfileDeck.Root
+            data={profiles}
+            getKey={getProfileKey}
+            onIndexChange={onIndexChange}
+            onSwipe={onSwipe}
+          >
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    expect(await screen.findByText('state:0:2:true:false')).toBeOnTheScreen();
+    expect(screen.getByText('interaction:0:0:0')).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Force swipe right' }));
+
+    expect(await screen.findByText('action:true')).toBeOnTheScreen();
+    expect(await screen.findByText('state:1:2:true:false')).toBeOnTheScreen();
+    expect(screen.getByText('interaction:0:0:0')).toBeOnTheScreen();
+    expect(screen.getByText('Grace')).toBeOnTheScreen();
+    expect(onSwipe).toHaveBeenCalledTimes(1);
+    expect(onSwipe).toHaveBeenCalledWith({
+      direction: 'right',
+      index: 0,
+      item: profiles[0],
+    });
+    expect(onIndexChange).toHaveBeenCalledTimes(1);
+    expect(onIndexChange).toHaveBeenCalledWith(1);
+  });
+
   it('does not scan the full data set for undo keys when undo is disabled', async () => {
     const ProfileDeck = createSwipeDeck<Profile>();
     const manyProfiles = Array.from({ length: 20 }, (_, index) => ({

@@ -12,8 +12,7 @@ import React, {
 } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
-import { cancelAnimation, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
+import { cancelAnimation, useSharedValue } from 'react-native-reanimated';
 
 import type {
   SwipeDeckActionMotionRecipe,
@@ -24,25 +23,18 @@ import type {
   SwipeDeckProps,
   SwipeDeckStatic,
   SwipeDeckStaticRootProps,
-  SwipeDirection,
   SwipeDeckMotionPreset,
   SwipeDeckUndoMotionRecipe,
 } from './types';
 
-import {
-  resolveSwipeDeckDismissDestinationDistance,
-  resolveSwipeDeckDismissDuration,
-} from './animation';
 import { getSwipeDeckState } from './deckState';
 import { createSwipeDeckRegistry, type SwipeDeckRegistry } from './registry';
 import { getSwipeDeckStackRenderItems } from './rendering';
-import { getSwipeCommit, shouldDeferActiveItemSync, shouldResetEndReached } from './state';
+import { shouldResetEndReached } from './state';
 import { SwipeDeckCard } from './SwipeDeckCard';
 import { SwipeDeckRenderedCard } from './SwipeDeckRenderedCard';
-import {
-  getActiveRenderItemId,
-  resolveSwipeDeckProgrammaticActionMotion,
-} from './swipeDeckRuntime';
+import { getActiveRenderItemId } from './swipeDeckRuntime';
+import { useSwipeDeckDismissRuntime } from './useSwipeDeckDismissRuntime';
 import { useSwipeDeckGestureRuntime } from './useSwipeDeckGestureRuntime';
 import { useSwipeDeckMotionRuntime } from './useSwipeDeckMotionRuntime';
 import { useSwipeDeckUndoRuntime } from './useSwipeDeckUndoRuntime';
@@ -124,7 +116,6 @@ function Root<T>({
   const onUndoRef = useRef(onUndo);
   const onIndexChangeRef = useRef(onIndexChange);
   const onEndReachedRef = useRef(onEndReached);
-  const pendingCommitResetRef = useRef(false);
   const cardSlot = findCardSlot<T>(children);
   const hasActiveCard = getActiveRenderItemId(data.length, activeIndex) >= 0;
   const activeRenderItemId = getActiveRenderItemId(data.length, activeIndex);
@@ -269,239 +260,37 @@ function Root<T>({
     undoProgress,
   });
 
-  const commitSwipe = useCallback(
-    (direction: SwipeDirection) => {
-      const currentData = dataRef.current;
-      const commit = getSwipeCommit(
-        currentData.length,
-        activeIndexRef.current,
-        endReachedRef.current,
-      );
-
-      if (!commit) {
-        return;
-      }
-
-      const item = currentData[commit.swipedIndex] as T;
-
-      recordSwipeForUndo({ item, index: commit.swipedIndex, direction });
-      onSwipeRef.current?.({ item, index: commit.swipedIndex, direction });
-      onIndexChangeRef.current?.(commit.nextIndex);
-      activeIndexRef.current = commit.nextIndex;
-      pendingCommitResetRef.current = true;
-      setActiveIndex(commit.nextIndex);
-
-      if (commit.shouldEmitEndReached) {
-        endReachedRef.current = true;
-        setEndReached(true);
-        onEndReachedRef.current?.();
-      }
-    },
-    [recordSwipeForUndo],
-  );
-
-  const commitSwipeIfCurrent = useCallback(
-    (generation: number, direction: SwipeDirection) => {
-      if (generation !== attachmentGenerationRef.current) {
-        return;
-      }
-
-      commitSwipe(direction);
-    },
-    [commitSwipe],
-  );
-
-  const resetInteractionAfterDismiss = useCallback(() => {
-    cancelActiveInteractionAnimations();
-    activeTranslateX.set(0);
-    activeTranslateY.set(0);
-    swipeProgress.set(0);
-    signedSwipeProgress.set(0);
-    swipeDirectionSignal.set(0);
-    isDragging.set(false);
-    gestureStartYRatio.set(0.5);
-    dragItemIndex.set(-1);
-  }, [
+  const { completeSwipeDismiss, swipeProgrammatically } = useSwipeDeckDismissRuntime({
+    actionMotionRef,
+    activeIndex,
+    activeIndexRef,
+    activeItemIndex,
+    activeRenderItemId,
     activeTranslateX,
     activeTranslateY,
+    applyImmediateRuntimeState,
+    attachmentGeneration,
+    attachmentGenerationRef,
     cancelActiveInteractionAnimations,
+    dataRef,
+    disabledRef,
+    dismissRuntimeRef,
     dragItemIndex,
+    endReachedRef,
     gestureStartYRatio,
+    isAnimating,
     isDragging,
+    layoutRef,
+    onEndReachedRef,
+    onIndexChangeRef,
+    onSwipeRef,
+    recordSwipeForUndo,
+    setActiveIndex,
+    setEndReached,
     signedSwipeProgress,
     swipeDirectionSignal,
     swipeProgress,
-  ]);
-
-  const completeSwipeDismiss = useCallback(
-    (
-      finished: boolean | undefined,
-      currentAttachmentGeneration: number,
-      direction: SwipeDirection,
-    ) => {
-      'worklet';
-
-      if (!finished || currentAttachmentGeneration !== attachmentGeneration.get()) {
-        return;
-      }
-
-      const nextActiveItemIndex = activeItemIndex.get() + 1;
-
-      activeItemIndex.set(nextActiveItemIndex);
-      activeTranslateX.set(0);
-      activeTranslateY.set(0);
-      swipeProgress.set(0);
-      signedSwipeProgress.set(0);
-      swipeDirectionSignal.set(0);
-      isDragging.set(false);
-      dragItemIndex.set(-1);
-      scheduleOnRN(commitSwipeIfCurrent, currentAttachmentGeneration, direction);
-    },
-    [
-      activeItemIndex,
-      activeTranslateX,
-      activeTranslateY,
-      attachmentGeneration,
-      commitSwipeIfCurrent,
-      dragItemIndex,
-      isDragging,
-      signedSwipeProgress,
-      swipeDirectionSignal,
-      swipeProgress,
-    ],
-  );
-
-  const swipeProgrammatically = useCallback(
-    (direction: SwipeDirection, motionOverride?: SwipeDeckActionMotionRecipe) => {
-      const currentData = dataRef.current;
-      const currentIndex = activeIndexRef.current;
-      const currentLayout = layoutRef.current;
-      const runtime = dismissRuntimeRef.current;
-      const actionRuntime = resolveSwipeDeckProgrammaticActionMotion({
-        actionMotion: motionOverride,
-        defaultActionMotion: actionMotionRef.current,
-        layout: currentLayout,
-        runtime,
-      });
-      const currentAttachmentGeneration = attachmentGenerationRef.current;
-
-      if (!runtime || !actionRuntime) {
-        return false;
-      }
-
-      if (disabledRef.current || isAnimating.get() || isDragging.get()) {
-        return false;
-      }
-
-      if (currentLayout.width <= 0 || currentLayout.height <= 0) {
-        return false;
-      }
-
-      if (currentIndex < 0 || currentIndex >= currentData.length) {
-        return false;
-      }
-
-      isAnimating.set(true);
-      isDragging.set(true);
-      applyImmediateRuntimeState(true, true);
-      gestureStartYRatio.set(0.5);
-      dragItemIndex.set(activeItemIndex.get());
-
-      const destinationDistance = resolveSwipeDeckDismissDestinationDistance({
-        offscreenMultiplier: actionRuntime.offscreenMultiplier,
-        layout: currentLayout,
-        rotationMaxDegrees: runtime.rotationMaxDegrees,
-        rotationMode: runtime.rotationMode,
-        rotationOrigin: runtime.rotationOrigin,
-        rotationDirection: runtime.rotationDirection,
-        gestureStartYRatio: 0.5,
-        swipeDirection: direction,
-      });
-      const exitX = direction === 'right' ? destinationDistance : -destinationDistance;
-      const progressDirection = direction === 'right' ? 1 : -1;
-      const resolvedDismissDuration = resolveSwipeDeckDismissDuration({
-        translationX: activeTranslateX.get(),
-        velocityX: 0,
-        destinationX: exitX,
-        duration: actionRuntime.dismissDuration,
-        minDuration: runtime.minDuration,
-        maxDuration: runtime.maxDuration,
-      });
-      const dismissTimingConfig = {
-        duration: resolvedDismissDuration,
-        easing: actionRuntime.dismissEasing,
-      };
-      const handleDismissCompletion = (finished: boolean | undefined) => {
-        'worklet';
-
-        completeSwipeDismiss(finished, currentAttachmentGeneration, direction);
-      };
-
-      if (actionRuntime.type === 'springboard') {
-        const anticipationTimingConfig = {
-          duration: actionRuntime.anticipationDuration,
-          easing: actionRuntime.anticipationEasing,
-        };
-        const anticipationX = -progressDirection * actionRuntime.anticipationDistance;
-        const handleAnticipationCompletion = (finished: boolean | undefined) => {
-          'worklet';
-
-          if (!finished || currentAttachmentGeneration !== attachmentGeneration.get()) {
-            return;
-          }
-
-          swipeDirectionSignal.set(progressDirection);
-        };
-
-        swipeDirectionSignal.set(0);
-        signedSwipeProgress.set(
-          withSequence(
-            withTiming(0, anticipationTimingConfig),
-            withTiming(progressDirection, dismissTimingConfig),
-          ),
-        );
-        swipeProgress.set(
-          withSequence(withTiming(0, anticipationTimingConfig), withTiming(1, dismissTimingConfig)),
-        );
-        activeTranslateY.set(
-          withSequence(withTiming(0, anticipationTimingConfig), withTiming(0, dismissTimingConfig)),
-        );
-        activeTranslateX.set(
-          withSequence(
-            withTiming(anticipationX, anticipationTimingConfig, handleAnticipationCompletion),
-            withTiming(exitX, dismissTimingConfig, handleDismissCompletion),
-          ),
-        );
-
-        return true;
-      }
-
-      swipeDirectionSignal.set(progressDirection);
-      signedSwipeProgress.set(withTiming(progressDirection, dismissTimingConfig));
-      swipeProgress.set(withTiming(1, dismissTimingConfig));
-      activeTranslateY.set(withTiming(0, dismissTimingConfig));
-      activeTranslateX.set(withTiming(exitX, dismissTimingConfig, handleDismissCompletion));
-
-      return true;
-    },
-    [
-      actionMotionRef,
-      activeItemIndex,
-      activeTranslateX,
-      activeTranslateY,
-      attachmentGeneration,
-      completeSwipeDismiss,
-      dismissRuntimeRef,
-      dragItemIndex,
-      gestureStartYRatio,
-      isAnimating,
-      isDragging,
-      applyImmediateRuntimeState,
-      signedSwipeProgress,
-      swipeDirectionSignal,
-      swipeProgress,
-    ],
-  );
+  });
 
   const pan = useSwipeDeckGestureRuntime({
     activeItemIndex,
@@ -563,6 +352,8 @@ function Root<T>({
     };
   }, [attachmentGeneration, deckStore, getDeckState, swipeProgrammatically, undoProgrammatically]);
 
+  // Root owns public deck-state publication for any active-index change.
+  // Dismiss runtime separately owns active render-item sync and post-dismiss reset ordering.
   useEffect(() => {
     activeIndexRef.current = activeIndex;
     publishDeckStateSnapshot();
@@ -610,34 +401,6 @@ function Root<T>({
       setEndReached(false);
     }
   }, [activeIndex, data.length]);
-
-  useLayoutEffect(() => {
-    activeIndexRef.current = activeIndex;
-
-    const hasPendingCommitReset = pendingCommitResetRef.current;
-
-    if (shouldDeferActiveItemSync(isAnimating.get(), hasPendingCommitReset)) {
-      return;
-    }
-
-    activeItemIndex.set(activeRenderItemId);
-
-    if (!hasPendingCommitReset) {
-      return;
-    }
-
-    pendingCommitResetRef.current = false;
-    resetInteractionAfterDismiss();
-    isAnimating.set(false);
-    applyImmediateRuntimeState(false, false);
-  }, [
-    activeIndex,
-    activeRenderItemId,
-    activeItemIndex,
-    isAnimating,
-    resetInteractionAfterDismiss,
-    applyImmediateRuntimeState,
-  ]);
 
   if (!cardSlot) {
     return <View onLayout={handleLayout} style={[styles.container, containerStyle]} />;
