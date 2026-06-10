@@ -5,7 +5,7 @@ import { Gesture } from 'react-native-gesture-handler';
 import { useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { SwipeDeckRenderedCardMotionConfig } from '../components/SwipeDeckRenderedCard';
+import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
 import type { SwipeDeckLayout, SwipeDeckMotionEasing, SwipeDirection } from '../types';
 
 import { resolveSwipeDirection } from '../core/directions';

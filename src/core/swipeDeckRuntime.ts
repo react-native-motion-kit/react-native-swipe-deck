@@ -1,4 +1,3 @@
-import type { SwipeDeckRenderedCardMotionConfig } from '../components/SwipeDeckRenderedCard';
 import type {
   SwipeDeckActionMotionRecipe,
   SwipeDeckLayout,
@@ -6,6 +5,7 @@ import type {
   SwipeDeckUndoMotionRecipe,
   SwipeDirection,
 } from '../types';
+import type { SwipeDeckRenderedCardMotionConfig } from './renderedCardMotionTypes';
 
 import {
   resolveSwipeDeckActionMotion,

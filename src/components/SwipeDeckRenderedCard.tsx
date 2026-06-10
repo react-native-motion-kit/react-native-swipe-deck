@@ -4,16 +4,10 @@ import { Fragment } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
+import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
 import type { SwipeRenderTransition } from '../core/rendering';
 import type { SwipeWindowDescriptor } from '../core/windowing';
-import type {
-  SwipeDeckCardProps,
-  SwipeDeckTinderFixedRotationOrigin,
-  SwipeDeckTinderRotationDirection,
-  SwipeDeckTinderRotationMode,
-  SwipeDeckTinderDragMode,
-  SwipeRenderInfo,
-} from '../types';
+import type { SwipeDeckCardProps, SwipeRenderInfo } from '../types';
 
 import {
   resolveSwipeDeckDragTranslateY,
@@ -22,23 +16,6 @@ import {
 } from '../motion/animation';
 
 const STACK_TRANSFORM_ORIGIN: [string, string, number] = ['50%', '0%', 0];
-
-export type SwipeDeckRenderedCardMotionConfig = {
-  nextScale: number;
-  nextOpacity: number;
-  nextTranslateY: number;
-  drag: {
-    mode: SwipeDeckTinderDragMode;
-    liftYFactor: number;
-  };
-  rotation: {
-    mode: SwipeDeckTinderRotationMode;
-    origin?: SwipeDeckTinderFixedRotationOrigin;
-    direction?: SwipeDeckTinderRotationDirection;
-    maxDegrees: number;
-    inputRange: number;
-  };
-};
 
 type SwipeDeckRenderedCardProps<T> = {
   itemIndex: number;

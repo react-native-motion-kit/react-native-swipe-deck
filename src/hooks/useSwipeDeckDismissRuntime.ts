@@ -5,7 +5,7 @@ import { useCallback, useLayoutEffect, useRef } from 'react';
 import { withSequence, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { SwipeDeckRenderedCardMotionConfig } from '../components/SwipeDeckRenderedCard';
+import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
 import type {
   SwipeDeckActionMotionRecipe,
   SwipeDeckLayout,

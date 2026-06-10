@@ -3,7 +3,7 @@ import type { WithSpringConfig } from 'react-native-reanimated';
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
-import type { SwipeDeckRenderedCardMotionConfig } from '../components/SwipeDeckRenderedCard';
+import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
 import type {
   SwipeDeckActionMotionRecipe,
   SwipeDeckLayout,
