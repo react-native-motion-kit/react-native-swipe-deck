@@ -2,9 +2,9 @@ import type { GestureResponderEvent } from 'react-native';
 
 import { describe, expect, it, jest } from '@jest/globals';
 
-import { SwipeDeckActionMotion } from '../actionMotion';
-import { createSwipeDeckRegistry } from '../registry';
-import { SwipeDeckUndoMotion } from '../undoMotion';
+import { SwipeDeckActionMotion } from '../motion/actionMotion';
+import { SwipeDeckUndoMotion } from '../motion/undoMotion';
+import { createSwipeDeckRegistry } from '../registry/registry';
 
 function createAttachedState(canUndo = false) {
   return {

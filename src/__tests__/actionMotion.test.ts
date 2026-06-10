@@ -10,7 +10,7 @@ import {
   resolveSwipeDeckActionMotion,
   resolveSwipeDeckActionMotionRecipe,
   SwipeDeckActionMotion,
-} from '../actionMotion';
+} from '../motion/actionMotion';
 
 const fallback = {
   dismissDuration: undefined,

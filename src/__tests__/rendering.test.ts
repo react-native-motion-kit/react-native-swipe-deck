@@ -5,8 +5,8 @@ import {
   getSwipeRenderItems,
   getSwipeStackRenderItems,
   getSwipeUndoRenderItems,
-} from '../rendering';
-import { getSwipeCommit, shouldDeferActiveItemSync, shouldResetEndReached } from '../state';
+} from '../core/rendering';
+import { getSwipeCommit, shouldDeferActiveItemSync, shouldResetEndReached } from '../core/state';
 
 const getProfileKey = (item: { id: string }) => item.id;
 

@@ -8,10 +8,10 @@ import type {
   SwipeDeckState,
   SwipeDirection,
   SwipeDeckUndoMotionRecipe,
-} from './types';
+} from '../types';
 
-import { isSwipeDeckActionMotionRecipe } from './actionMotion';
-import { isSwipeDeckUndoMotionRecipe } from './undoMotion';
+import { isSwipeDeckActionMotionRecipe } from '../motion/actionMotion';
+import { isSwipeDeckUndoMotionRecipe } from '../motion/undoMotion';
 
 const DEFAULT_DECK_KEY = Symbol('default-deck');
 const DEFAULT_DECK_LABEL = '__default__';

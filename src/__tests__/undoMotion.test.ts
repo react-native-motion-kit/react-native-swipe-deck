@@ -11,7 +11,7 @@ import {
   resolveSwipeDeckUndoMotion,
   resolveSwipeDeckUndoMotionRecipe,
   SwipeDeckUndoMotion,
-} from '../undoMotion';
+} from '../motion/undoMotion';
 
 describe('SwipeDeckUndoMotion', () => {
   it('keeps undo actions assignable to React Native press callbacks', () => {

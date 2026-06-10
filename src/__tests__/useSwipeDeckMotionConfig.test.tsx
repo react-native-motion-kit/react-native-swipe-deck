@@ -4,12 +4,12 @@ import { Easing } from 'react-native-reanimated';
 
 import type { SwipeDeckActionMotionRecipe, SwipeDeckUndoMotionRecipe } from '../types';
 
-import { SwipeDeckActionMotion } from '../actionMotion';
-import { SwipeDeckMotion } from '../animation';
-import { SwipeDeckUndoMotion } from '../undoMotion';
-import { useSwipeDeckMotionRuntime } from '../useSwipeDeckMotionRuntime';
+import { useSwipeDeckMotionConfig } from '../hooks/useSwipeDeckMotionConfig';
+import { SwipeDeckActionMotion } from '../motion/actionMotion';
+import { SwipeDeckMotion } from '../motion/animation';
+import { SwipeDeckUndoMotion } from '../motion/undoMotion';
 
-describe('useSwipeDeckMotionRuntime', () => {
+describe('useSwipeDeckMotionConfig', () => {
   it('preserves factory/root motion merge and root threshold overrides', async () => {
     const factoryMotion = SwipeDeckMotion.tinder({
       drag: { mode: 'horizontal', liftYFactor: 0.2 },
@@ -22,7 +22,7 @@ describe('useSwipeDeckMotionRuntime', () => {
     });
 
     const { result } = await renderHook(() =>
-      useSwipeDeckMotionRuntime({
+      useSwipeDeckMotionConfig({
         factoryMotion,
         layout: { width: 400, height: 600 },
         motion: rootMotion,
@@ -58,7 +58,7 @@ describe('useSwipeDeckMotionRuntime', () => {
         actionMotion: SwipeDeckActionMotionRecipe;
         undoMotion: SwipeDeckUndoMotionRecipe;
       }) =>
-        useSwipeDeckMotionRuntime({
+        useSwipeDeckMotionConfig({
           actionMotion: props.actionMotion,
           factoryActionMotion,
           factoryUndoMotion,
@@ -108,7 +108,7 @@ describe('useSwipeDeckMotionRuntime', () => {
 
     const { result, rerender } = await renderHook(
       (props: { motion: typeof initialMotion; width: number }) =>
-        useSwipeDeckMotionRuntime({
+        useSwipeDeckMotionConfig({
           layout: { width: props.width, height: 500 },
           motion: props.motion,
         }),

@@ -1,4 +1,4 @@
-import type { SwipeRenderInfo } from './types';
+import type { SwipeRenderInfo } from '../types';
 import type { SwipeWindowDescriptor } from './windowing';
 
 import { clampActiveIndex, getSwipeWindow, normalizeVisibleCardCount } from './windowing';

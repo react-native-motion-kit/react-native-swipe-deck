@@ -3,18 +3,18 @@ import type { WithSpringConfig } from 'react-native-reanimated';
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
-import type { SwipeDeckRenderedCardMotionConfig } from './SwipeDeckRenderedCard';
+import type { SwipeDeckRenderedCardMotionConfig } from '../components/SwipeDeckRenderedCard';
 import type {
   SwipeDeckActionMotionRecipe,
   SwipeDeckLayout,
   SwipeDeckMotionEasing,
   SwipeDeckMotionPreset,
   SwipeDeckUndoMotionRecipe,
-} from './types';
+} from '../types';
 
-import { resolveSwipeDeckActionMotionRecipe } from './actionMotion';
-import { mergeSwipeDeckMotionPreset, resolveSwipeDeckMotionConfig } from './animation';
-import { resolveSwipeDeckUndoMotionRecipe } from './undoMotion';
+import { resolveSwipeDeckActionMotionRecipe } from '../motion/actionMotion';
+import { mergeSwipeDeckMotionPreset, resolveSwipeDeckMotionConfig } from '../motion/animation';
+import { resolveSwipeDeckUndoMotionRecipe } from '../motion/undoMotion';
 
 type SwipeDeckDismissRuntime = {
   duration?: number;
@@ -28,7 +28,7 @@ type SwipeDeckDismissRuntime = {
   rotationOrigin: SwipeDeckRenderedCardMotionConfig['rotation']['origin'];
 };
 
-type UseSwipeDeckMotionRuntimeArgs = {
+type UseSwipeDeckMotionConfigArgs = {
   actionMotion?: SwipeDeckActionMotionRecipe;
   factoryActionMotion?: SwipeDeckActionMotionRecipe;
   factoryMotion?: SwipeDeckMotionPreset;
@@ -40,7 +40,7 @@ type UseSwipeDeckMotionRuntimeArgs = {
   velocityThreshold?: number;
 };
 
-type SwipeDeckMotionRuntime = {
+type SwipeDeckMotionConfigResult = {
   actionMotionRef: RefObject<SwipeDeckActionMotionRecipe | undefined>;
   cardMotionConfig: SwipeDeckRenderedCardMotionConfig;
   cancelSpringConfig?: WithSpringConfig;
@@ -56,7 +56,7 @@ type SwipeDeckMotionRuntime = {
   undoMotionRef: RefObject<SwipeDeckUndoMotionRecipe | undefined>;
 };
 
-export function useSwipeDeckMotionRuntime({
+export function useSwipeDeckMotionConfig({
   actionMotion,
   factoryActionMotion,
   factoryMotion,
@@ -66,7 +66,7 @@ export function useSwipeDeckMotionRuntime({
   swipeThreshold,
   undoMotion,
   velocityThreshold,
-}: UseSwipeDeckMotionRuntimeArgs): SwipeDeckMotionRuntime {
+}: UseSwipeDeckMotionConfigArgs): SwipeDeckMotionConfigResult {
   const actionMotionRef = useRef<SwipeDeckActionMotionRecipe | undefined>(
     resolveSwipeDeckActionMotionRecipe({
       defaultActionMotion: factoryActionMotion,

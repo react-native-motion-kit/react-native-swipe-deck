@@ -5,20 +5,20 @@ import { useCallback, useLayoutEffect, useRef } from 'react';
 import { withSequence, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { SwipeDeckRenderedCardMotionConfig } from './SwipeDeckRenderedCard';
+import type { SwipeDeckRenderedCardMotionConfig } from '../components/SwipeDeckRenderedCard';
 import type {
   SwipeDeckActionMotionRecipe,
   SwipeDeckLayout,
   SwipeDeckMotionEasing,
   SwipeDirection,
-} from './types';
+} from '../types';
 
+import { getSwipeCommit, shouldDeferActiveItemSync } from '../core/state';
+import { resolveSwipeDeckProgrammaticActionMotion } from '../core/swipeDeckRuntime';
 import {
   resolveSwipeDeckDismissDestinationDistance,
   resolveSwipeDeckDismissDuration,
-} from './animation';
-import { getSwipeCommit, shouldDeferActiveItemSync } from './state';
-import { resolveSwipeDeckProgrammaticActionMotion } from './swipeDeckRuntime';
+} from '../motion/animation';
 
 type SwipeDeckDismissRuntime = {
   duration?: number;

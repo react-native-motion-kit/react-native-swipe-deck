@@ -1,7 +1,7 @@
-export { SwipeDeckActionMotion } from './actionMotion';
-export { SwipeDeckMotion } from './animation';
-export { createSwipeDeck, SwipeDeck } from './SwipeDeck';
-export { SwipeDeckUndoMotion } from './undoMotion';
+export { SwipeDeckActionMotion } from './motion/actionMotion';
+export { SwipeDeckMotion } from './motion/animation';
+export { createSwipeDeck, SwipeDeck } from './components/SwipeDeck';
+export { SwipeDeckUndoMotion } from './motion/undoMotion';
 export type {
   SwipeDeckAction,
   SwipeDeckActionDirectMotionOptions,

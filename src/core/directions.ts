@@ -1,4 +1,4 @@
-import type { SwipeDeckLayout, SwipeDirection } from './types';
+import type { SwipeDeckLayout, SwipeDirection } from '../types';
 
 type ResolveSwipeDirectionArgs = {
   translationX: number;

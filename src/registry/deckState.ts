@@ -1,4 +1,4 @@
-import type { SwipeDeckLayout, SwipeDeckState } from './types';
+import type { SwipeDeckLayout, SwipeDeckState } from '../types';
 
 type SwipeDeckStateInput = {
   dataLength: number;

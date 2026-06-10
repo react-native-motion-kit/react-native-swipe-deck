@@ -10,7 +10,7 @@ import {
   resolveLatestSwipeDeckUndoHistoryEntry,
   resolveSwipeDeckUndoRestoreTarget,
   type SwipeDeckUndoHistoryEntry,
-} from '../undoHistory';
+} from '../registry/undoHistory';
 
 type Profile = {
   id: string;

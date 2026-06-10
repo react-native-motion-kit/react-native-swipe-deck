@@ -6,7 +6,7 @@ import type {
   SwipeDeckActionSpringboardMotionOptions,
   SwipeDeckLayout,
   SwipeDeckMotionEasing,
-} from './types';
+} from '../types';
 
 const ACTION_MOTION_KIND = 'swipe-deck-action-motion';
 const DEFAULT_ANTICIPATION_DURATION = 80;

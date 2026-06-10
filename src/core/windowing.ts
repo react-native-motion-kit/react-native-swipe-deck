@@ -1,4 +1,4 @@
-import type { SwipeRole } from './types';
+import type { SwipeRole } from '../types';
 
 export type SwipeWindowDescriptor = {
   index: number;

@@ -1,15 +1,15 @@
 import { describe, expect, it } from '@jest/globals';
 import { Easing } from 'react-native-reanimated';
 
-import { SwipeDeckActionMotion } from '../actionMotion';
 import {
   getActiveRenderItemId,
   resolveProgressDirection,
   resolveSignedSwipeProgress,
   resolveSwipeDeckProgrammaticActionMotion,
   resolveSwipeDeckProgrammaticUndoMotion,
-} from '../swipeDeckRuntime';
-import { SwipeDeckUndoMotion } from '../undoMotion';
+} from '../core/swipeDeckRuntime';
+import { SwipeDeckActionMotion } from '../motion/actionMotion';
+import { SwipeDeckUndoMotion } from '../motion/undoMotion';
 
 describe('resolveProgressDirection', () => {
   it('resolves the horizontal progress direction', () => {

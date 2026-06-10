@@ -1,15 +1,18 @@
-import type { SwipeDeckRenderedCardMotionConfig } from './SwipeDeckRenderedCard';
+import type { SwipeDeckRenderedCardMotionConfig } from '../components/SwipeDeckRenderedCard';
 import type {
   SwipeDeckActionMotionRecipe,
   SwipeDeckLayout,
   SwipeDeckMotionEasing,
   SwipeDeckUndoMotionRecipe,
   SwipeDirection,
-} from './types';
+} from '../types';
 
-import { resolveSwipeDeckActionMotion, resolveSwipeDeckActionMotionRecipe } from './actionMotion';
-import { resolveSwipeDeckDismissDestinationDistance } from './animation';
-import { resolveSwipeDeckUndoMotion, resolveSwipeDeckUndoMotionRecipe } from './undoMotion';
+import {
+  resolveSwipeDeckActionMotion,
+  resolveSwipeDeckActionMotionRecipe,
+} from '../motion/actionMotion';
+import { resolveSwipeDeckDismissDestinationDistance } from '../motion/animation';
+import { resolveSwipeDeckUndoMotion, resolveSwipeDeckUndoMotionRecipe } from '../motion/undoMotion';
 
 type SwipeDeckProgrammaticDismissRuntime = {
   duration?: number;

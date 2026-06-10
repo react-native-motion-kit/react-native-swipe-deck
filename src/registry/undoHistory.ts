@@ -1,4 +1,4 @@
-import type { SwipeDirection } from './types';
+import type { SwipeDirection } from '../types';
 
 export type SwipeDeckUndoHistoryEntry = {
   token: number;

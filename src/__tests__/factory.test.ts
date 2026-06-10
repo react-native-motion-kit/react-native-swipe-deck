@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { createSwipeDeck, SwipeDeck } from '../SwipeDeck';
+import { createSwipeDeck, SwipeDeck } from '../components/SwipeDeck';
 
 describe('createSwipeDeck factory surface', () => {
   it('adds registry hooks only to factory instances', () => {

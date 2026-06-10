@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { resolveSwipeDirection } from '../directions';
-import { getSwipeWindow, normalizeVisibleCardCount } from '../windowing';
+import { resolveSwipeDirection } from '../core/directions';
+import { getSwipeWindow, normalizeVisibleCardCount } from '../core/windowing';
 
 describe('getSwipeWindow', () => {
   it('returns no descriptors for empty data', () => {

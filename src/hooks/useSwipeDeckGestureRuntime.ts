@@ -5,16 +5,16 @@ import { Gesture } from 'react-native-gesture-handler';
 import { useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { SwipeDeckRenderedCardMotionConfig } from './SwipeDeckRenderedCard';
-import type { SwipeDeckLayout, SwipeDeckMotionEasing, SwipeDirection } from './types';
+import type { SwipeDeckRenderedCardMotionConfig } from '../components/SwipeDeckRenderedCard';
+import type { SwipeDeckLayout, SwipeDeckMotionEasing, SwipeDirection } from '../types';
 
+import { resolveSwipeDirection } from '../core/directions';
+import { resolveProgressDirection, resolveSignedSwipeProgress } from '../core/swipeDeckRuntime';
 import {
   resolveSwipeDeckDismissDestinationDistance,
   resolveSwipeDeckDismissDuration,
   resolveSwipeDeckGestureStartYRatio,
-} from './animation';
-import { resolveSwipeDirection } from './directions';
-import { resolveProgressDirection, resolveSignedSwipeProgress } from './swipeDeckRuntime';
+} from '../motion/animation';
 
 type CompleteSwipeDismiss = (
   finished: boolean | undefined,

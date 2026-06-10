@@ -10,7 +10,7 @@ import type {
   SwipeDeckUndoTimingMotionOptions,
   SwipeDeckUndoTimingMotionRecipe,
   SwipeDirection,
-} from './types';
+} from '../types';
 
 const UNDO_MOTION_KIND = 'swipe-deck-undo-motion';
 const DEFAULT_UNDO_TIMING_DURATION = 0;

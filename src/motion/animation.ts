@@ -13,7 +13,7 @@ import type {
   SwipeDeckTinderDragMode,
   SwipeDeckTinderMotionConfig,
   SwipeDeckTinderMotionPreset,
-} from './types';
+} from '../types';
 
 const DEFAULT_DISMISS_MIN_DURATION = 120;
 const DEFAULT_DISMISS_MAX_DURATION = 320;

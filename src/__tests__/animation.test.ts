@@ -11,7 +11,7 @@ import {
   resolveSwipeDeckTinderRotationSign,
   resolveSwipeDeckTinderTransformOrigin,
   SwipeDeckMotion,
-} from '../animation';
+} from '../motion/animation';
 
 describe('SwipeDeckMotion', () => {
   it('creates a discriminated tinder motion preset', () => {

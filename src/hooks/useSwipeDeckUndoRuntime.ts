@@ -5,16 +5,20 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { cancelAnimation, withSpring, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { SwipeDeckRenderedCardMotionConfig } from './SwipeDeckRenderedCard';
+import type { SwipeDeckRenderedCardMotionConfig } from '../components/SwipeDeckRenderedCard';
 import type {
   SwipeDeckLayout,
   SwipeDeckMotionEasing,
   SwipeDeckUndoMotionRecipe,
   SwipeDirection,
   UndoEvent,
-} from './types';
+} from '../types';
 
-import { getActiveRenderItemId, resolveSwipeDeckProgrammaticUndoMotion } from './swipeDeckRuntime';
+import {
+  getActiveRenderItemId,
+  resolveSwipeDeckProgrammaticUndoMotion,
+} from '../core/swipeDeckRuntime';
+import { type ResolvedSwipeDeckUndoMotion } from '../motion/undoMotion';
 import {
   appendSwipeDeckUndoHistoryEntry,
   createSwipeDeckUndoHistoryEntry,
@@ -26,8 +30,7 @@ import {
   resolveSwipeDeckUndoRestoreTarget,
   type SwipeDeckUndoHistoryEntry,
   type SwipeDeckUndoKeyIndex,
-} from './undoHistory';
-import { type ResolvedSwipeDeckUndoMotion } from './undoMotion';
+} from '../registry/undoHistory';
 
 type SwipeDeckUndoDismissRuntime = {
   duration?: number;

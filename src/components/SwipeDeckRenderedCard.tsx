@@ -4,7 +4,8 @@ import { Fragment } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
-import type { SwipeRenderTransition } from './rendering';
+import type { SwipeRenderTransition } from '../core/rendering';
+import type { SwipeWindowDescriptor } from '../core/windowing';
 import type {
   SwipeDeckCardProps,
   SwipeDeckTinderFixedRotationOrigin,
@@ -12,14 +13,13 @@ import type {
   SwipeDeckTinderRotationMode,
   SwipeDeckTinderDragMode,
   SwipeRenderInfo,
-} from './types';
-import type { SwipeWindowDescriptor } from './windowing';
+} from '../types';
 
 import {
   resolveSwipeDeckDragTranslateY,
   resolveSwipeDeckTinderRotationSign,
   resolveSwipeDeckTinderTransformOrigin,
-} from './animation';
+} from '../motion/animation';
 
 const STACK_TRANSFORM_ORIGIN: [string, string, number] = ['50%', '0%', 0];
 

@@ -25,20 +25,20 @@ import type {
   SwipeDeckStaticRootProps,
   SwipeDeckMotionPreset,
   SwipeDeckUndoMotionRecipe,
-} from './types';
+} from '../types';
 
-import { getSwipeDeckState } from './deckState';
-import { createSwipeDeckRegistry, type SwipeDeckRegistry } from './registry';
-import { getSwipeDeckStackRenderItems } from './rendering';
-import { shouldResetEndReached } from './state';
+import { getSwipeDeckStackRenderItems } from '../core/rendering';
+import { shouldResetEndReached } from '../core/state';
+import { getActiveRenderItemId } from '../core/swipeDeckRuntime';
+import { clampActiveIndex } from '../core/windowing';
+import { useSwipeDeckDismissRuntime } from '../hooks/useSwipeDeckDismissRuntime';
+import { useSwipeDeckGestureRuntime } from '../hooks/useSwipeDeckGestureRuntime';
+import { useSwipeDeckMotionConfig } from '../hooks/useSwipeDeckMotionConfig';
+import { useSwipeDeckUndoRuntime } from '../hooks/useSwipeDeckUndoRuntime';
+import { getSwipeDeckState } from '../registry/deckState';
+import { createSwipeDeckRegistry, type SwipeDeckRegistry } from '../registry/registry';
 import { SwipeDeckCard } from './SwipeDeckCard';
 import { SwipeDeckRenderedCard } from './SwipeDeckRenderedCard';
-import { getActiveRenderItemId } from './swipeDeckRuntime';
-import { useSwipeDeckDismissRuntime } from './useSwipeDeckDismissRuntime';
-import { useSwipeDeckGestureRuntime } from './useSwipeDeckGestureRuntime';
-import { useSwipeDeckMotionRuntime } from './useSwipeDeckMotionRuntime';
-import { useSwipeDeckUndoRuntime } from './useSwipeDeckUndoRuntime';
-import { clampActiveIndex } from './windowing';
 
 function findCardSlot<T>(children: ReactNode): ReactElement<SwipeDeckCardProps<T>> | null {
   const childArray = React.Children.toArray(children);
@@ -133,7 +133,7 @@ function Root<T>({
     resolvedVelocityThreshold,
     swipeProgressDistance,
     undoMotionRef,
-  } = useSwipeDeckMotionRuntime({
+  } = useSwipeDeckMotionConfig({
     actionMotion,
     factoryActionMotion,
     factoryMotion,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { getSwipeDeckState } from '../deckState';
+import { getSwipeDeckState } from '../registry/deckState';
 
 describe('getSwipeDeckState', () => {
   it('treats falsey values as valid active deck items', () => {
