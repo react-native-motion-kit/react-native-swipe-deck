@@ -134,33 +134,78 @@ Use this factory pattern when the deck needs a named instance that can be shared
 
 ### Deck hooks
 
-Deck-wide values are exposed through factory-scoped hooks instead of card render props.
+Factory hooks expose deck-wide state, actions, and Reanimated interaction values without adding a
+Provider or passing a controller prop through your tree. They are scoped to the factory instance
+created by `createSwipeDeck<T>()`.
 
 ```tsx
 // profile-deck.ts
 export const ProfileDeck = createSwipeDeck<Profile>();
 ```
 
+Use state/actions for React-rendered UI such as counters and buttons:
+
 ```tsx
-function ProfileDeckScreen() {
-  const state = ProfileDeck.useDeckState();
-  const actions = ProfileDeck.useDeckActions();
-  const interaction = ProfileDeck.useDeckInteraction();
+function ProfileDeckControls() {
+  const { activeIndex, count, canSwipe, canUndo, isCompleted } = ProfileDeck.useDeckState();
+  const { swipeLeft, swipeRight, undo } = ProfileDeck.useDeckActions();
+  const current = activeIndex >= 0 ? activeIndex + 1 : 0;
 
   return (
-    <ProfileDeck.Root data={profiles} getKey={(item) => item.id}>
-      <ProfileDeck.Card>
-        {({ item }) => (
-          <ProfileCard
-            profile={item}
-            current={state.activeIndex + 1}
-            total={state.count}
-            onLike={actions.swipeRight}
-            swipeProgress={interaction.signedProgress}
-          />
-        )}
-      </ProfileDeck.Card>
-    </ProfileDeck.Root>
+    <View>
+      <Text>{isCompleted ? 'Done' : `${current} / ${count}`}</Text>
+      <Pressable disabled={!canSwipe} onPress={swipeLeft}>
+        <Text>Nope</Text>
+      </Pressable>
+      <Pressable disabled={!canUndo} onPress={undo}>
+        <Text>Undo</Text>
+      </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeRight}>
+        <Text>Like</Text>
+      </Pressable>
+    </View>
+  );
+}
+```
+
+Use interaction shared values for progress-driven animated UI. These values update on the UI thread
+and do not rerender React every gesture frame:
+
+```tsx
+function SwipeReactionOverlay() {
+  const { signedProgress } = ProfileDeck.useDeckInteraction();
+
+  const likeStyle = useAnimatedStyle(() => {
+    const progress = Math.max(signedProgress.get(), 0);
+
+    return {
+      opacity: progress,
+      transform: [{ scale: 0.9 + progress * 0.18 }],
+    };
+  });
+
+  return <Animated.View pointerEvents="none" style={likeStyle} />;
+}
+```
+
+Then render those controls around the same factory Root:
+
+```tsx
+function ProfileDeckScreen() {
+  return (
+    <View>
+      <ProfileDeck.Root data={profiles} getKey={(item) => item.id} undoEnabled>
+        <ProfileDeck.Card>
+          {({ item, isActive }) => (
+            <View>
+              <ProfileCard profile={item} />
+              {isActive ? <SwipeReactionOverlay /> : null}
+            </View>
+          )}
+        </ProfileDeck.Card>
+      </ProfileDeck.Root>
+      <ProfileDeckControls />
+    </View>
   );
 }
 ```

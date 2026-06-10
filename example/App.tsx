@@ -3,6 +3,7 @@ import {
   SwipeDeckActionMotion,
   SwipeDeckMotion,
   SwipeDeckUndoMotion,
+  type SwipeRole,
 } from '@react-native-motion-kit/swipe-deck';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -23,7 +24,7 @@ const profiles: Profile[] = Array.from({ length: 150 }, (_, index) => ({
   accent: index % 2 === 0 ? '#7c3aed' : '#0891b2',
 }));
 
-const SwipeDeck = createSwipeDeck<Profile>({
+const ProfileDeck = createSwipeDeck<Profile>({
   motion: SwipeDeckMotion.tinder({
     drag: {
       mode: 'free',
@@ -58,8 +59,8 @@ const SwipeDeck = createSwipeDeck<Profile>({
   }),
 });
 
-function CardReactionOverlay() {
-  const { signedProgress } = SwipeDeck.useDeckInteraction();
+function SwipeReactionOverlay() {
+  const { signedProgress } = ProfileDeck.useDeckInteraction();
 
   const passStyle = useAnimatedStyle(() => {
     const progress = Math.max(-signedProgress.get(), 0);
@@ -95,9 +96,29 @@ function CardReactionOverlay() {
   );
 }
 
-function DeckControls() {
-  const { activeIndex, count, canSwipe, canUndo, isCompleted } = SwipeDeck.useDeckState();
-  const { swipeLeft, swipeRight, undo } = SwipeDeck.useDeckActions();
+type ProfileCardProps = {
+  isActive: boolean;
+  profile: Profile;
+  role: SwipeRole;
+};
+
+function ProfileCard({ isActive, profile, role }: ProfileCardProps) {
+  return (
+    <View style={[styles.card, { backgroundColor: profile.accent }]}>
+      <Text style={styles.role}>{role}</Text>
+      {isActive ? <SwipeReactionOverlay /> : null}
+      <View>
+        <Text style={styles.name}>{profile.name}</Text>
+        <Text style={styles.bio}>{profile.bio}</Text>
+        <Text style={styles.active}>{isActive ? 'Active card' : 'Buffered card'}</Text>
+      </View>
+    </View>
+  );
+}
+
+function ProfileDeckControls() {
+  const { activeIndex, count, canSwipe, canUndo, isCompleted } = ProfileDeck.useDeckState();
+  const { swipeLeft, swipeRight, undo } = ProfileDeck.useDeckActions();
   const current = activeIndex >= 0 ? activeIndex + 1 : 0;
   const counterText = isCompleted ? 'Done' : `${current} / ${count}`;
 
@@ -154,7 +175,7 @@ export default function App() {
         </View>
 
         <View style={styles.deckFrame}>
-          <SwipeDeck.Root
+          <ProfileDeck.Root
             data={profiles}
             getKey={(item) => item.id}
             undoEnabled
@@ -170,21 +191,13 @@ export default function App() {
               console.log('No more profiles');
             }}
           >
-            <SwipeDeck.Card style={styles.cardShadow}>
+            <ProfileDeck.Card style={styles.cardShadow}>
               {({ item, role, isActive }) => (
-                <View style={[styles.card, { backgroundColor: item.accent }]}>
-                  <Text style={styles.role}>{role}</Text>
-                  {isActive ? <CardReactionOverlay /> : null}
-                  <View>
-                    <Text style={styles.name}>{item.name}</Text>
-                    <Text style={styles.bio}>{item.bio}</Text>
-                    <Text style={styles.active}>{isActive ? 'Active card' : 'Buffered card'}</Text>
-                  </View>
-                </View>
+                <ProfileCard profile={item} role={role} isActive={isActive} />
               )}
-            </SwipeDeck.Card>
-          </SwipeDeck.Root>
-          <DeckControls />
+            </ProfileDeck.Card>
+          </ProfileDeck.Root>
+          <ProfileDeckControls />
         </View>
       </View>
     </GestureHandlerRootView>
