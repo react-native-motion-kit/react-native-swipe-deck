@@ -33,6 +33,14 @@ describe('getSwipeRenderItems', () => {
     expect(getSwipeStackRenderItems(items).map((item) => item.index)).toEqual([77, 76, 75]);
   });
 
+  it('supports a compact current-plus-next render window', () => {
+    const items = getSwipeRenderItems(profiles, 75, getProfileKey, 2);
+
+    expect(items).toHaveLength(2);
+    expect(items.map((item) => item.index)).toEqual([75, 76]);
+    expect(items.map((item) => item.role)).toEqual(['current', 'next']);
+  });
+
   it('does not backfill dismissed previous cards at the last valid index', () => {
     const items = getSwipeRenderItems(profiles, 149, getProfileKey);
 
@@ -63,6 +71,24 @@ describe('getSwipeRenderItems', () => {
       undefined,
       { fromOffset: 0, toOffset: 1 },
       { fromOffset: 1, toOffset: 2 },
+    ]);
+  });
+
+  it('supports compact undo render info when only current and next are visible', () => {
+    const items = getSwipeUndoRenderItems({
+      data: profiles,
+      currentIndex: 2,
+      getKey: getProfileKey,
+      restoredIndex: 1,
+      visibleCardCount: 2,
+    });
+
+    expect(items.map((item) => item.index)).toEqual([1, 2]);
+    expect(items.map((item) => item.offset)).toEqual([0, 1]);
+    expect(items.map((item) => item.role)).toEqual(['current', 'next']);
+    expect(items.map((item) => item.transition)).toEqual([
+      undefined,
+      { fromOffset: 0, toOffset: 1 },
     ]);
   });
 
