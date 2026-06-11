@@ -31,6 +31,7 @@
     "url": "git+https://github.com/react-native-motion-kit/react-native-swipe-deck.git"
   },
   "workspaces": [
+    ".",
     "example"
   ],
   "files": [
@@ -66,6 +67,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
+    "build": "bob build",
+    "changeset": "changeset",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
     "example": "yarn workspace example",
     "example:build": "yarn example build",
@@ -80,6 +83,8 @@
   },
   "devDependencies": {
     "@babel/core": "^7.28.0",
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.31.0",
     "@commitlint/config-conventional": "^20.5.0",
     "@jest/globals": "29.7.0",
     "@react-native/babel-preset": "0.85.0",
