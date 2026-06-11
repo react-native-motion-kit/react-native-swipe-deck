@@ -2,6 +2,10 @@
 
 [English](README.md)
 
+<div align="center">
+  <img src="./assets/logo.png" width="300px" alt="React Native Motion Kit logo" />
+</div>
+
 Reanimated와 Gesture Handler 기반의 고성능 React Native용 Tinder 스타일 swipe deck / swipe card 라이브러리입니다.
 
 ## 특징
@@ -655,25 +659,6 @@ function DeepStackDeck() {
 | `visibleCardCount={2}`                         | 데이터가 충분할 때 최대 `3`개                            |
 | 남은 데이터가 10개이고 `visibleCardCount={20}` | 최대 남은 10개                                           |
 | 짝수 값                                        | 최대 예산으로 그대로 유지되며, 홀수로 올림 처리하지 않음 |
-
-## API 방향
-
-현재 public API에는 factory scope deck hook과 `id` 기반 deck registration이 포함되어 있습니다.
-
-- `createSwipeDeck<T>()`는 typed factory namespace를 만듭니다.
-- `Root`와 `Card`는 deck을 렌더링합니다.
-- `useDeckState(id?)`, `useDeckActions(id?)`, `useDeckInteraction(id?)`, `useDeckEvent(eventName, initialValue?, id?)`, `useDeckEventListener(eventName, listener, id?)`는 해당 factory namespace에서 deck 전체 state, action, Reanimated interaction 값, commit된 model event를 제공합니다.
-- `SwipeDeckUndoMotion`과 `actions.undo()`는 preset 기반 undo/back-swipe 동작을 제공합니다.
-- `id`는 같은 factory 안에서 여러 Root를 mount할 때 어떤 deck을 바라볼지 선택합니다.
-
-앞으로의 API 방향에는 다음이 포함될 수 있습니다.
-
-- public `Provider` 또는 custom registry boundary
-- 외부 swipe control을 위한 trigger component
-- 더 명시적인 prerender/window control
-- 성능을 해치지 않으면서 DX를 개선할 수 있는 lower-level controller API
-
-현재 shipped surface는 public Provider나 trigger component를 의도적으로 포함하지 않습니다. Factory scope hook으로 주요 외부 UI 사용 사례를 처리하면서 core deck은 작게 유지합니다.
 
 ## 기여하기
 
