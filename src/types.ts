@@ -32,6 +32,70 @@ export type UndoEvent<T> = {
   direction: SwipeDirection;
 };
 
+export type IndexChangeEvent = {
+  index: number;
+};
+
+export type SwipeDeckEventMap<T> = {
+  swipe: SwipeEvent<T>;
+  undo: UndoEvent<T>;
+  indexChange: IndexChangeEvent;
+  endReached: true;
+};
+
+export type SwipeDeckEventName = keyof SwipeDeckEventMap<unknown>;
+
+export type SwipeDeckEventListener<T, K extends keyof SwipeDeckEventMap<T>> = (
+  event: SwipeDeckEventMap<T>[K],
+) => void;
+
+export type SwipeDeckEventInitialValue<T, K extends keyof SwipeDeckEventMap<T>> =
+  | SwipeDeckEventMap<T>[K]
+  | null
+  | undefined
+  | (K extends 'endReached' ? false : never);
+
+/**
+ * Returns the latest committed model event for React-rendered UI.
+ *
+ * This is a latest-value snapshot, not an event history. It returns `undefined` or
+ * `initialValue` before the first event for that name and after the deck attaches/detaches and
+ * clears event snapshots.
+ *
+ * The initial value is intentionally restricted to the event payload shape, `null`, `undefined`,
+ * or `false` for `endReached`. This keeps calls such as `useDeckEvent('swipe', {})` from widening
+ * the return type and hiding the actual event payload.
+ *
+ * Event snapshots are published from the commit path. A listener/snapshot can observe the event
+ * before the next `useDeckState()` render has settled, so prefer the event payload itself when you
+ * need the committed item/index for that event.
+ */
+export type SwipeDeckEventHook<T> = {
+  <K extends keyof SwipeDeckEventMap<T>>(eventName: K): SwipeDeckEventMap<T>[K] | undefined;
+  <K extends keyof SwipeDeckEventMap<T>, const TInitial extends SwipeDeckEventInitialValue<T, K>>(
+    eventName: K,
+    initialValue: TInitial,
+    id?: string,
+  ): SwipeDeckEventMap<T>[K] | TInitial;
+  <K extends keyof SwipeDeckEventMap<T>>(
+    eventName: K,
+    id: string,
+  ): SwipeDeckEventMap<T>[K] | undefined;
+};
+
+/**
+ * Subscribes to committed model events without creating app-owned state.
+ *
+ * Listener subscriptions clean up on unmount. Event snapshots are cleared on attach/detach, but
+ * mounted listeners remain subscribed to the factory/id store and only run when the Root emits a
+ * new event.
+ */
+export type SwipeDeckEventListenerHook<T> = <K extends keyof SwipeDeckEventMap<T>>(
+  eventName: K,
+  listener: SwipeDeckEventListener<T, K>,
+  id?: string,
+) => void;
+
 export type SwipeDeckMotionEasing = NonNullable<WithTimingConfig['easing']>;
 
 export type SwipeDeckTinderRotationMode = 'fixed' | 'grab-position';
@@ -387,10 +451,6 @@ export type SwipeDeckProps<T> = {
   visibleCardCount?: number;
   containerStyle?: StyleProp<ViewStyle>;
   children: ReactNode;
-  onSwipe?: (event: SwipeEvent<T>) => void;
-  onUndo?: (event: UndoEvent<T>) => void;
-  onIndexChange?: (index: number) => void;
-  onEndReached?: () => void;
 };
 
 export type SwipeDeckCardProps<T> = {
@@ -485,6 +545,8 @@ export type SwipeDeckInstance<T> = {
   useDeckState: (id?: string) => SwipeDeckState;
   useDeckActions: (id?: string) => SwipeDeckActions;
   useDeckInteraction: (id?: string) => SwipeDeckInteraction;
+  useDeckEvent: SwipeDeckEventHook<T>;
+  useDeckEventListener: SwipeDeckEventListenerHook<T>;
 };
 
 export type SwipeDeckStaticRootProps<T> = Omit<SwipeDeckProps<T>, 'id'>;

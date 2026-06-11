@@ -56,23 +56,29 @@ const ProfileDeck = createSwipeDeck<Profile>({
   }),
 });
 
+function ProfileDeckEvents() {
+  ProfileDeck.useDeckEventListener('swipe', ({ item, direction }) => {
+    console.log(item, direction);
+  });
+  ProfileDeck.useDeckEventListener('endReached', () => {
+    console.log('No more cards');
+  });
+
+  return null;
+}
+
 function ProfileDeckScreen() {
   return (
-    <ProfileDeck.Root
-      data={profiles}
-      getKey={(item) => item.id}
-      visibleCardCount={3}
-      onSwipe={({ item, direction }) => {
-        console.log(item, direction);
-      }}
-      onEndReached={() => {
-        console.log('No more cards');
-      }}
-    >
-      <ProfileDeck.Card>
-        {({ item, role, isActive }) => <ProfileCard profile={item} role={role} active={isActive} />}
-      </ProfileDeck.Card>
-    </ProfileDeck.Root>
+    <>
+      <ProfileDeckEvents />
+      <ProfileDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
+        <ProfileDeck.Card>
+          {({ item, role, isActive }) => (
+            <ProfileCard profile={item} role={role} active={isActive} />
+          )}
+        </ProfileDeck.Card>
+      </ProfileDeck.Root>
+    </>
   );
 }
 ```
@@ -188,6 +194,43 @@ function SwipeReactionOverlay() {
 }
 ```
 
+Use event hooks for committed model events such as swipe, undo, index changes, and end reached:
+
+```tsx
+function ProfileDeckEvents() {
+  const lastSwipe = ProfileDeck.useDeckEvent('swipe', null);
+  const endReached = ProfileDeck.useDeckEvent('endReached', false);
+
+  ProfileDeck.useDeckEventListener('undo', ({ item }) => {
+    console.log('Restored', item);
+  });
+
+  return (
+    <Text>
+      {endReached ? 'Done' : lastSwipe ? `Last swipe: ${lastSwipe.direction}` : 'No swipe yet'}
+    </Text>
+  );
+}
+```
+
+Event hooks are commit-level, latest-value APIs:
+
+- `useDeckEvent()` stores only the latest event for each event name. It is not an event history.
+- `initialValue` is restricted to the event payload shape, `null`, `undefined`, or `false` for
+  `endReached`. Use `null` for object events such as `swipe`; `{}` is intentionally rejected so
+  the event payload type is not widened away.
+- If you do pass an object initial value, the object is contextually typed from `eventName`, so
+  `useDeckEvent('swipe', { ... })` autocompletes `item`, `index`, and `direction`.
+- For a named deck without an initial value, pass the id as the second argument:
+  `useDeckEvent('swipe', 'nearby')`. If you also pass an initial value, the id remains the third
+  argument.
+- Event snapshots are cleared when a Root attaches and when it detaches, so the hook returns
+  `initialValue` for a fresh or detached deck.
+- `useDeckEventListener()` is imperative. Mounted listeners stay subscribed to the factory/id
+  store across attach/detach, but they only run when the active Root emits a new event.
+- Events are emitted from the commit path. During the same tick, the event payload is the source of
+  truth for that event; a following `useDeckState()` render can settle just after the event.
+
 Then render those controls around the same factory Root:
 
 ```tsx
@@ -220,6 +263,13 @@ function ProfileDeckScreen() {
   after the deck is completed.
 - `useDeckInteraction(id?)` returns Reanimated shared values for progress-driven UI. Gesture
   progress stays on the UI thread and does not rerender React every frame.
+- `useDeckEvent(eventName, initialValue?, id?)` returns the latest committed deck event for
+  React-rendered UI. It returns `undefined` or `initialValue` before the first event and after the
+  deck detaches.
+- `useDeckEventListener(eventName, listener, id?)` subscribes to committed model events without
+  forcing React state into your app code. Listener hooks clean up automatically on unmount.
+  Successful swipe events emit in `swipe -> indexChange -> endReached` order. Undo emits
+  `undo -> indexChange`.
 
 ### Programmatic action motion
 
@@ -401,9 +451,12 @@ Create the factory once per deck family and export it from a shared module. Hook
 
 ### Simple inline usage
 
-If you only need card rendering and callbacks, you can use the static API without creating a factory instance.
-This is useful for small inline decks, but it does not expose `useDeckState`, `useDeckActions`, or `useDeckInteraction`.
-Static `Root` does not accept `id`; use a factory instance when you need named deck state, actions, or interactions.
+If you only need card rendering, you can use the static API without creating a factory instance.
+This is useful for small inline decks, but it does not expose factory hooks such as
+`useDeckState`, `useDeckActions`, `useDeckInteraction`, `useDeckEvent`, or
+`useDeckEventListener`.
+Static `Root` does not accept `id`; use a factory instance when you need named deck state,
+actions, interactions, or model events.
 Because static `Root` and `Card` do not share a factory type, pass the item type to `Card` when you want typed render props.
 
 ```tsx
@@ -615,7 +668,7 @@ The current public API already includes factory-scoped deck hooks and `id`-based
 
 - `createSwipeDeck<T>()` creates a typed factory namespace.
 - `Root` and `Card` render the deck.
-- `useDeckState(id?)`, `useDeckActions(id?)`, and `useDeckInteraction(id?)` expose deck-wide state, actions, and Reanimated interaction values from that factory namespace.
+- `useDeckState(id?)`, `useDeckActions(id?)`, `useDeckInteraction(id?)`, `useDeckEvent(eventName, initialValue?, id?)`, and `useDeckEventListener(eventName, listener, id?)` expose deck-wide state, actions, Reanimated interaction values, and committed model events from that factory namespace.
 - `SwipeDeckUndoMotion` and `actions.undo()` provide preset-based undo/back-swipe behavior.
 - `id` selects a deck inside the same factory when multiple roots are mounted.
 
@@ -624,7 +677,7 @@ Future API directions may include:
 - public `Provider` or custom registry boundary;
 - trigger components for external swipe controls;
 - more explicit prerender/window controls;
-- lower-level controller/event APIs when they improve DX without hurting performance.
+- lower-level controller APIs when they improve DX without hurting performance.
 
 The current shipped surface intentionally avoids a public Provider or trigger component for now. Factory-scoped hooks cover the main external UI use cases while keeping the core deck small.
 

@@ -56,7 +56,7 @@ type SwipeDeckRootProps<T> = SwipeDeckProps<T> & {
   factoryActionMotion?: SwipeDeckActionMotionRecipe;
   factoryMotion?: SwipeDeckMotionPreset;
   factoryUndoMotion?: SwipeDeckUndoMotionRecipe;
-  registry: SwipeDeckRegistry;
+  registry: SwipeDeckRegistry<T>;
 };
 
 function Root<T>({
@@ -77,10 +77,6 @@ function Root<T>({
   visibleCardCount,
   containerStyle,
   children,
-  onSwipe,
-  onUndo,
-  onIndexChange,
-  onEndReached,
   registry,
 }: SwipeDeckRootProps<T>): ReactElement {
   const deckStore = useMemo(() => registry.getStore(id), [id, registry]);
@@ -112,10 +108,6 @@ function Root<T>({
   const attachmentGenerationRef = useRef(0);
   const runtimeStateRef = useRef({ isAnimating: false, isDragging: false });
   const runtimeEventIdRef = useRef(0);
-  const onSwipeRef = useRef(onSwipe);
-  const onUndoRef = useRef(onUndo);
-  const onIndexChangeRef = useRef(onIndexChange);
-  const onEndReachedRef = useRef(onEndReached);
   const cardSlot = findCardSlot<T>(children);
   const hasActiveCard = getActiveRenderItemId(data.length, activeIndex) >= 0;
   const activeRenderItemId = getActiveRenderItemId(data.length, activeIndex);
@@ -246,8 +238,7 @@ function Root<T>({
     isAnimating,
     isDragging,
     layoutRef,
-    onIndexChangeRef,
-    onUndoRef,
+    emitDeckEvent: deckStore.emitEvent,
     publishDeckStateSnapshot,
     setActiveIndex,
     setEndReached,
@@ -281,9 +272,7 @@ function Root<T>({
     isAnimating,
     isDragging,
     layoutRef,
-    onEndReachedRef,
-    onIndexChangeRef,
-    onSwipeRef,
+    emitDeckEvent: deckStore.emitEvent,
     recordSwipeForUndo,
     setActiveIndex,
     setEndReached,
@@ -373,22 +362,6 @@ function Root<T>({
   }, [layout]);
 
   useEffect(() => {
-    onSwipeRef.current = onSwipe;
-  }, [onSwipe]);
-
-  useEffect(() => {
-    onUndoRef.current = onUndo;
-  }, [onUndo]);
-
-  useEffect(() => {
-    onIndexChangeRef.current = onIndexChange;
-  }, [onIndexChange]);
-
-  useEffect(() => {
-    onEndReachedRef.current = onEndReached;
-  }, [onEndReached]);
-
-  useEffect(() => {
     const nextIndex = clampActiveIndex(data.length, activeIndex);
 
     if (nextIndex !== activeIndex) {
@@ -439,7 +412,7 @@ function Root<T>({
 
 function createRoot<T>(
   factoryConfig: SwipeDeckFactoryConfig | undefined,
-  registry: SwipeDeckRegistry,
+  registry: SwipeDeckRegistry<T>,
 ) {
   return function SwipeDeckRoot(props: SwipeDeckProps<T>): ReactElement {
     return (
@@ -457,7 +430,7 @@ function createRoot<T>(
 export function createSwipeDeck<T = never>(
   factoryConfig?: SwipeDeckFactoryConfig,
 ): SwipeDeckInstance<T> {
-  const registry = createSwipeDeckRegistry();
+  const registry = createSwipeDeckRegistry<T>();
 
   return {
     Root: createRoot<T>(factoryConfig, registry),
@@ -465,13 +438,15 @@ export function createSwipeDeck<T = never>(
     useDeckState: registry.useDeckState,
     useDeckActions: registry.useDeckActions,
     useDeckInteraction: registry.useDeckInteraction,
+    useDeckEvent: registry.useDeckEvent,
+    useDeckEventListener: registry.useDeckEventListener,
   };
 }
 
 const StaticRoot: SwipeDeckStatic['Root'] = function SwipeDeckRoot<T>(
   props: SwipeDeckStaticRootProps<T>,
 ): ReactElement {
-  const registry = useMemo(() => createSwipeDeckRegistry(), []);
+  const registry = useMemo(() => createSwipeDeckRegistry<T>(), []);
 
   return <Root {...props} registry={registry} />;
 };

@@ -75,6 +75,63 @@ describe('createSwipeDeckRegistry', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
+  it('stores latest model event snapshots and clears them on attach cleanup', () => {
+    const registry = createSwipeDeckRegistry<{ id: string }>();
+    const store = registry.getStore();
+    const listener = jest.fn();
+    const unsubscribe = store.subscribeEventSnapshot('swipe', listener);
+
+    store.emitEvent('swipe', {
+      direction: 'right',
+      index: 0,
+      item: { id: 'ada' },
+    });
+
+    expect(store.getEventSnapshot('swipe')?.event).toEqual({
+      direction: 'right',
+      index: 0,
+      item: { id: 'ada' },
+    });
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    const detach = store.attach({
+      getState: () => createAttachedState(),
+      swipe: () => false,
+      undo: () => false,
+    });
+
+    expect(store.getEventSnapshot('swipe')).toBeNull();
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    store.emitEvent('swipe', {
+      direction: 'left',
+      index: 0,
+      item: { id: 'grace' },
+    });
+
+    detach();
+
+    expect(store.getEventSnapshot('swipe')).toBeNull();
+    expect(listener).toHaveBeenCalledTimes(4);
+
+    unsubscribe();
+  });
+
+  it('notifies event listeners only when events are emitted', () => {
+    const registry = createSwipeDeckRegistry<{ id: string }>();
+    const store = registry.getStore();
+    const listener = jest.fn();
+    const unsubscribe = store.addEventListener('indexChange', listener);
+
+    store.clearEvents();
+    store.emitEvent('indexChange', { index: 1 });
+    unsubscribe();
+    store.emitEvent('indexChange', { index: 2 });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith({ index: 1 });
+  });
+
   it('attaches one root per factory id and resets after detach', () => {
     const registry = createSwipeDeckRegistry();
     const store = registry.getStore();

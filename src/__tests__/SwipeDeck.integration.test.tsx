@@ -69,16 +69,19 @@ describe('SwipeDeck factory hooks', () => {
       );
     }
 
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('swipe', onSwipe);
+      ProfileDeck.useDeckEventListener('indexChange', ({ index }) => onIndexChange(index));
+
+      return null;
+    }
+
     function Example() {
       return (
         <>
           <DeckControls />
-          <ProfileDeck.Root
-            data={profiles}
-            getKey={getProfileKey}
-            onIndexChange={onIndexChange}
-            onSwipe={onSwipe}
-          >
+          <DeckEvents />
+          <ProfileDeck.Root data={profiles} getKey={getProfileKey}>
             <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
           </ProfileDeck.Root>
         </>
@@ -109,6 +112,137 @@ describe('SwipeDeck factory hooks', () => {
       item: profiles[0],
     });
     expect(onIndexChange).toHaveBeenCalledWith(1);
+  });
+
+  it('publishes latest model events through useDeckEvent and resets them on detach', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const actions = ProfileDeck.useDeckActions();
+      const lastSwipe = ProfileDeck.useDeckEvent('swipe', null);
+      const swipeText = lastSwipe ? `${lastSwipe.item.name}:${lastSwipe.direction}` : 'none';
+
+      return (
+        <View>
+          <Text>lastSwipe:{swipeText}</Text>
+          <Pressable
+            accessibilityLabel="Swipe right"
+            accessibilityRole="button"
+            onPress={actions.swipeRight}
+          >
+            <Text>Swipe right</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function Example({ mounted = true }: { mounted?: boolean }) {
+      return (
+        <>
+          <DeckControls />
+          {mounted ? (
+            <ProfileDeck.Root data={profiles} getKey={getProfileKey}>
+              <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+            </ProfileDeck.Root>
+          ) : null}
+        </>
+      );
+    }
+
+    const renderResult = await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    expect(screen.getByText('lastSwipe:none')).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Swipe right' }));
+
+    expect(await screen.findByText('lastSwipe:Ada:right')).toBeOnTheScreen();
+
+    await renderResult.rerender(<Example mounted={false} />);
+
+    expect(await screen.findByText('lastSwipe:none')).toBeOnTheScreen();
+  });
+
+  it('emits terminal swipe events in swipe-index-end order once', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const onSwipe = jest.fn();
+    const onIndexChange = jest.fn();
+    const onEndReached = jest.fn();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const actions = ProfileDeck.useDeckActions();
+      const [lastActionResult, setLastActionResult] = useState('none');
+
+      return (
+        <View>
+          <Text>
+            state:{state.activeIndex}:{String(state.canSwipe)}:{String(state.isCompleted)}
+          </Text>
+          <Text>action:{lastActionResult}</Text>
+          <Pressable
+            accessibilityLabel="Force swipe right"
+            accessibilityRole="button"
+            onPress={() => setLastActionResult(String(actions.swipeRight()))}
+          >
+            <Text>Force swipe right</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('swipe', onSwipe);
+      ProfileDeck.useDeckEventListener('indexChange', ({ index }) => onIndexChange(index));
+      ProfileDeck.useDeckEventListener('endReached', onEndReached);
+
+      return null;
+    }
+
+    function Example() {
+      return (
+        <>
+          <DeckControls />
+          <DeckEvents />
+          <ProfileDeck.Root data={[adaProfile]} getKey={getProfileKey}>
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    await user.press(screen.getByRole('button', { name: 'Force swipe right' }));
+
+    expect(await screen.findByText('state:1:false:true')).toBeOnTheScreen();
+    expect(onSwipe).toHaveBeenCalledTimes(1);
+    expect(onIndexChange).toHaveBeenCalledTimes(1);
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+    expect(onEndReached).toHaveBeenCalledWith(true);
+
+    const swipeCallOrder = onSwipe.mock.invocationCallOrder[0];
+    const indexChangeCallOrder = onIndexChange.mock.invocationCallOrder[0];
+    const endReachedCallOrder = onEndReached.mock.invocationCallOrder[0];
+
+    if (
+      swipeCallOrder === undefined ||
+      indexChangeCallOrder === undefined ||
+      endReachedCallOrder === undefined
+    ) {
+      throw new Error('Expected terminal swipe event order to be recorded.');
+    }
+
+    expect(swipeCallOrder).toBeLessThan(indexChangeCallOrder);
+    expect(indexChangeCallOrder).toBeLessThan(endReachedCallOrder);
+
+    await user.press(screen.getByRole('button', { name: 'Force swipe right' }));
+
+    expect(await screen.findByText('action:false')).toBeOnTheScreen();
+    expect(onEndReached).toHaveBeenCalledTimes(1);
   });
 
   it('publishes final reset state after a programmatic swipe commit', async () => {
@@ -149,16 +283,19 @@ describe('SwipeDeck factory hooks', () => {
       );
     }
 
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('swipe', onSwipe);
+      ProfileDeck.useDeckEventListener('indexChange', ({ index }) => onIndexChange(index));
+
+      return null;
+    }
+
     function Example() {
       return (
         <>
           <DeckControls />
-          <ProfileDeck.Root
-            data={profiles}
-            getKey={getProfileKey}
-            onIndexChange={onIndexChange}
-            onSwipe={onSwipe}
-          >
+          <DeckEvents />
+          <ProfileDeck.Root data={profiles} getKey={getProfileKey}>
             <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
           </ProfileDeck.Root>
         </>
@@ -473,18 +610,20 @@ describe('SwipeDeck factory hooks', () => {
       );
     }
 
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('swipe', onSwipe);
+      ProfileDeck.useDeckEventListener('undo', onUndo);
+      ProfileDeck.useDeckEventListener('indexChange', ({ index }) => onIndexChange(index));
+
+      return null;
+    }
+
     function Example() {
       return (
         <>
           <DeckControls />
-          <ProfileDeck.Root
-            data={profiles}
-            getKey={getProfileKey}
-            undoEnabled
-            onIndexChange={onIndexChange}
-            onSwipe={onSwipe}
-            onUndo={onUndo}
-          >
+          <DeckEvents />
+          <ProfileDeck.Root data={profiles} getKey={getProfileKey} undoEnabled>
             <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
           </ProfileDeck.Root>
         </>
@@ -601,11 +740,18 @@ describe('SwipeDeck factory hooks', () => {
       );
     }
 
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('swipe', onSwipe);
+
+      return null;
+    }
+
     function Example() {
       return (
         <>
           <DeckControls />
-          <ProfileDeck.Root data={profiles} getKey={getProfileKey} onSwipe={onSwipe} undoEnabled>
+          <DeckEvents />
+          <ProfileDeck.Root data={profiles} getKey={getProfileKey} undoEnabled>
             <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
           </ProfileDeck.Root>
         </>
@@ -953,11 +1099,18 @@ describe('SwipeDeck factory hooks', () => {
       );
     }
 
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('undo', onUndo);
+
+      return null;
+    }
+
     function Example({ deckData }: { deckData: Profile[] }) {
       return (
         <>
           <DeckControls />
-          <ProfileDeck.Root data={deckData} getKey={getProfileKey} onUndo={onUndo} undoEnabled>
+          <DeckEvents />
+          <ProfileDeck.Root data={deckData} getKey={getProfileKey} undoEnabled>
             <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
           </ProfileDeck.Root>
         </>
@@ -1021,6 +1174,12 @@ describe('SwipeDeck factory hooks', () => {
       );
     }
 
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('undo', onUndo);
+
+      return null;
+    }
+
     function Example({
       deckData,
       keyExtractor,
@@ -1031,7 +1190,8 @@ describe('SwipeDeck factory hooks', () => {
       return (
         <>
           <DeckControls />
-          <ProfileDeck.Root data={deckData} getKey={keyExtractor} onUndo={onUndo} undoEnabled>
+          <DeckEvents />
+          <ProfileDeck.Root data={deckData} getKey={keyExtractor} undoEnabled>
             <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
           </ProfileDeck.Root>
         </>

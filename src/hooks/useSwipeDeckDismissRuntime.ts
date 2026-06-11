@@ -8,6 +8,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
 import type {
   SwipeDeckActionMotionRecipe,
+  SwipeDeckEventMap,
   SwipeDeckLayout,
   SwipeDeckMotionEasing,
   SwipeDirection,
@@ -55,15 +56,14 @@ type UseSwipeDeckDismissRuntimeArgs<T> = {
   dismissRuntimeRef: RefObject<SwipeDeckDismissRuntime | null>;
   dragItemIndex: SharedValue<number>;
   endReachedRef: RefObject<boolean>;
+  emitDeckEvent: <K extends keyof SwipeDeckEventMap<T>>(
+    eventName: K,
+    event: SwipeDeckEventMap<T>[K],
+  ) => void;
   gestureStartYRatio: SharedValue<number>;
   isAnimating: SharedValue<boolean>;
   isDragging: SharedValue<boolean>;
   layoutRef: RefObject<SwipeDeckLayout>;
-  onEndReachedRef: RefObject<(() => void) | undefined>;
-  onIndexChangeRef: RefObject<((index: number) => void) | undefined>;
-  onSwipeRef: RefObject<
-    ((event: { direction: SwipeDirection; index: number; item: T }) => void) | undefined
-  >;
   recordSwipeForUndo: RecordSwipeForUndo<T>;
   setActiveIndex: Dispatch<SetStateAction<number>>;
   setEndReached: Dispatch<SetStateAction<boolean>>;
@@ -111,13 +111,11 @@ export function useSwipeDeckDismissRuntime<T>({
   dismissRuntimeRef,
   dragItemIndex,
   endReachedRef,
+  emitDeckEvent,
   gestureStartYRatio,
   isAnimating,
   isDragging,
   layoutRef,
-  onEndReachedRef,
-  onIndexChangeRef,
-  onSwipeRef,
   recordSwipeForUndo,
   setActiveIndex,
   setEndReached,
@@ -143,8 +141,8 @@ export function useSwipeDeckDismissRuntime<T>({
       const item = currentData[commit.swipedIndex] as T;
 
       recordSwipeForUndo({ item, index: commit.swipedIndex, direction });
-      onSwipeRef.current?.({ item, index: commit.swipedIndex, direction });
-      onIndexChangeRef.current?.(commit.nextIndex);
+      emitDeckEvent('swipe', { item, index: commit.swipedIndex, direction });
+      emitDeckEvent('indexChange', { index: commit.nextIndex });
       activeIndexRef.current = commit.nextIndex;
       pendingCommitResetRef.current = true;
       setActiveIndex(commit.nextIndex);
@@ -152,16 +150,14 @@ export function useSwipeDeckDismissRuntime<T>({
       if (commit.shouldEmitEndReached) {
         endReachedRef.current = true;
         setEndReached(true);
-        onEndReachedRef.current?.();
+        emitDeckEvent('endReached', true);
       }
     },
     [
       activeIndexRef,
       dataRef,
       endReachedRef,
-      onEndReachedRef,
-      onIndexChangeRef,
-      onSwipeRef,
+      emitDeckEvent,
       recordSwipeForUndo,
       setActiveIndex,
       setEndReached,

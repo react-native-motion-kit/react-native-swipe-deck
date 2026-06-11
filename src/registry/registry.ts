@@ -1,17 +1,19 @@
-import { useMemo, useSyncExternalStore } from 'react';
 import { makeMutable } from 'react-native-reanimated';
 
 import type {
   SwipeDeckActionMotionRecipe,
   SwipeDeckActions,
+  SwipeDeckEventMap,
   SwipeDeckInteraction,
   SwipeDeckState,
   SwipeDirection,
   SwipeDeckUndoMotionRecipe,
 } from '../types';
 
+import { createEventStore, type EventStore } from '../events/eventStore';
 import { isSwipeDeckActionMotionRecipe } from '../motion/actionMotion';
 import { isSwipeDeckUndoMotionRecipe } from '../motion/undoMotion';
+import { createRegistryHooks, type SwipeDeckRegistryHooks } from './registryHooks';
 
 const DEFAULT_DECK_KEY = Symbol('default-deck');
 const DEFAULT_DECK_LABEL = '__default__';
@@ -22,24 +24,26 @@ type SwipeDeckRootController = {
   undo: (motion?: SwipeDeckUndoMotionRecipe) => boolean;
 };
 
-type SwipeDeckStore = {
+export type SwipeDeckStore<T> = {
   readonly interaction: SwipeDeckInteraction;
   readonly actions: SwipeDeckActions;
+  addEventListener: EventStore<SwipeDeckEventMap<T>>['addListener'];
   attach: (controller: SwipeDeckRootController) => () => void;
+  clearEvents: EventStore<SwipeDeckEventMap<T>>['clear'];
+  emitEvent: EventStore<SwipeDeckEventMap<T>>['emit'];
+  getEventSnapshot: EventStore<SwipeDeckEventMap<T>>['getSnapshot'];
   getSnapshot: () => SwipeDeckState;
   setSnapshot: (nextState: SwipeDeckState) => void;
   subscribe: (listener: () => void) => () => void;
+  subscribeEventSnapshot: EventStore<SwipeDeckEventMap<T>>['subscribeSnapshot'];
 };
 
 type DeckStoreKey = string | typeof DEFAULT_DECK_KEY;
 
-type GetSwipeDeckStore = (id?: string) => SwipeDeckStore;
+type GetSwipeDeckStore<T> = (id?: string) => SwipeDeckStore<T>;
 
-export type SwipeDeckRegistry = {
-  getStore: GetSwipeDeckStore;
-  useDeckState: (id?: string) => SwipeDeckState;
-  useDeckActions: (id?: string) => SwipeDeckActions;
-  useDeckInteraction: (id?: string) => SwipeDeckInteraction;
+export type SwipeDeckRegistry<T> = SwipeDeckRegistryHooks<T> & {
+  getStore: GetSwipeDeckStore<T>;
 };
 
 function getDeckStoreKey(id?: string): DeckStoreKey {
@@ -142,10 +146,11 @@ function createControllerSlot(label: string) {
   };
 }
 
-function createStore(label: string): SwipeDeckStore {
+function createStore<T>(label: string): SwipeDeckStore<T> {
   const snapshotStore = createSnapshotStore();
   const controllerSlot = createControllerSlot(label);
   const interaction = createInteraction();
+  const eventStore = createEventStore<SwipeDeckEventMap<T>>();
   const actions: SwipeDeckActions = {
     swipeLeft: (motionOrEvent?: unknown) => {
       const motion = isSwipeDeckActionMotionRecipe(motionOrEvent) ? motionOrEvent : undefined;
@@ -167,8 +172,10 @@ function createStore(label: string): SwipeDeckStore {
   return {
     interaction,
     actions,
+    addEventListener: eventStore.addListener,
     attach: (nextController) => {
       controllerSlot.attachController(nextController);
+      eventStore.clear();
       snapshotStore.setSnapshot(nextController.getState());
 
       return () => {
@@ -177,41 +184,22 @@ function createStore(label: string): SwipeDeckStore {
         }
 
         resetInteraction(interaction);
+        eventStore.clear();
         snapshotStore.resetSnapshot();
       };
     },
+    clearEvents: eventStore.clear,
+    emitEvent: eventStore.emit,
+    getEventSnapshot: eventStore.getSnapshot,
     getSnapshot: snapshotStore.getSnapshot,
     setSnapshot: snapshotStore.setSnapshot,
     subscribe: snapshotStore.subscribe,
+    subscribeEventSnapshot: eventStore.subscribeSnapshot,
   };
 }
 
-function createRegistryHooks(getStore: GetSwipeDeckStore) {
-  function useDeckStore(id?: string): SwipeDeckStore {
-    return useMemo(() => getStore(id), [id]);
-  }
-
-  return {
-    useDeckState: (id?: string): SwipeDeckState => {
-      const store = useDeckStore(id);
-
-      return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-    },
-    useDeckActions: (id?: string): SwipeDeckActions => {
-      const store = useDeckStore(id);
-
-      return useMemo(() => store.actions, [store]);
-    },
-    useDeckInteraction: (id?: string): SwipeDeckInteraction => {
-      const store = useDeckStore(id);
-
-      return useMemo(() => store.interaction, [store]);
-    },
-  };
-}
-
-export function createSwipeDeckRegistry(): SwipeDeckRegistry {
-  const stores = new Map<DeckStoreKey, SwipeDeckStore>();
+export function createSwipeDeckRegistry<T = never>(): SwipeDeckRegistry<T> {
+  const stores = new Map<DeckStoreKey, SwipeDeckStore<T>>();
 
   const getStore = (id?: string) => {
     const deckStoreKey = getDeckStoreKey(id);
@@ -221,7 +209,7 @@ export function createSwipeDeckRegistry(): SwipeDeckRegistry {
       return existingStore;
     }
 
-    const store = createStore(getDeckStoreLabel(id));
+    const store = createStore<T>(getDeckStoreLabel(id));
     stores.set(deckStoreKey, store);
 
     return store;
@@ -234,5 +222,7 @@ export function createSwipeDeckRegistry(): SwipeDeckRegistry {
     useDeckState: hooks.useDeckState,
     useDeckActions: hooks.useDeckActions,
     useDeckInteraction: hooks.useDeckInteraction,
+    useDeckEvent: hooks.useDeckEvent,
+    useDeckEventListener: hooks.useDeckEventListener,
   };
 }

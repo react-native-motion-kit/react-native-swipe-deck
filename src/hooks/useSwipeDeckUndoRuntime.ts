@@ -7,11 +7,11 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
 import type {
+  SwipeDeckEventMap,
   SwipeDeckLayout,
   SwipeDeckMotionEasing,
   SwipeDeckUndoMotionRecipe,
   SwipeDirection,
-  UndoEvent,
 } from '../types';
 
 import {
@@ -78,14 +78,16 @@ type UseSwipeDeckUndoRuntimeArgs<T> = {
   dismissRuntimeRef: RefObject<SwipeDeckUndoDismissRuntime | null>;
   dragItemIndex: SharedValue<number>;
   endReachedRef: RefObject<boolean>;
+  emitDeckEvent: <K extends keyof SwipeDeckEventMap<T>>(
+    eventName: K,
+    event: SwipeDeckEventMap<T>[K],
+  ) => void;
   gestureStartYRatio: SharedValue<number>;
   getKey: (item: T, index: number) => string;
   hasUndoHistoryRef: { current: () => boolean };
   isAnimating: SharedValue<boolean>;
   isDragging: SharedValue<boolean>;
   layoutRef: RefObject<SwipeDeckLayout>;
-  onIndexChangeRef: RefObject<((index: number) => void) | undefined>;
-  onUndoRef: RefObject<((event: UndoEvent<T>) => void) | undefined>;
   publishDeckStateSnapshot: () => void;
   setActiveIndex: Dispatch<SetStateAction<number>>;
   setEndReached: Dispatch<SetStateAction<boolean>>;
@@ -124,14 +126,13 @@ export function useSwipeDeckUndoRuntime<T>({
   dismissRuntimeRef,
   dragItemIndex,
   endReachedRef,
+  emitDeckEvent,
   gestureStartYRatio,
   getKey,
   hasUndoHistoryRef,
   isAnimating,
   isDragging,
   layoutRef,
-  onIndexChangeRef,
-  onUndoRef,
   publishDeckStateSnapshot,
   setActiveIndex,
   setEndReached,
@@ -329,12 +330,12 @@ export function useSwipeDeckUndoRuntime<T>({
       setUndoTransition(null);
       isAnimating.set(false);
       applyImmediateRuntimeState(false, false);
-      onUndoRef.current?.({
+      emitDeckEvent('undo', {
         item: restoredItem,
         index: restoredIndex,
         direction: pendingRestore.direction,
       });
-      onIndexChangeRef.current?.(restoredIndex);
+      emitDeckEvent('indexChange', { index: restoredIndex });
     },
     [
       activeIndexRef,
@@ -349,8 +350,7 @@ export function useSwipeDeckUndoRuntime<T>({
       gestureStartYRatio,
       isAnimating,
       isDragging,
-      onIndexChangeRef,
-      onUndoRef,
+      emitDeckEvent,
       setActiveIndex,
       setEndReached,
       signedSwipeProgress,

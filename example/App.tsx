@@ -162,6 +162,20 @@ function ProfileDeckControls() {
 }
 
 export default function App() {
+  const indexChangeEvent = ProfileDeck.useDeckEvent('indexChange', { index: 0 });
+
+  console.log('indexChangeEvent', indexChangeEvent);
+
+  ProfileDeck.useDeckEventListener('swipe', ({ item, direction }) => {
+    console.log(`Swiped ${item.name} ${direction}`);
+  });
+  ProfileDeck.useDeckEventListener('undo', ({ item, direction }) => {
+    console.log(`Undid ${item.name} ${direction}`);
+  });
+  ProfileDeck.useDeckEventListener('endReached', () => {
+    console.log('No more profiles');
+  });
+
   return (
     <GestureHandlerRootView style={styles.root}>
       <StatusBar style="light" />
@@ -181,15 +195,6 @@ export default function App() {
             undoEnabled
             visibleCardCount={3}
             containerStyle={styles.deck}
-            onUndo={({ item, direction }) => {
-              console.log(`Undid ${item.name} ${direction}`);
-            }}
-            onSwipe={({ item, direction }) => {
-              console.log(`Swiped ${item.name} ${direction}`);
-            }}
-            onEndReached={() => {
-              console.log('No more profiles');
-            }}
           >
             <ProfileDeck.Card style={styles.cardShadow}>
               {({ item, role, isActive }) => (

@@ -9,8 +9,12 @@ describe('createSwipeDeck factory surface', () => {
     expect(typeof ProfileDeck.useDeckState).toBe('function');
     expect(typeof ProfileDeck.useDeckActions).toBe('function');
     expect(typeof ProfileDeck.useDeckInteraction).toBe('function');
+    expect(typeof ProfileDeck.useDeckEvent).toBe('function');
+    expect(typeof ProfileDeck.useDeckEventListener).toBe('function');
     expect('useDeckState' in SwipeDeck).toBe(false);
     expect('useDeckActions' in SwipeDeck).toBe(false);
     expect('useDeckInteraction' in SwipeDeck).toBe(false);
+    expect('useDeckEvent' in SwipeDeck).toBe(false);
+    expect('useDeckEventListener' in SwipeDeck).toBe(false);
   });
 });
