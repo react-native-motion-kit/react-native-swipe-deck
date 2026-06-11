@@ -1,5 +1,11 @@
 # @react-native-motion-kit/swipe-deck
 
+## 1.0.1
+
+### Patch Changes
+
+- [#3](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/3) [`a6b2b6b`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/a6b2b6b8ca9c2649da9fdba9e15ebe84569047ad) Thanks [@saseungmin](https://github.com/saseungmin)! - Update the English and Korean READMEs with the React Native Motion Kit logo and remove internal API direction notes from the public docs.
+
 ## 1.0.0
 
 ### Major Changes
