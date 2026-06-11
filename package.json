@@ -1,6 +1,6 @@
 {
   "name": "@react-native-motion-kit/swipe-deck",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "High-performance Tinder-style swipe deck and swipe cards for React Native, powered by Reanimated and Gesture Handler.",
   "keywords": [
     "android",
