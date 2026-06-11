@@ -2,6 +2,10 @@
 
 [한국어](README.ko.md)
 
+<div align="center">
+  <img src="./assets/logo.png" width="300px" alt="React Native Motion Kit logo" />
+</div>
+
 High-performance Tinder-style swipe deck and swipe cards for React Native, powered by Reanimated and Gesture Handler.
 
 ## Highlights
@@ -661,25 +665,6 @@ function DeepStackDeck() {
 | `visibleCardCount={2}`                          | Up to `3` cards when enough data exists.    |
 | `visibleCardCount={20}` with 10 remaining items | At most those 10 remaining items.           |
 | even values                                     | Kept as the maximum budget; not rounded up. |
-
-## API direction
-
-The current public API already includes factory-scoped deck hooks and `id`-based deck registration:
-
-- `createSwipeDeck<T>()` creates a typed factory namespace.
-- `Root` and `Card` render the deck.
-- `useDeckState(id?)`, `useDeckActions(id?)`, `useDeckInteraction(id?)`, `useDeckEvent(eventName, initialValue?, id?)`, and `useDeckEventListener(eventName, listener, id?)` expose deck-wide state, actions, Reanimated interaction values, and committed model events from that factory namespace.
-- `SwipeDeckUndoMotion` and `actions.undo()` provide preset-based undo/back-swipe behavior.
-- `id` selects a deck inside the same factory when multiple roots are mounted.
-
-Future API directions may include:
-
-- public `Provider` or custom registry boundary;
-- trigger components for external swipe controls;
-- more explicit prerender/window controls;
-- lower-level controller APIs when they improve DX without hurting performance.
-
-The current shipped surface intentionally avoids a public Provider or trigger component for now. Factory-scoped hooks cover the main external UI use cases while keeping the core deck small.
 
 ## Contributing
 
