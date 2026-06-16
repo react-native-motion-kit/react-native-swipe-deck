@@ -9,6 +9,7 @@ import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMoti
 import type {
   SwipeDeckActionMotionRecipe,
   SwipeDeckEventMap,
+  SwipeDeckInteractionPhase,
   SwipeDeckLayout,
   SwipeDeckMotionEasing,
   SwipeDirection,
@@ -63,6 +64,7 @@ type UseSwipeDeckDismissRuntimeArgs<T> = {
   gestureStartYRatio: SharedValue<number>;
   isAnimating: SharedValue<boolean>;
   isDragging: SharedValue<boolean>;
+  interactionPhase: SharedValue<SwipeDeckInteractionPhase>;
   layoutRef: RefObject<SwipeDeckLayout>;
   recordSwipeForUndo: RecordSwipeForUndo<T>;
   setActiveIndex: Dispatch<SetStateAction<number>>;
@@ -115,6 +117,7 @@ export function useSwipeDeckDismissRuntime<T>({
   gestureStartYRatio,
   isAnimating,
   isDragging,
+  interactionPhase,
   layoutRef,
   recordSwipeForUndo,
   setActiveIndex,
@@ -183,6 +186,7 @@ export function useSwipeDeckDismissRuntime<T>({
     signedSwipeProgress.set(0);
     swipeDirectionSignal.set(0);
     isDragging.set(false);
+    interactionPhase.set('idle');
     gestureStartYRatio.set(0.5);
     dragItemIndex.set(-1);
   }, [
@@ -192,6 +196,7 @@ export function useSwipeDeckDismissRuntime<T>({
     dragItemIndex,
     gestureStartYRatio,
     isDragging,
+    interactionPhase,
     signedSwipeProgress,
     swipeDirectionSignal,
     swipeProgress,
@@ -267,6 +272,7 @@ export function useSwipeDeckDismissRuntime<T>({
 
       isAnimating.set(true);
       isDragging.set(true);
+      interactionPhase.set('dismissing');
       applyImmediateRuntimeState(true, true);
       gestureStartYRatio.set(0.5);
       dragItemIndex.set(activeItemIndex.get());
@@ -365,6 +371,7 @@ export function useSwipeDeckDismissRuntime<T>({
       gestureStartYRatio,
       isAnimating,
       isDragging,
+      interactionPhase,
       layoutRef,
       signedSwipeProgress,
       swipeDirectionSignal,

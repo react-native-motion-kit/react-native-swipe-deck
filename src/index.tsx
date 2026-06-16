@@ -18,6 +18,7 @@ export type {
   SwipeDeckEventName,
   SwipeDeckFactoryConfig,
   SwipeDeckInteraction,
+  SwipeDeckInteractionPhase,
   SwipeDeckInstance,
   SwipeDeckLayout,
   SwipeDeckUndoAction,

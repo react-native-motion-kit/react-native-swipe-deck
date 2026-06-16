@@ -5,6 +5,7 @@ import type {
   SwipeDeckActions,
   SwipeDeckEventMap,
   SwipeDeckInteraction,
+  SwipeDeckInteractionPhase,
   SwipeDeckState,
   SwipeDirection,
   SwipeDeckUndoMotionRecipe,
@@ -72,6 +73,7 @@ function createInteraction(): SwipeDeckInteraction {
     translationX: makeMutable(0),
     translationY: makeMutable(0),
     isDragging: makeMutable(false),
+    phase: makeMutable<SwipeDeckInteractionPhase>('idle'),
   };
 }
 
@@ -82,6 +84,7 @@ function resetInteraction(interaction: SwipeDeckInteraction) {
   interaction.translationX.set(0);
   interaction.translationY.set(0);
   interaction.isDragging.set(false);
+  interaction.phase.set('idle');
 }
 
 function isSameState(left: SwipeDeckState, right: SwipeDeckState): boolean {

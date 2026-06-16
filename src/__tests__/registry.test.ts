@@ -52,6 +52,7 @@ describe('createSwipeDeckRegistry', () => {
 
     expect(registry.getStore('profiles').actions).toBe(store.actions);
     expect(registry.getStore('profiles').interaction).toBe(store.interaction);
+    expect(store.interaction.phase.get()).toBe('idle');
   });
 
   it('notifies state subscribers only when the snapshot changes', () => {
@@ -272,6 +273,7 @@ describe('createSwipeDeckRegistry', () => {
     store.interaction.translationX.set(-120);
     store.interaction.translationY.set(24);
     store.interaction.isDragging.set(true);
+    store.interaction.phase.set('dismissing');
 
     detach();
 
@@ -281,5 +283,6 @@ describe('createSwipeDeckRegistry', () => {
     expect(store.interaction.translationX.get()).toBe(0);
     expect(store.interaction.translationY.get()).toBe(0);
     expect(store.interaction.isDragging.get()).toBe(false);
+    expect(store.interaction.phase.get()).toBe('idle');
   });
 });

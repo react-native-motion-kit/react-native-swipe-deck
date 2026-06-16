@@ -8,6 +8,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
 import type {
   SwipeDeckEventMap,
+  SwipeDeckInteractionPhase,
   SwipeDeckLayout,
   SwipeDeckMotionEasing,
   SwipeDeckUndoMotionRecipe,
@@ -87,6 +88,7 @@ type UseSwipeDeckUndoRuntimeArgs<T> = {
   hasUndoHistoryRef: { current: () => boolean };
   isAnimating: SharedValue<boolean>;
   isDragging: SharedValue<boolean>;
+  interactionPhase: SharedValue<SwipeDeckInteractionPhase>;
   layoutRef: RefObject<SwipeDeckLayout>;
   publishDeckStateSnapshot: () => void;
   setActiveIndex: Dispatch<SetStateAction<number>>;
@@ -132,6 +134,7 @@ export function useSwipeDeckUndoRuntime<T>({
   hasUndoHistoryRef,
   isAnimating,
   isDragging,
+  interactionPhase,
   layoutRef,
   publishDeckStateSnapshot,
   setActiveIndex,
@@ -192,6 +195,7 @@ export function useSwipeDeckUndoRuntime<T>({
     undoProgress.set(0);
     undoFromTranslateX.set(0);
     isDragging.set(false);
+    interactionPhase.set('idle');
     gestureStartYRatio.set(0.5);
     isAnimating.set(false);
     applyImmediateRuntimeState(false, false);
@@ -206,6 +210,7 @@ export function useSwipeDeckUndoRuntime<T>({
     gestureStartYRatio,
     isAnimating,
     isDragging,
+    interactionPhase,
     signedSwipeProgress,
     swipeDirectionSignal,
     swipeProgress,
@@ -291,6 +296,7 @@ export function useSwipeDeckUndoRuntime<T>({
         undoProgress.set(0);
         undoFromTranslateX.set(0);
         isDragging.set(false);
+        interactionPhase.set('idle');
         gestureStartYRatio.set(0.5);
         isAnimating.set(false);
         applyImmediateRuntimeState(false, false);
@@ -325,6 +331,7 @@ export function useSwipeDeckUndoRuntime<T>({
       undoProgress.set(0);
       undoFromTranslateX.set(0);
       isDragging.set(false);
+      interactionPhase.set('idle');
       gestureStartYRatio.set(0.5);
       setActiveIndex(restoredIndex);
       setUndoTransition(null);
@@ -350,6 +357,7 @@ export function useSwipeDeckUndoRuntime<T>({
       gestureStartYRatio,
       isAnimating,
       isDragging,
+      interactionPhase,
       emitDeckEvent,
       setActiveIndex,
       setEndReached,
@@ -412,6 +420,7 @@ export function useSwipeDeckUndoRuntime<T>({
       };
       cancelActiveInteractionAnimations();
       isAnimating.set(true);
+      interactionPhase.set('undoing');
       applyImmediateRuntimeState(true, false);
       swipeProgress.set(0);
       signedSwipeProgress.set(0);
@@ -443,6 +452,7 @@ export function useSwipeDeckUndoRuntime<T>({
       gestureStartYRatio,
       isAnimating,
       isDragging,
+      interactionPhase,
       layoutRef,
       pruneUndoHistoryForCurrentData,
       publishDeckStateSnapshot,
