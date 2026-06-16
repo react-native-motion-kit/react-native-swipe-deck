@@ -272,8 +272,13 @@ function ProfileDeckScreen() {
     `useDeckEvent` / `useDeckEventListener`를 사용하세요.
   - `dismissing`은 dismiss가 accepted된 뒤 다음 item commit과 interaction reset이 끝날 때까지의
     lifecycle을 포함합니다. 즉, 화면 밖으로 나가는 animation frame만 의미하지는 않습니다.
+  - `interaction.direction`은 raw live drag/dismiss signal입니다(`-1 | 0 | 1`).
+    외부 UI가 UI thread에서 accepted dismiss 방향(`left | right | null`)을 알아야 한다면
+    `interaction.dismissDirection`을 사용하세요. `dismissDirection`은 lifecycle state이지,
+    commit된 `swipe` event payload가 아닙니다.
   - programmatic springboard action은 action이 받아들여지는 즉시 `dismissing`으로 들어갑니다.
-    anticipation 중에는 실제 dismiss phase가 시작되기 전까지 `interaction.direction`이 neutral일 수 있습니다.
+    anticipation 중에는 실제 dismiss phase가 시작되기 전까지 `interaction.direction`이 neutral일 수 있지만,
+    `interaction.dismissDirection`에는 이미 accepted action direction이 들어있습니다.
 - `useDeckEvent(eventName, initialValue?, id?)`는 React 렌더링용 최신 commit event를 반환합니다.
   첫 event 전과 deck이 detach된 뒤에는 `undefined` 또는 `initialValue`를 반환합니다.
 - `useDeckEventListener(eventName, listener, id?)`는 앱 코드에서 별도 state를 만들지 않고 commit된 model event를 구독합니다.

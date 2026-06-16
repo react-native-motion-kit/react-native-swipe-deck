@@ -16,7 +16,10 @@ import type {
 } from '../types';
 
 import { getSwipeCommit, shouldDeferActiveItemSync } from '../core/state';
-import { resolveSwipeDeckProgrammaticActionMotion } from '../core/swipeDeckRuntime';
+import {
+  resetSwipeDeckInteractionSignals,
+  resolveSwipeDeckProgrammaticActionMotion,
+} from '../core/swipeDeckRuntime';
 import {
   resolveSwipeDeckDismissDestinationDistance,
   resolveSwipeDeckDismissDuration,
@@ -55,6 +58,7 @@ type UseSwipeDeckDismissRuntimeArgs<T> = {
   dataRef: RefObject<readonly T[]>;
   disabledRef: RefObject<boolean>;
   dismissRuntimeRef: RefObject<SwipeDeckDismissRuntime | null>;
+  dismissDirection: SharedValue<SwipeDirection | null>;
   dragItemIndex: SharedValue<number>;
   endReachedRef: RefObject<boolean>;
   emitDeckEvent: <K extends keyof SwipeDeckEventMap<T>>(
@@ -111,6 +115,7 @@ export function useSwipeDeckDismissRuntime<T>({
   dataRef,
   disabledRef,
   dismissRuntimeRef,
+  dismissDirection,
   dragItemIndex,
   endReachedRef,
   emitDeckEvent,
@@ -182,9 +187,12 @@ export function useSwipeDeckDismissRuntime<T>({
     cancelActiveInteractionAnimations();
     activeTranslateX.set(0);
     activeTranslateY.set(0);
-    swipeProgress.set(0);
-    signedSwipeProgress.set(0);
-    swipeDirectionSignal.set(0);
+    resetSwipeDeckInteractionSignals({
+      dismissDirection,
+      signedSwipeProgress,
+      swipeDirectionSignal,
+      swipeProgress,
+    });
     isDragging.set(false);
     interactionPhase.set('idle');
     gestureStartYRatio.set(0.5);
@@ -193,6 +201,7 @@ export function useSwipeDeckDismissRuntime<T>({
     activeTranslateX,
     activeTranslateY,
     cancelActiveInteractionAnimations,
+    dismissDirection,
     dragItemIndex,
     gestureStartYRatio,
     isDragging,
@@ -273,6 +282,7 @@ export function useSwipeDeckDismissRuntime<T>({
       isAnimating.set(true);
       isDragging.set(true);
       interactionPhase.set('dismissing');
+      dismissDirection.set(direction);
       applyImmediateRuntimeState(true, true);
       gestureStartYRatio.set(0.5);
       dragItemIndex.set(activeItemIndex.get());
@@ -367,6 +377,7 @@ export function useSwipeDeckDismissRuntime<T>({
       dataRef,
       disabledRef,
       dismissRuntimeRef,
+      dismissDirection,
       dragItemIndex,
       gestureStartYRatio,
       isAnimating,

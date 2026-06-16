@@ -87,6 +87,7 @@ function Root<T>({
   const swipeProgress = interaction.progress;
   const signedSwipeProgress = interaction.signedProgress;
   const swipeDirectionSignal = interaction.direction;
+  const dismissDirection = interaction.dismissDirection;
   const activeTranslateX = interaction.translationX;
   const activeTranslateY = interaction.translationY;
   const isDragging = interaction.isDragging;
@@ -231,6 +232,7 @@ function Root<T>({
     data,
     disabledRef,
     dismissRuntimeRef,
+    dismissDirection,
     dragItemIndex,
     endReachedRef,
     gestureStartYRatio,
@@ -268,6 +270,7 @@ function Root<T>({
     dataRef,
     disabledRef,
     dismissRuntimeRef,
+    dismissDirection,
     dragItemIndex,
     endReachedRef,
     gestureStartYRatio,
@@ -299,6 +302,7 @@ function Root<T>({
     dismissMaxDuration,
     dismissMinDuration,
     dismissOffscreenMultiplier,
+    dismissDirection,
     dragItemIndex,
     gestureStartYRatio,
     hasActiveCard,

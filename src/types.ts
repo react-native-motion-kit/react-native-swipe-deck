@@ -534,6 +534,13 @@ export type SwipeDeckInteraction = {
   signedProgress: SharedValue<number>;
   /** Current swipe direction signal; left is `-1`, idle is `0`, right is `1`. */
   direction: SharedValue<-1 | 0 | 1>;
+  /**
+   * Accepted dismiss direction for lifecycle-driven visual feedback.
+   *
+   * This is not the committed swipe event payload. It becomes non-null only after a dismiss is
+   * accepted and resets after the deck commits and clears interaction values.
+   */
+  dismissDirection: SharedValue<SwipeDirection | null>;
   /** Active card horizontal translation. */
   translationX: SharedValue<number>;
   /** Active card vertical translation. */
