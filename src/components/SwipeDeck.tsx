@@ -90,6 +90,7 @@ function Root<T>({
   const activeTranslateX = interaction.translationX;
   const activeTranslateY = interaction.translationY;
   const isDragging = interaction.isDragging;
+  const interactionPhase = interaction.phase;
   const dragItemIndex = useSharedValue(-1);
   const undoProgress = useSharedValue(0);
   const undoFromTranslateX = useSharedValue(0);
@@ -237,6 +238,7 @@ function Root<T>({
     hasUndoHistoryRef,
     isAnimating,
     isDragging,
+    interactionPhase,
     layoutRef,
     emitDeckEvent: deckStore.emitEvent,
     publishDeckStateSnapshot,
@@ -271,6 +273,7 @@ function Root<T>({
     gestureStartYRatio,
     isAnimating,
     isDragging,
+    interactionPhase,
     layoutRef,
     emitDeckEvent: deckStore.emitEvent,
     recordSwipeForUndo,
@@ -301,6 +304,7 @@ function Root<T>({
     hasActiveCard,
     isAnimating,
     isDragging,
+    interactionPhase,
     layout,
     resolvedSwipeThreshold,
     resolvedVelocityThreshold,

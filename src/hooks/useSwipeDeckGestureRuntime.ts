@@ -6,7 +6,12 @@ import { useSharedValue, withSpring, withTiming } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets';
 
 import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
-import type { SwipeDeckLayout, SwipeDeckMotionEasing, SwipeDirection } from '../types';
+import type {
+  SwipeDeckInteractionPhase,
+  SwipeDeckLayout,
+  SwipeDeckMotionEasing,
+  SwipeDirection,
+} from '../types';
 
 import { resolveSwipeDirection } from '../core/directions';
 import { resolveProgressDirection, resolveSignedSwipeProgress } from '../core/swipeDeckRuntime';
@@ -48,6 +53,7 @@ type UseSwipeDeckGestureRuntimeArgs = {
   hasActiveCard: boolean;
   isAnimating: SharedValue<boolean>;
   isDragging: SharedValue<boolean>;
+  interactionPhase: SharedValue<SwipeDeckInteractionPhase>;
   layout: SwipeDeckLayout;
   resolvedSwipeThreshold?: number;
   resolvedVelocityThreshold?: number;
@@ -84,6 +90,7 @@ export function useSwipeDeckGestureRuntime({
   hasActiveCard,
   isAnimating,
   isDragging,
+  interactionPhase,
   layout,
   resolvedSwipeThreshold,
   resolvedVelocityThreshold,
@@ -114,6 +121,7 @@ export function useSwipeDeckGestureRuntime({
 
           runtimeEventId.set(nextRuntimeEventId);
           isDragging.set(true);
+          interactionPhase.set('dragging');
           swipeDirectionSignal.set(0);
           signedSwipeProgress.set(0);
           scheduleOnRN(applyScheduledRuntimeState, nextRuntimeEventId, false, true);
@@ -178,6 +186,7 @@ export function useSwipeDeckGestureRuntime({
                   dragItemIndex.set(-1);
                   isAnimating.set(false);
                   isDragging.set(false);
+                  interactionPhase.set('idle');
                   swipeDirectionSignal.set(0);
                   const nextRuntimeEventId = runtimeEventId.get() + 1;
 
@@ -195,6 +204,7 @@ export function useSwipeDeckGestureRuntime({
 
           isAnimating.set(true);
           isDragging.set(true);
+          interactionPhase.set('dismissing');
           const currentAttachmentGeneration = attachmentGeneration.get();
 
           scheduleOnRN(applyScheduledRuntimeState, runtimeEventId.get(), true, true);
@@ -249,6 +259,7 @@ export function useSwipeDeckGestureRuntime({
           signedSwipeProgress.set(0);
           swipeDirectionSignal.set(0);
           isDragging.set(false);
+          interactionPhase.set('idle');
           dragItemIndex.set(-1);
           const nextRuntimeEventId = runtimeEventId.get() + 1;
 
@@ -280,6 +291,7 @@ export function useSwipeDeckGestureRuntime({
       hasHandledGestureEnd,
       isAnimating,
       isDragging,
+      interactionPhase,
       layout,
       resolvedSwipeThreshold,
       resolvedVelocityThreshold,

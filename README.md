@@ -269,6 +269,16 @@ function ProfileDeckScreen() {
   after the deck is completed.
 - `useDeckInteraction(id?)` returns Reanimated shared values for progress-driven UI. Gesture
   progress stays on the UI thread and does not rerender React every frame.
+  - `interaction.phase` is a UI-thread lifecycle signal:
+    `idle | dragging | dismissing | undoing`.
+  - Use `phase` for visual feedback that needs to know whether the deck is actively dragging,
+    dismissing, or restoring. Use `useDeckEvent` / `useDeckEventListener` for committed model
+    events such as swipe, undo, and index changes.
+  - `dismissing` covers the accepted dismiss lifecycle until the deck has committed the next item
+    and reset interaction values. It is intentionally broader than only the offscreen animation
+    frames.
+  - Programmatic springboard actions enter `dismissing` as soon as the action is accepted. During
+    anticipation, `interaction.direction` can still be neutral until the real dismiss phase starts.
 - `useDeckEvent(eventName, initialValue?, id?)` returns the latest committed deck event for
   React-rendered UI. It returns `undefined` or `initialValue` before the first event and after the
   deck detaches.

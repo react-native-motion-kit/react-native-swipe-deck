@@ -96,6 +96,51 @@ function SwipeReactionOverlay() {
   );
 }
 
+function DeckPhaseFeedback() {
+  const { phase } = ProfileDeck.useDeckInteraction();
+
+  const idleStyle = useAnimatedStyle(() => {
+    return {
+      opacity: phase.get() === 'idle' ? 1 : 0.32,
+    };
+  });
+
+  const draggingStyle = useAnimatedStyle(() => {
+    return {
+      opacity: phase.get() === 'dragging' ? 1 : 0.32,
+    };
+  });
+
+  const dismissingStyle = useAnimatedStyle(() => {
+    return {
+      opacity: phase.get() === 'dismissing' ? 1 : 0.32,
+    };
+  });
+
+  const undoingStyle = useAnimatedStyle(() => {
+    return {
+      opacity: phase.get() === 'undoing' ? 1 : 0.32,
+    };
+  });
+
+  return (
+    <View pointerEvents="none" style={styles.phaseFeedback}>
+      <Animated.View style={[styles.phasePill, styles.idlePhasePill, idleStyle]}>
+        <Text style={styles.phaseText}>Idle</Text>
+      </Animated.View>
+      <Animated.View style={[styles.phasePill, styles.draggingPhasePill, draggingStyle]}>
+        <Text style={styles.phaseText}>Drag</Text>
+      </Animated.View>
+      <Animated.View style={[styles.phasePill, styles.dismissPhasePill, dismissingStyle]}>
+        <Text style={styles.phaseText}>Dismiss</Text>
+      </Animated.View>
+      <Animated.View style={[styles.phasePill, styles.undoPhasePill, undoingStyle]}>
+        <Text style={styles.phaseText}>Undo</Text>
+      </Animated.View>
+    </View>
+  );
+}
+
 type ProfileCardProps = {
   isActive: boolean;
   profile: Profile;
@@ -202,6 +247,7 @@ export default function App() {
               )}
             </ProfileDeck.Card>
           </ProfileDeck.Root>
+          <DeckPhaseFeedback />
           <ProfileDeckControls />
         </View>
       </View>
@@ -340,6 +386,40 @@ const styles = StyleSheet.create({
     color: '#e4e4e7',
     fontSize: 14,
     fontWeight: '800',
+  },
+  phaseFeedback: {
+    alignItems: 'center',
+    bottom: 108,
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+  },
+  phasePill: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  idlePhasePill: {
+    backgroundColor: 'rgba(161, 161, 170, 0.72)',
+  },
+  draggingPhasePill: {
+    backgroundColor: 'rgba(96, 165, 250, 0.82)',
+  },
+  dismissPhasePill: {
+    backgroundColor: 'rgba(52, 211, 153, 0.82)',
+  },
+  undoPhasePill: {
+    backgroundColor: 'rgba(251, 191, 36, 0.82)',
+  },
+  phaseText: {
+    color: '#09090b',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   actions: {
     flexDirection: 'row',

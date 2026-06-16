@@ -265,6 +265,15 @@ function ProfileDeckScreen() {
   `undo()`는 deck이 완료된 뒤에도 `canUndo`가 true라면 `true`를 반환합니다.
 - `useDeckInteraction(id?)`는 progress 기반 UI를 위한 Reanimated shared value를 반환합니다.
   gesture progress는 UI thread에 남고, 매 frame React rerender를 만들지 않습니다.
+  - `interaction.phase`는 UI thread lifecycle signal입니다:
+    `idle | dragging | dismissing | undoing`.
+  - deck이 drag 중인지, dismiss 중인지, restore 중인지 알아야 하는 visual feedback에는
+    `phase`를 사용하세요. swipe, undo, index change처럼 commit된 model event는
+    `useDeckEvent` / `useDeckEventListener`를 사용하세요.
+  - `dismissing`은 dismiss가 accepted된 뒤 다음 item commit과 interaction reset이 끝날 때까지의
+    lifecycle을 포함합니다. 즉, 화면 밖으로 나가는 animation frame만 의미하지는 않습니다.
+  - programmatic springboard action은 action이 받아들여지는 즉시 `dismissing`으로 들어갑니다.
+    anticipation 중에는 실제 dismiss phase가 시작되기 전까지 `interaction.direction`이 neutral일 수 있습니다.
 - `useDeckEvent(eventName, initialValue?, id?)`는 React 렌더링용 최신 commit event를 반환합니다.
   첫 event 전과 deck이 detach된 뒤에는 `undefined` 또는 `initialValue`를 반환합니다.
 - `useDeckEventListener(eventName, listener, id?)`는 앱 코드에서 별도 state를 만들지 않고 commit된 model event를 구독합니다.

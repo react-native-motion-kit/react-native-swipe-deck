@@ -525,6 +525,8 @@ export type SwipeDeckActions = {
   undo: SwipeDeckUndoAction;
 };
 
+export type SwipeDeckInteractionPhase = 'idle' | 'dragging' | 'dismissing' | 'undoing';
+
 export type SwipeDeckInteraction = {
   /** Absolute swipe progress from `0` to `1`. */
   progress: SharedValue<number>;
@@ -538,6 +540,12 @@ export type SwipeDeckInteraction = {
   translationY: SharedValue<number>;
   /** Whether the deck is currently being dragged or dismissed. */
   isDragging: SharedValue<boolean>;
+  /**
+   * UI-thread lifecycle phase for external visual feedback.
+   *
+   * Use model events for committed state changes; this value is for frame-synchronous UI.
+   */
+  phase: SharedValue<SwipeDeckInteractionPhase>;
 };
 
 export type SwipeDeckInstance<T> = {
