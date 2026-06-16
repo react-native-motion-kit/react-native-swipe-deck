@@ -1,5 +1,40 @@
 # @react-native-motion-kit/swipe-deck
 
+## 1.1.0
+
+### Minor Changes
+
+- [#9](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/9) [`da9b96e`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/da9b96ec75d1ca8049bcef16a60170de916ca64b) Thanks [@saseungmin](https://github.com/saseungmin)! - Add `interaction.dismissDirection` to `useDeckInteraction()` so UI-thread consumers can read the accepted dismiss side without waiting for JS swipe events or inferring from raw drag direction.
+
+  ```tsx
+  function DeckDismissFeedback() {
+    const { dismissDirection, phase } = ProfileDeck.useDeckInteraction();
+
+    const rightStyle = useAnimatedStyle(() => ({
+      opacity:
+        phase.get() === "dismissing" && dismissDirection.get() === "right"
+          ? 1
+          : 0,
+    }));
+
+    return <Animated.View style={rightStyle} />;
+  }
+  ```
+
+- [#7](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/7) [`c3d8949`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/c3d89495dd6ccb2095ef736da238052f9a0120dd) Thanks [@saseungmin](https://github.com/saseungmin)! - Add `interaction.phase` to `useDeckInteraction()` so UI-thread consumers can distinguish idle, dragging, dismissing, and undoing deck lifecycles without inferring from progress or JS events.
+
+  ```tsx
+  function DeckPhaseFeedback() {
+    const { phase } = ProfileDeck.useDeckInteraction();
+
+    const dismissingStyle = useAnimatedStyle(() => ({
+      opacity: phase.get() === "dismissing" ? 1 : 0.32,
+    }));
+
+    return <Animated.View style={dismissingStyle} />;
+  }
+  ```
+
 ## 1.0.2
 
 ### Patch Changes
