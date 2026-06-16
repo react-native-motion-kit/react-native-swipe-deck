@@ -70,6 +70,7 @@ function createInteraction(): SwipeDeckInteraction {
     progress: makeMutable(0),
     signedProgress: makeMutable(0),
     direction: makeMutable<-1 | 0 | 1>(0),
+    dismissDirection: makeMutable<SwipeDirection | null>(null),
     translationX: makeMutable(0),
     translationY: makeMutable(0),
     isDragging: makeMutable(false),
@@ -81,6 +82,7 @@ function resetInteraction(interaction: SwipeDeckInteraction) {
   interaction.progress.set(0);
   interaction.signedProgress.set(0);
   interaction.direction.set(0);
+  interaction.dismissDirection.set(null);
   interaction.translationX.set(0);
   interaction.translationY.set(0);
   interaction.isDragging.set(false);

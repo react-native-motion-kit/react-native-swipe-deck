@@ -17,6 +17,7 @@ import type {
 
 import {
   getActiveRenderItemId,
+  resetSwipeDeckInteractionSignals,
   resolveSwipeDeckProgrammaticUndoMotion,
 } from '../core/swipeDeckRuntime';
 import { type ResolvedSwipeDeckUndoMotion } from '../motion/undoMotion';
@@ -77,6 +78,7 @@ type UseSwipeDeckUndoRuntimeArgs<T> = {
   data: readonly T[];
   disabledRef: RefObject<boolean>;
   dismissRuntimeRef: RefObject<SwipeDeckUndoDismissRuntime | null>;
+  dismissDirection: SharedValue<SwipeDirection | null>;
   dragItemIndex: SharedValue<number>;
   endReachedRef: RefObject<boolean>;
   emitDeckEvent: <K extends keyof SwipeDeckEventMap<T>>(
@@ -126,6 +128,7 @@ export function useSwipeDeckUndoRuntime<T>({
   data,
   disabledRef,
   dismissRuntimeRef,
+  dismissDirection,
   dragItemIndex,
   endReachedRef,
   emitDeckEvent,
@@ -185,9 +188,12 @@ export function useSwipeDeckUndoRuntime<T>({
     setUndoTransition(null);
     cancelActiveInteractionAnimations();
     cancelAnimation(undoProgress);
-    swipeProgress.set(0);
-    signedSwipeProgress.set(0);
-    swipeDirectionSignal.set(0);
+    resetSwipeDeckInteractionSignals({
+      dismissDirection,
+      signedSwipeProgress,
+      swipeDirectionSignal,
+      swipeProgress,
+    });
     activeTranslateX.set(0);
     activeTranslateY.set(0);
     activeItemIndex.set(getActiveRenderItemId(dataRef.current.length, activeIndexRef.current));
@@ -206,6 +212,7 @@ export function useSwipeDeckUndoRuntime<T>({
     activeTranslateY,
     applyImmediateRuntimeState,
     cancelActiveInteractionAnimations,
+    dismissDirection,
     dragItemIndex,
     gestureStartYRatio,
     isAnimating,
@@ -289,9 +296,12 @@ export function useSwipeDeckUndoRuntime<T>({
         activeItemIndex.set(getActiveRenderItemId(currentData.length, activeIndexRef.current));
         activeTranslateX.set(0);
         activeTranslateY.set(0);
-        swipeProgress.set(0);
-        signedSwipeProgress.set(0);
-        swipeDirectionSignal.set(0);
+        resetSwipeDeckInteractionSignals({
+          dismissDirection,
+          signedSwipeProgress,
+          swipeDirectionSignal,
+          swipeProgress,
+        });
         dragItemIndex.set(-1);
         undoProgress.set(0);
         undoFromTranslateX.set(0);
@@ -322,9 +332,12 @@ export function useSwipeDeckUndoRuntime<T>({
       setEndReached(false);
       activeIndexRef.current = restoredIndex;
       activeItemIndex.set(restoredIndex);
-      swipeProgress.set(0);
-      signedSwipeProgress.set(0);
-      swipeDirectionSignal.set(0);
+      resetSwipeDeckInteractionSignals({
+        dismissDirection,
+        signedSwipeProgress,
+        swipeDirectionSignal,
+        swipeProgress,
+      });
       activeTranslateX.set(0);
       activeTranslateY.set(0);
       dragItemIndex.set(-1);
@@ -352,6 +365,7 @@ export function useSwipeDeckUndoRuntime<T>({
       applyImmediateRuntimeState,
       attachmentGenerationRef,
       cancelPendingUndoRestore,
+      dismissDirection,
       dragItemIndex,
       endReachedRef,
       gestureStartYRatio,
@@ -422,9 +436,12 @@ export function useSwipeDeckUndoRuntime<T>({
       isAnimating.set(true);
       interactionPhase.set('undoing');
       applyImmediateRuntimeState(true, false);
-      swipeProgress.set(0);
-      signedSwipeProgress.set(0);
-      swipeDirectionSignal.set(0);
+      resetSwipeDeckInteractionSignals({
+        dismissDirection,
+        signedSwipeProgress,
+        swipeDirectionSignal,
+        swipeProgress,
+      });
       activeTranslateX.set(0);
       activeTranslateY.set(0);
       isDragging.set(false);
@@ -448,6 +465,7 @@ export function useSwipeDeckUndoRuntime<T>({
       cancelActiveInteractionAnimations,
       disabledRef,
       dismissRuntimeRef,
+      dismissDirection,
       dragItemIndex,
       gestureStartYRatio,
       isAnimating,
@@ -483,9 +501,12 @@ export function useSwipeDeckUndoRuntime<T>({
     cancelAnimation(undoProgress);
     dragItemIndex.set(-1);
     gestureStartYRatio.set(0.5);
-    swipeProgress.set(0);
-    signedSwipeProgress.set(0);
-    swipeDirectionSignal.set(0);
+    resetSwipeDeckInteractionSignals({
+      dismissDirection,
+      signedSwipeProgress,
+      swipeDirectionSignal,
+      swipeProgress,
+    });
     activeTranslateX.set(0);
     activeTranslateY.set(0);
     undoProgress.set(1);
@@ -520,6 +541,7 @@ export function useSwipeDeckUndoRuntime<T>({
     cancelActiveInteractionAnimations,
     completeUndoRestoreIfCurrent,
     dragItemIndex,
+    dismissDirection,
     gestureStartYRatio,
     signedSwipeProgress,
     swipeDirectionSignal,

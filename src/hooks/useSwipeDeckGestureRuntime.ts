@@ -48,6 +48,7 @@ type UseSwipeDeckGestureRuntimeArgs = {
   dismissMaxDuration: number;
   dismissMinDuration: number;
   dismissOffscreenMultiplier: number;
+  dismissDirection: SharedValue<SwipeDirection | null>;
   dragItemIndex: SharedValue<number>;
   gestureStartYRatio: SharedValue<number>;
   hasActiveCard: boolean;
@@ -85,6 +86,7 @@ export function useSwipeDeckGestureRuntime({
   dismissMaxDuration,
   dismissMinDuration,
   dismissOffscreenMultiplier,
+  dismissDirection,
   dragItemIndex,
   gestureStartYRatio,
   hasActiveCard,
@@ -122,6 +124,7 @@ export function useSwipeDeckGestureRuntime({
           runtimeEventId.set(nextRuntimeEventId);
           isDragging.set(true);
           interactionPhase.set('dragging');
+          dismissDirection.set(null);
           swipeDirectionSignal.set(0);
           signedSwipeProgress.set(0);
           scheduleOnRN(applyScheduledRuntimeState, nextRuntimeEventId, false, true);
@@ -187,6 +190,7 @@ export function useSwipeDeckGestureRuntime({
                   isAnimating.set(false);
                   isDragging.set(false);
                   interactionPhase.set('idle');
+                  dismissDirection.set(null);
                   swipeDirectionSignal.set(0);
                   const nextRuntimeEventId = runtimeEventId.get() + 1;
 
@@ -205,6 +209,7 @@ export function useSwipeDeckGestureRuntime({
           isAnimating.set(true);
           isDragging.set(true);
           interactionPhase.set('dismissing');
+          dismissDirection.set(direction);
           const currentAttachmentGeneration = attachmentGeneration.get();
 
           scheduleOnRN(applyScheduledRuntimeState, runtimeEventId.get(), true, true);
@@ -285,6 +290,7 @@ export function useSwipeDeckGestureRuntime({
       dismissMaxDuration,
       dismissMinDuration,
       dismissOffscreenMultiplier,
+      dismissDirection,
       dragItemIndex,
       gestureStartYRatio,
       hasActiveCard,

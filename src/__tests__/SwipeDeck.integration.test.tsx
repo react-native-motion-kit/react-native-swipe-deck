@@ -41,6 +41,7 @@ describe('SwipeDeck factory hooks', () => {
     function DeckControls() {
       const state = ProfileDeck.useDeckState();
       const actions = ProfileDeck.useDeckActions();
+      const interaction = ProfileDeck.useDeckInteraction();
       const [lastActionResult, setLastActionResult] = useState('none');
 
       return (
@@ -53,7 +54,13 @@ describe('SwipeDeck factory hooks', () => {
           <Pressable
             accessibilityLabel="Force swipe right"
             accessibilityRole="button"
-            onPress={() => setLastActionResult(String(actions.swipeRight()))}
+            onPress={() => {
+              const accepted = actions.swipeRight();
+
+              setLastActionResult(
+                `${String(accepted)}:${interaction.dismissDirection.get() ?? 'null'}`,
+              );
+            }}
           >
             <Text>Force swipe right</Text>
           </Pressable>
@@ -94,7 +101,7 @@ describe('SwipeDeck factory hooks', () => {
 
     await user.press(screen.getByRole('button', { name: 'Force swipe right' }));
 
-    expect(screen.getByText('action:false')).toBeOnTheScreen();
+    expect(screen.getByText('action:false:null')).toBeOnTheScreen();
 
     await measureDeckFromVisibleCard('Ada');
 
@@ -103,7 +110,7 @@ describe('SwipeDeck factory hooks', () => {
 
     await user.press(screen.getByRole('button', { name: 'Force swipe right' }));
 
-    expect(await screen.findByText('action:true')).toBeOnTheScreen();
+    expect(await screen.findByText('action:true:right')).toBeOnTheScreen();
     expect(await screen.findByText('state:1:2:true:false')).toBeOnTheScreen();
     expect(screen.getByText('Grace')).toBeOnTheScreen();
     expect(onSwipe).toHaveBeenCalledWith({
@@ -256,11 +263,11 @@ describe('SwipeDeck factory hooks', () => {
       const actions = ProfileDeck.useDeckActions();
       const interaction = ProfileDeck.useDeckInteraction();
       const [lastActionResult, setLastActionResult] = useState('none');
-      const [interactionText, setInteractionText] = useState('0:0:0:idle');
+      const [interactionText, setInteractionText] = useState('0:0:0:null:idle');
 
       useEffect(() => {
         setInteractionText(
-          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.phase.get()}`,
+          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
         );
       }, [interaction, state.activeIndex, state.canSwipe, state.isCompleted]);
 
@@ -306,13 +313,13 @@ describe('SwipeDeck factory hooks', () => {
     await measureDeckFromVisibleCard('Ada');
 
     expect(await screen.findByText('state:0:2:true:false')).toBeOnTheScreen();
-    expect(screen.getByText('interaction:0:0:0:idle')).toBeOnTheScreen();
+    expect(screen.getByText('interaction:0:0:0:null:idle')).toBeOnTheScreen();
 
     await user.press(screen.getByRole('button', { name: 'Force swipe right' }));
 
     expect(await screen.findByText('action:true')).toBeOnTheScreen();
     expect(await screen.findByText('state:1:2:true:false')).toBeOnTheScreen();
-    expect(screen.getByText('interaction:0:0:0:idle')).toBeOnTheScreen();
+    expect(screen.getByText('interaction:0:0:0:null:idle')).toBeOnTheScreen();
     expect(screen.getByText('Grace')).toBeOnTheScreen();
     expect(onSwipe).toHaveBeenCalledTimes(1);
     expect(onSwipe).toHaveBeenCalledWith({
@@ -493,7 +500,7 @@ describe('SwipeDeck factory hooks', () => {
               const accepted = actions.swipeRight();
 
               setProbe(
-                `${String(accepted)}:${interaction.direction.get()}:${interaction.phase.get()}`,
+                `${String(accepted)}:${interaction.direction.get()}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
               );
             }}
           >
@@ -531,7 +538,7 @@ describe('SwipeDeck factory hooks', () => {
 
     await user.press(screen.getByRole('button', { name: 'Probe swipe right' }));
 
-    expect(await screen.findByText('probe:true:1:dismissing')).toBeOnTheScreen();
+    expect(await screen.findByText('probe:true:1:right:dismissing')).toBeOnTheScreen();
     expect(screen.getByText('Grace')).toBeOnTheScreen();
 
     await renderResult.rerender(
@@ -540,7 +547,7 @@ describe('SwipeDeck factory hooks', () => {
 
     await user.press(screen.getByRole('button', { name: 'Probe swipe right' }));
 
-    expect(await screen.findByText('probe:true:0:dismissing')).toBeOnTheScreen();
+    expect(await screen.findByText('probe:true:0:right:dismissing')).toBeOnTheScreen();
     expect(screen.getByText('Linus')).toBeOnTheScreen();
   });
 
@@ -560,11 +567,11 @@ describe('SwipeDeck factory hooks', () => {
       const actions = ProfileDeck.useDeckActions();
       const interaction = ProfileDeck.useDeckInteraction();
       const [lastActionResult, setLastActionResult] = useState('none');
-      const [interactionText, setInteractionText] = useState('0:0:0:idle');
+      const [interactionText, setInteractionText] = useState('0:0:0:null:idle');
 
       useEffect(() => {
         setInteractionText(
-          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.phase.get()}`,
+          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
         );
       }, [interaction, state.activeIndex, state.canUndo]);
 
@@ -648,7 +655,7 @@ describe('SwipeDeck factory hooks', () => {
 
     expect(await screen.findByText('state:0:true:false:false')).toBeOnTheScreen();
     expect(screen.getByText('Ada')).toBeOnTheScreen();
-    expect(screen.getByText('interaction:0:0:0:idle')).toBeOnTheScreen();
+    expect(screen.getByText('interaction:0:0:0:null:idle')).toBeOnTheScreen();
     expect(onSwipe).toHaveBeenCalledTimes(1);
     expect(onUndo).toHaveBeenCalledWith({
       direction: 'right',
@@ -669,10 +676,16 @@ describe('SwipeDeck factory hooks', () => {
   it('tracks undo history from committed pan gestures when undo is enabled', async () => {
     const ProfileDeck = createSwipeDeck<Profile>();
     const user = userEvent.setup();
+    const latestInteraction: {
+      current: ReturnType<typeof ProfileDeck.useDeckInteraction> | null;
+    } = { current: null };
 
     function DeckControls() {
       const state = ProfileDeck.useDeckState();
       const actions = ProfileDeck.useDeckActions();
+      const interaction = ProfileDeck.useDeckInteraction();
+
+      latestInteraction.current = interaction;
 
       return (
         <View>
@@ -707,6 +720,7 @@ describe('SwipeDeck factory hooks', () => {
       { state: 5, translationX: 180, translationY: 0, velocityX: 0, y: 250 },
     ]);
 
+    expect(latestInteraction.current?.dismissDirection.get()).toBe('right');
     expect(await screen.findByText('state:1:true:true:false')).toBeOnTheScreen();
     expect(screen.getByText('Grace')).toBeOnTheScreen();
 
@@ -750,7 +764,9 @@ describe('SwipeDeck factory hooks', () => {
                 }),
               );
 
-              setProbe(`${String(accepted)}:${interaction.phase.get()}`);
+              setProbe(
+                `${String(accepted)}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
+              );
             }}
           >
             <Text>Probe undo</Text>
@@ -779,7 +795,7 @@ describe('SwipeDeck factory hooks', () => {
 
     await user.press(screen.getByRole('button', { name: 'Probe undo' }));
 
-    expect(await screen.findByText('probe:true:undoing')).toBeOnTheScreen();
+    expect(await screen.findByText('probe:true:null:undoing')).toBeOnTheScreen();
     expect(await screen.findByText('state:0:true:false:false')).toBeOnTheScreen();
   });
 
@@ -790,11 +806,11 @@ describe('SwipeDeck factory hooks', () => {
     function DeckControls() {
       const state = ProfileDeck.useDeckState();
       const interaction = ProfileDeck.useDeckInteraction();
-      const [interactionText, setInteractionText] = useState('0:0:0:idle');
+      const [interactionText, setInteractionText] = useState('0:0:0:null:idle');
 
       useEffect(() => {
         setInteractionText(
-          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.phase.get()}`,
+          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
         );
       }, [interaction, state.activeIndex, state.canSwipe, state.canUndo]);
 
@@ -837,7 +853,7 @@ describe('SwipeDeck factory hooks', () => {
     ]);
 
     expect(await screen.findByText('state:0:true:false:false')).toBeOnTheScreen();
-    expect(screen.getByText('interaction:0:0:0:idle')).toBeOnTheScreen();
+    expect(screen.getByText('interaction:0:0:0:null:idle')).toBeOnTheScreen();
     expect(screen.getByText('Ada')).toBeOnTheScreen();
     expect(onSwipe).not.toHaveBeenCalled();
   });

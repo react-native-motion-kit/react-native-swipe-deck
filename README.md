@@ -277,8 +277,13 @@ function ProfileDeckScreen() {
   - `dismissing` covers the accepted dismiss lifecycle until the deck has committed the next item
     and reset interaction values. It is intentionally broader than only the offscreen animation
     frames.
+  - `interaction.direction` is the raw live drag/dismiss signal (`-1 | 0 | 1`). Use
+    `interaction.dismissDirection` when external UI needs the accepted dismiss side
+    (`left | right | null`) on the UI thread. `dismissDirection` is lifecycle state, not the
+    committed `swipe` event payload.
   - Programmatic springboard actions enter `dismissing` as soon as the action is accepted. During
-    anticipation, `interaction.direction` can still be neutral until the real dismiss phase starts.
+    anticipation, `interaction.direction` can still be neutral until the real dismiss phase starts,
+    while `interaction.dismissDirection` already contains the accepted action direction.
 - `useDeckEvent(eventName, initialValue?, id?)` returns the latest committed deck event for
   React-rendered UI. It returns `undefined` or `initialValue` before the first event and after the
   deck detaches.

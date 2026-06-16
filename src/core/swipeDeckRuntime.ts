@@ -1,3 +1,5 @@
+import type { SharedValue } from 'react-native-reanimated';
+
 import type {
   SwipeDeckActionMotionRecipe,
   SwipeDeckLayout,
@@ -42,6 +44,13 @@ type ResolveSwipeDeckProgrammaticUndoMotionArgs = {
   undoMotion?: SwipeDeckUndoMotionRecipe;
 };
 
+type ResetSwipeDeckInteractionSignalsArgs = {
+  dismissDirection: SharedValue<SwipeDirection | null>;
+  signedSwipeProgress: SharedValue<number>;
+  swipeDirectionSignal: SharedValue<-1 | 0 | 1>;
+  swipeProgress: SharedValue<number>;
+};
+
 export function resolveProgressDirection(translationX: number): -1 | 0 | 1 {
   'worklet';
 
@@ -62,6 +71,20 @@ export function resolveSignedSwipeProgress(translationX: number, distance: numbe
   const direction = resolveProgressDirection(translationX);
 
   return direction * Math.min(Math.abs(translationX) / Math.max(distance, 1), 1);
+}
+
+export function resetSwipeDeckInteractionSignals({
+  dismissDirection,
+  signedSwipeProgress,
+  swipeDirectionSignal,
+  swipeProgress,
+}: ResetSwipeDeckInteractionSignalsArgs) {
+  'worklet';
+
+  swipeProgress.set(0);
+  signedSwipeProgress.set(0);
+  swipeDirectionSignal.set(0);
+  dismissDirection.set(null);
 }
 
 export function getActiveRenderItemId(dataLength: number, activeIndex: number): number {

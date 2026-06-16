@@ -97,7 +97,7 @@ function SwipeReactionOverlay() {
 }
 
 function DeckPhaseFeedback() {
-  const { phase } = ProfileDeck.useDeckInteraction();
+  const { dismissDirection, phase } = ProfileDeck.useDeckInteraction();
 
   const idleStyle = useAnimatedStyle(() => {
     return {
@@ -123,6 +123,18 @@ function DeckPhaseFeedback() {
     };
   });
 
+  const leftDismissStyle = useAnimatedStyle(() => {
+    return {
+      opacity: dismissDirection.get() === 'left' ? 1 : 0.24,
+    };
+  });
+
+  const rightDismissStyle = useAnimatedStyle(() => {
+    return {
+      opacity: dismissDirection.get() === 'right' ? 1 : 0.24,
+    };
+  });
+
   return (
     <View pointerEvents="none" style={styles.phaseFeedback}>
       <Animated.View style={[styles.phasePill, styles.idlePhasePill, idleStyle]}>
@@ -136,6 +148,12 @@ function DeckPhaseFeedback() {
       </Animated.View>
       <Animated.View style={[styles.phasePill, styles.undoPhasePill, undoingStyle]}>
         <Text style={styles.phaseText}>Undo</Text>
+      </Animated.View>
+      <Animated.View style={[styles.phasePill, styles.leftDismissPill, leftDismissStyle]}>
+        <Text style={styles.phaseText}>Left</Text>
+      </Animated.View>
+      <Animated.View style={[styles.phasePill, styles.rightDismissPill, rightDismissStyle]}>
+        <Text style={styles.phaseText}>Right</Text>
       </Animated.View>
     </View>
   );
@@ -413,6 +431,12 @@ const styles = StyleSheet.create({
   },
   undoPhasePill: {
     backgroundColor: 'rgba(251, 191, 36, 0.82)',
+  },
+  leftDismissPill: {
+    backgroundColor: 'rgba(248, 113, 113, 0.82)',
+  },
+  rightDismissPill: {
+    backgroundColor: 'rgba(74, 222, 128, 0.82)',
   },
   phaseText: {
     color: '#09090b',
