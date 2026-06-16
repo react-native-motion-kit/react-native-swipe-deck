@@ -1,5 +1,5 @@
 ---
-'@react-native-motion-kit/swipe-deck': patch
+'@react-native-motion-kit/swipe-deck': minor
 ---
 
 Add `interaction.phase` to `useDeckInteraction()` so UI-thread consumers can distinguish idle, dragging, dismissing, and undoing deck lifecycles without inferring from progress or JS events.
