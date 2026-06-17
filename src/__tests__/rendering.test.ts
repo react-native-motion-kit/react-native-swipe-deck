@@ -41,6 +41,15 @@ describe('getSwipeRenderItems', () => {
     expect(items.map((item) => item.role)).toEqual(['current', 'next']);
   });
 
+  it('supports a current-only render window', () => {
+    const items = getSwipeRenderItems(profiles, 75, getProfileKey, 1);
+
+    expect(items).toHaveLength(1);
+    expect(items.map((item) => item.index)).toEqual([75]);
+    expect(items.map((item) => item.role)).toEqual(['current']);
+    expect(items.map((item) => item.isActive)).toEqual([true]);
+  });
+
   it('does not backfill dismissed previous cards at the last valid index', () => {
     const items = getSwipeRenderItems(profiles, 149, getProfileKey);
 
@@ -90,6 +99,21 @@ describe('getSwipeRenderItems', () => {
       undefined,
       { fromOffset: 0, toOffset: 1 },
     ]);
+  });
+
+  it('supports current-only undo render info', () => {
+    const items = getSwipeUndoRenderItems({
+      data: profiles,
+      currentIndex: 2,
+      getKey: getProfileKey,
+      restoredIndex: 1,
+      visibleCardCount: 1,
+    });
+
+    expect(items.map((item) => item.index)).toEqual([1]);
+    expect(items.map((item) => item.offset)).toEqual([0]);
+    expect(items.map((item) => item.role)).toEqual(['current']);
+    expect(items.map((item) => item.transition)).toEqual([undefined]);
   });
 
   it('skips the restored index from the old stack when data reorder moves it after current', () => {

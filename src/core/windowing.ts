@@ -8,7 +8,7 @@ export type SwipeWindowDescriptor = {
 };
 
 const DEFAULT_VISIBLE_CARD_COUNT = 3;
-const MIN_VISIBLE_CARD_COUNT = 2;
+const MIN_VISIBLE_CARD_COUNT = 1;
 
 export function clampActiveIndex(dataLength: number, activeIndex: number): number {
   if (dataLength <= 0) {

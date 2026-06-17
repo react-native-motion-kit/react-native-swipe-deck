@@ -104,7 +104,8 @@ This keeps the active/incoming stack continuous without backfilling dismissed pr
 `visibleCardCount` is a maximum budget:
 
 - the default is `3` for smoother next-card promotion;
-- values below `2` normalize to `2` when enough data exists;
+- values below `1` normalize to `1` when enough data exists;
+- `visibleCardCount={1}` renders only the current card, so no next-card stack/promotion visual is shown;
 - `visibleCardCount={2}` renders only the current card and the immediate next card;
 - the mounted count never exceeds the remaining data from the active index;
 - even values are kept as-is and are not rounded up.
@@ -673,10 +674,10 @@ The default is `Easing.out(Easing.cubic)`.
 ## Visible card budget
 
 ```tsx
-function CompactDeck() {
+function CurrentOnlyDeck() {
   return (
-    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={2}>
-      {/* minimum budget: current + immediate next */}
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={1}>
+      {/* lightest budget: current card only, no next-card promotion visual */}
     </SwipeDeck.Root>
   );
 }
@@ -700,7 +701,7 @@ function DeepStackDeck() {
 
 | Input                                           | Mounted cards                               |
 | ----------------------------------------------- | ------------------------------------------- |
-| `visibleCardCount={1}`                          | Up to `2` cards when enough data exists.    |
+| `visibleCardCount={1}`                          | Only the current card.                      |
 | `visibleCardCount={2}`                          | Up to `2` cards when enough data exists.    |
 | `visibleCardCount={20}` with 10 remaining items | At most those 10 remaining items.           |
 | even values                                     | Kept as the maximum budget; not rounded up. |
