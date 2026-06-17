@@ -1,5 +1,43 @@
 # @react-native-motion-kit/swipe-deck
 
+## 1.2.0
+
+### Minor Changes
+
+- [#10](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/10) [`0a9615b`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/0a9615be845a4aade827bb76246835fb441c8c8f) Thanks [@saseungmin](https://github.com/saseungmin)! - Add Root-level `allowedDirections` to restrict accepted dismiss directions. Disallowed gesture releases keep the normal snap-back behavior, while programmatic swipe actions return `false` before starting dismiss motion.
+
+  ```tsx
+  <ProfileDeck.Root
+    data={profiles}
+    getKey={(item) => item.id}
+    allowedDirections={["right"]}
+  >
+    <ProfileDeck.Card>
+      {({ item }) => <ProfileCard profile={item} />}
+    </ProfileDeck.Card>
+  </ProfileDeck.Root>
+  ```
+
+  Use `allowedDirections={["left"]}` for a pass-only deck, omit it for both directions, or pass `[]` to keep drag feedback while rejecting all dismisses.
+
+- [#12](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/12) [`96f1fc5`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/96f1fc579aebc8500b65e51738d96de065a3d99d) Thanks [@saseungmin](https://github.com/saseungmin)! - Allow `visibleCardCount={1}` to render only the active card.
+
+  This is the lightest rendering budget for decks that do not need a visible next-card stack or
+  next-card promotion animation. The default remains `3`, and `visibleCardCount={2}` still renders the
+  active card plus the immediate next card.
+
+  ```tsx
+  <ProfileDeck.Root
+    data={profiles}
+    getKey={(item) => item.id}
+    visibleCardCount={1}
+  >
+    <ProfileDeck.Card>
+      {({ item }) => <ProfileCard profile={item} />}
+    </ProfileDeck.Card>
+  </ProfileDeck.Root>
+  ```
+
 ## 1.1.0
 
 ### Minor Changes
