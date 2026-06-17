@@ -448,11 +448,11 @@ export type SwipeDeckProps<T> = {
    *
    * Keep this as small as your UI allows. The default budget is `3`, which covers the active card
    * plus two forward buffered cards for smooth next-card promotion without rendering the full data
-   * set. The minimum budget is `2`, which renders only the active card and the immediate next card
-   * when enough forward data is available. Increase it only when your design visibly exposes a
-   * deeper stack or intentionally needs more cards pre-mounted.
+   * set. The minimum budget is `1`, which renders only the active card. Use `2` when your design
+   * needs the immediate next card pre-mounted for stack/promotion visuals, and increase it only when
+   * your design visibly exposes a deeper stack or intentionally needs more cards pre-mounted.
    *
-   * Values below `2` are normalized to `2` when enough forward data is available. The actual
+   * Values below `1` are normalized to `1` when enough forward data is available. The actual
    * mounted count never exceeds the remaining item count from the active index.
    *
    * @default 3

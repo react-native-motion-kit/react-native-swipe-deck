@@ -52,6 +52,7 @@ describe('getSwipeWindow', () => {
   });
 
   it('keeps the configured visible card count within the remaining data length', () => {
+    expect(getSwipeWindow(5, 0, 1)).toHaveLength(1);
     expect(getSwipeWindow(5, 0, 2)).toHaveLength(2);
     expect(getSwipeWindow(5, 2, 3)).toHaveLength(3);
     expect(getSwipeWindow(9, 4, 5)).toHaveLength(5);
@@ -78,9 +79,10 @@ describe('getSwipeWindow', () => {
 });
 
 describe('normalizeVisibleCardCount', () => {
-  it('defaults to three cards and clamps to the two-card minimum', () => {
+  it('defaults to three cards and clamps to the one-card minimum', () => {
     expect(normalizeVisibleCardCount()).toBe(3);
-    expect(normalizeVisibleCardCount(1)).toBe(2);
+    expect(normalizeVisibleCardCount(0)).toBe(1);
+    expect(normalizeVisibleCardCount(1)).toBe(1);
     expect(normalizeVisibleCardCount(2)).toBe(2);
   });
 

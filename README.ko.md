@@ -104,7 +104,8 @@ Deck은 전체 data set을 한 번에 렌더링하지 않습니다.
 `visibleCardCount`는 최대 예산입니다.
 
 - 기본값은 더 자연스러운 next-card promotion을 위해 `3`입니다.
-- `2`보다 작은 값은 데이터가 충분할 때 `2`로 정규화됩니다.
+- `1`보다 작은 값은 데이터가 충분할 때 `1`로 정규화됩니다.
+- `visibleCardCount={1}`는 현재 카드만 렌더링하므로 next-card stack/promotion 시각 효과는 보이지 않습니다.
 - `visibleCardCount={2}`는 현재 카드와 바로 다음 카드만 렌더링합니다.
 - 실제 mount 개수는 active index부터 남은 데이터 개수를 넘지 않습니다.
 - 짝수 값은 그대로 최대 예산으로 유지되며, 홀수로 올림 처리하지 않습니다.
@@ -666,10 +667,10 @@ SwipeDeckMotion.tinder({
 ## Visible card budget
 
 ```tsx
-function CompactDeck() {
+function CurrentOnlyDeck() {
   return (
-    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={2}>
-      {/* minimum budget: current + immediate next */}
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={1}>
+      {/* 가장 가벼운 예산: 현재 카드만 렌더링, next-card promotion 시각 효과 없음 */}
     </SwipeDeck.Root>
   );
 }
@@ -693,7 +694,7 @@ function DeepStackDeck() {
 
 | 입력                                           | Mount되는 card                                           |
 | ---------------------------------------------- | -------------------------------------------------------- |
-| `visibleCardCount={1}`                         | 데이터가 충분할 때 최대 `2`개                            |
+| `visibleCardCount={1}`                         | 현재 카드만                                              |
 | `visibleCardCount={2}`                         | 데이터가 충분할 때 최대 `2`개                            |
 | 남은 데이터가 10개이고 `visibleCardCount={20}` | 최대 남은 10개                                           |
 | 짝수 값                                        | 최대 예산으로 그대로 유지되며, 홀수로 올림 처리하지 않음 |
