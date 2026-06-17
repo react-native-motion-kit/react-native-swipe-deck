@@ -418,6 +418,14 @@ export type SwipeDeckProps<T> = {
   /** Initial active item index. */
   initialIndex?: number;
   disabled?: boolean;
+  /**
+   * Dismiss directions accepted by this Root.
+   *
+   * Omit to allow both directions. Pass `['left']` or `['right']` to allow only one direction.
+   * Pass an empty array to allow dragging but reject every dismiss release and programmatic swipe
+   * action. Rejected gesture releases use the same snap-back path as threshold misses.
+   */
+  allowedDirections?: readonly SwipeDirection[];
   swipeThreshold?: number | ((layout: SwipeDeckLayout) => number);
   velocityThreshold?: number;
   /** Motion preset for this deck instance. Overrides factory motion defaults. */

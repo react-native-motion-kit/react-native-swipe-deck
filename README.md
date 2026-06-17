@@ -142,6 +142,19 @@ function ProfileDeckScreen() {
 
 This keeps `Root`, `Card`, and future slots on the same item type without repeating generics in JSX.
 
+`allowedDirections` limits which directions can be accepted as a dismiss for one Root:
+
+```tsx
+<ProfileDeck.Root data={profiles} getKey={(item) => item.id} allowedDirections={['right']}>
+  <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+</ProfileDeck.Root>
+```
+
+- Omit `allowedDirections` to allow both directions.
+- `['right']` or `['left']` allows only that dismiss direction.
+- `[]` still lets the card drag, but every release snaps back and `swipeLeft()` / `swipeRight()` return `false`.
+- `canSwipe` means “a dismiss action can currently be accepted”; it becomes `false` when no direction is allowed.
+
 Use this factory pattern when the deck needs a named instance that can be shared by hooks and external UI.
 
 ### Deck hooks

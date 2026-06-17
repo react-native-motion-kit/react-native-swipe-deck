@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
+import type { SwipeDirection } from '../index';
+
 import { createSwipeDeck, SwipeDeck, SwipeDeckActionMotion, SwipeDeckUndoMotion } from '../index';
 
 type Profile = {
@@ -407,6 +409,179 @@ describe('SwipeDeck factory hooks', () => {
     await user.press(screen.getByRole('button', { name: 'Force swipe right' }));
 
     expect(await screen.findByText('action:false')).toBeOnTheScreen();
+  });
+
+  it('gates programmatic swipe actions with allowedDirections', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const actions = ProfileDeck.useDeckActions();
+      const interaction = ProfileDeck.useDeckInteraction();
+      const [lastActionResult, setLastActionResult] = useState('none');
+
+      return (
+        <View>
+          <Text>canSwipe:{String(state.canSwipe)}</Text>
+          <Text>action:{lastActionResult}</Text>
+          <Pressable
+            accessibilityLabel="Force swipe left"
+            accessibilityRole="button"
+            onPress={() => {
+              const accepted = actions.swipeLeft();
+
+              setLastActionResult(
+                `${String(accepted)}:${interaction.dismissDirection.get() ?? 'null'}`,
+              );
+            }}
+          >
+            <Text>Force swipe left</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Force swipe right"
+            accessibilityRole="button"
+            onPress={() => {
+              const accepted = actions.swipeRight();
+
+              setLastActionResult(
+                `${String(accepted)}:${interaction.dismissDirection.get() ?? 'null'}`,
+              );
+            }}
+          >
+            <Text>Force swipe right</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function Example({ allowedDirections }: { allowedDirections?: readonly SwipeDirection[] }) {
+      return (
+        <>
+          <DeckControls />
+          <ProfileDeck.Root
+            allowedDirections={allowedDirections}
+            data={profiles}
+            getKey={getProfileKey}
+          >
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    const renderResult = await render(<Example allowedDirections={['right']} />);
+    await measureDeckFromVisibleCard('Ada');
+
+    expect(await screen.findByText('canSwipe:true')).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Force swipe left' }));
+
+    expect(await screen.findByText('action:false:null')).toBeOnTheScreen();
+    expect(screen.getByText('Ada')).toBeOnTheScreen();
+
+    await renderResult.rerender(<Example allowedDirections={[]} />);
+
+    expect(await screen.findByText('canSwipe:false')).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Force swipe right' }));
+
+    expect(await screen.findByText('action:false:null')).toBeOnTheScreen();
+    expect(screen.getByText('Ada')).toBeOnTheScreen();
+  });
+
+  it('uses the latest allowedDirections for gesture release without clearing event snapshots', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const onSwipe = jest.fn();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const lastSwipe = ProfileDeck.useDeckEvent('swipe', null);
+      const swipeText = lastSwipe ? `${lastSwipe.item.name}:${lastSwipe.direction}` : 'none';
+
+      return (
+        <View>
+          <Text>
+            state:{state.activeIndex}:{String(state.canSwipe)}:{String(state.isCompleted)}
+          </Text>
+          <Text>lastSwipe:{swipeText}</Text>
+        </View>
+      );
+    }
+
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('swipe', onSwipe);
+
+      return null;
+    }
+
+    function Example({ allowedDirections }: { allowedDirections?: readonly SwipeDirection[] }) {
+      return (
+        <>
+          <DeckControls />
+          <DeckEvents />
+          <ProfileDeck.Root
+            allowedDirections={allowedDirections}
+            data={profiles}
+            getKey={getProfileKey}
+          >
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    const renderResult = await render(<Example allowedDirections={['right']} />);
+    await measureDeckFromVisibleCard('Ada');
+
+    fireGestureHandler(getByGestureTestId('swipe-deck-pan'), [
+      { state: 2, y: 250 },
+      { state: 4, translationX: -180, translationY: 0, velocityX: 0, y: 250 },
+      { state: 5, translationX: -180, translationY: 0, velocityX: 0, y: 250 },
+    ]);
+
+    expect(await screen.findByText('state:0:true:false')).toBeOnTheScreen();
+    expect(screen.getByText('lastSwipe:none')).toBeOnTheScreen();
+    expect(onSwipe).not.toHaveBeenCalled();
+
+    fireGestureHandler(getByGestureTestId('swipe-deck-pan'), [
+      { state: 2, y: 250 },
+      { state: 4, translationX: 180, translationY: 0, velocityX: 0, y: 250 },
+      { state: 5, translationX: 180, translationY: 0, velocityX: 0, y: 250 },
+    ]);
+
+    expect(await screen.findByText('state:1:true:false')).toBeOnTheScreen();
+    expect(screen.getByText('lastSwipe:Ada:right')).toBeOnTheScreen();
+    expect(onSwipe).toHaveBeenCalledTimes(1);
+
+    await renderResult.rerender(<Example allowedDirections={['left']} />);
+
+    expect(await screen.findByText('lastSwipe:Ada:right')).toBeOnTheScreen();
+
+    fireGestureHandler(getByGestureTestId('swipe-deck-pan'), [
+      { state: 2, y: 250 },
+      { state: 4, translationX: 180, translationY: 0, velocityX: 0, y: 250 },
+      { state: 5, translationX: 180, translationY: 0, velocityX: 0, y: 250 },
+    ]);
+
+    expect(await screen.findByText('state:1:true:false')).toBeOnTheScreen();
+    expect(screen.getByText('lastSwipe:Ada:right')).toBeOnTheScreen();
+    expect(onSwipe).toHaveBeenCalledTimes(1);
+
+    fireGestureHandler(getByGestureTestId('swipe-deck-pan'), [
+      { state: 2, y: 250 },
+      { state: 4, translationX: -180, translationY: 0, velocityX: 0, y: 250 },
+      { state: 5, translationX: -180, translationY: 0, velocityX: 0, y: 250 },
+    ]);
+
+    expect(await screen.findByText('state:2:false:true')).toBeOnTheScreen();
+    expect(screen.getByText('lastSwipe:Grace:left')).toBeOnTheScreen();
+    expect(onSwipe).toHaveBeenCalledTimes(2);
+    expect(onSwipe).toHaveBeenLastCalledWith({
+      direction: 'left',
+      index: 1,
+      item: profiles[1],
+    });
   });
 
   it('accepts callback-safe and per-call action motion actions', async () => {

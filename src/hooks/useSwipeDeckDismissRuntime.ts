@@ -5,6 +5,7 @@ import { useCallback, useLayoutEffect, useRef } from 'react';
 import { withSequence, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import type { SwipeDeckDirectionPolicy } from '../core/directions';
 import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
 import type {
   SwipeDeckActionMotionRecipe,
@@ -15,6 +16,7 @@ import type {
   SwipeDirection,
 } from '../types';
 
+import { isSwipeDirectionAllowed } from '../core/directions';
 import { getSwipeCommit, shouldDeferActiveItemSync } from '../core/state';
 import {
   resetSwipeDeckInteractionSignals,
@@ -51,6 +53,7 @@ type UseSwipeDeckDismissRuntimeArgs<T> = {
   activeRenderItemId: number;
   activeTranslateX: SharedValue<number>;
   activeTranslateY: SharedValue<number>;
+  allowedDirectionPolicyRef: RefObject<SwipeDeckDirectionPolicy>;
   applyImmediateRuntimeState: (isAnimating: boolean, isDragging: boolean) => void;
   attachmentGeneration: SharedValue<number>;
   attachmentGenerationRef: RefObject<number>;
@@ -108,6 +111,7 @@ export function useSwipeDeckDismissRuntime<T>({
   activeRenderItemId,
   activeTranslateX,
   activeTranslateY,
+  allowedDirectionPolicyRef,
   applyImmediateRuntimeState,
   attachmentGeneration,
   attachmentGenerationRef,
@@ -255,15 +259,13 @@ export function useSwipeDeckDismissRuntime<T>({
       const currentIndex = activeIndexRef.current;
       const currentLayout = layoutRef.current;
       const runtime = dismissRuntimeRef.current;
-      const actionRuntime = resolveSwipeDeckProgrammaticActionMotion({
-        actionMotion: motionOverride,
-        defaultActionMotion: actionMotionRef.current,
-        layout: currentLayout,
-        runtime,
-      });
       const currentAttachmentGeneration = attachmentGenerationRef.current;
 
-      if (!runtime || !actionRuntime) {
+      if (!isSwipeDirectionAllowed(direction, allowedDirectionPolicyRef.current)) {
+        return false;
+      }
+
+      if (!runtime) {
         return false;
       }
 
@@ -276,6 +278,17 @@ export function useSwipeDeckDismissRuntime<T>({
       }
 
       if (currentIndex < 0 || currentIndex >= currentData.length) {
+        return false;
+      }
+
+      const actionRuntime = resolveSwipeDeckProgrammaticActionMotion({
+        actionMotion: motionOverride,
+        defaultActionMotion: actionMotionRef.current,
+        layout: currentLayout,
+        runtime,
+      });
+
+      if (!actionRuntime) {
         return false;
       }
 
@@ -370,6 +383,7 @@ export function useSwipeDeckDismissRuntime<T>({
       activeItemIndex,
       activeTranslateX,
       activeTranslateY,
+      allowedDirectionPolicyRef,
       applyImmediateRuntimeState,
       attachmentGeneration,
       attachmentGenerationRef,

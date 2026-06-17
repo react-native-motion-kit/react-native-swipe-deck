@@ -1,6 +1,11 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { resolveSwipeDirection } from '../core/directions';
+import {
+  createSwipeDeckDirectionPolicy,
+  hasAllowedSwipeDirection,
+  resolveAllowedSwipeDirection,
+  resolveSwipeDirection,
+} from '../core/directions';
 import { getSwipeWindow, normalizeVisibleCardCount } from '../core/windowing';
 
 describe('getSwipeWindow', () => {
@@ -102,5 +107,29 @@ describe('resolveSwipeDirection', () => {
 
   it('cancels when disabled', () => {
     expect(resolveSwipeDirection({ translationX: 200, velocityX: 900, disabled: true })).toBeNull();
+  });
+});
+
+describe('createSwipeDeckDirectionPolicy', () => {
+  it('allows both directions when omitted', () => {
+    const policy = createSwipeDeckDirectionPolicy();
+
+    expect(policy).toEqual({ left: true, right: true });
+    expect(hasAllowedSwipeDirection(policy)).toBe(true);
+  });
+
+  it('supports empty and one-sided allow lists', () => {
+    expect(createSwipeDeckDirectionPolicy([])).toEqual({ left: false, right: false });
+    expect(createSwipeDeckDirectionPolicy(['left'])).toEqual({ left: true, right: false });
+    expect(createSwipeDeckDirectionPolicy(['right'])).toEqual({ left: false, right: true });
+    expect(createSwipeDeckDirectionPolicy(['left', 'right'])).toEqual({ left: true, right: true });
+  });
+
+  it('filters resolved directions through the policy', () => {
+    const rightOnly = createSwipeDeckDirectionPolicy(['right']);
+
+    expect(resolveAllowedSwipeDirection('right', rightOnly)).toBe('right');
+    expect(resolveAllowedSwipeDirection('left', rightOnly)).toBeNull();
+    expect(resolveAllowedSwipeDirection(null, rightOnly)).toBeNull();
   });
 });

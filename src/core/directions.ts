@@ -1,5 +1,10 @@
 import type { SwipeDeckLayout, SwipeDirection } from '../types';
 
+export type SwipeDeckDirectionPolicy = {
+  left: boolean;
+  right: boolean;
+};
+
 type ResolveSwipeDirectionArgs = {
   translationX: number;
   velocityX: number;
@@ -37,4 +42,45 @@ export function resolveSwipeDirection({
   }
 
   return null;
+}
+
+export function createSwipeDeckDirectionPolicy(
+  allowedDirections?: readonly SwipeDirection[],
+): SwipeDeckDirectionPolicy {
+  if (allowedDirections === undefined) {
+    return { left: true, right: true };
+  }
+
+  return {
+    left: allowedDirections.includes('left'),
+    right: allowedDirections.includes('right'),
+  };
+}
+
+export function hasAllowedSwipeDirection(policy: SwipeDeckDirectionPolicy): boolean {
+  'worklet';
+
+  return policy.left || policy.right;
+}
+
+export function isSwipeDirectionAllowed(
+  direction: SwipeDirection,
+  policy: SwipeDeckDirectionPolicy,
+): boolean {
+  'worklet';
+
+  return direction === 'left' ? policy.left : policy.right;
+}
+
+export function resolveAllowedSwipeDirection(
+  direction: SwipeDirection | null,
+  policy: SwipeDeckDirectionPolicy,
+): SwipeDirection | null {
+  'worklet';
+
+  if (!direction) {
+    return null;
+  }
+
+  return isSwipeDirectionAllowed(direction, policy) ? direction : null;
 }
