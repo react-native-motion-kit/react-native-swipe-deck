@@ -5,6 +5,7 @@ import { Gesture } from 'react-native-gesture-handler';
 import { useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import type { SwipeDeckDirectionPolicy } from '../core/directions';
 import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
 import type {
   SwipeDeckInteractionPhase,
@@ -13,7 +14,7 @@ import type {
   SwipeDirection,
 } from '../types';
 
-import { resolveSwipeDirection } from '../core/directions';
+import { resolveAllowedSwipeDirection, resolveSwipeDirection } from '../core/directions';
 import { resolveProgressDirection, resolveSignedSwipeProgress } from '../core/swipeDeckRuntime';
 import {
   resolveSwipeDeckDismissDestinationDistance,
@@ -37,6 +38,7 @@ type UseSwipeDeckGestureRuntimeArgs = {
   activeItemIndex: SharedValue<number>;
   activeTranslateX: SharedValue<number>;
   activeTranslateY: SharedValue<number>;
+  allowedDirectionPolicy: SharedValue<SwipeDeckDirectionPolicy>;
   applyScheduledRuntimeState: ApplyScheduledRuntimeState;
   attachmentGeneration: SharedValue<number>;
   cancelSpringConfig?: WithSpringConfig;
@@ -75,6 +77,7 @@ export function useSwipeDeckGestureRuntime({
   activeItemIndex,
   activeTranslateX,
   activeTranslateY,
+  allowedDirectionPolicy,
   applyScheduledRuntimeState,
   attachmentGeneration,
   cancelSpringConfig,
@@ -169,7 +172,7 @@ export function useSwipeDeckGestureRuntime({
             return;
           }
 
-          const direction = resolveSwipeDirection({
+          const resolvedDirection = resolveSwipeDirection({
             translationX: event.translationX,
             velocityX: event.velocityX,
             disabled: disabled || !hasActiveCard,
@@ -177,6 +180,10 @@ export function useSwipeDeckGestureRuntime({
             swipeThreshold: resolvedSwipeThreshold,
             velocityThreshold: resolvedVelocityThreshold,
           });
+          const direction = resolveAllowedSwipeDirection(
+            resolvedDirection,
+            allowedDirectionPolicy.get(),
+          );
 
           if (dragItemIndex.get() < 0) {
             dragItemIndex.set(activeItemIndex.get());
@@ -276,6 +283,7 @@ export function useSwipeDeckGestureRuntime({
       activeItemIndex,
       activeTranslateX,
       activeTranslateY,
+      allowedDirectionPolicy,
       applyScheduledRuntimeState,
       attachmentGeneration,
       cancelSpringConfig,

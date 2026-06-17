@@ -142,6 +142,19 @@ function ProfileDeckScreen() {
 
 이렇게 하면 `Root`, `Card`, 앞으로 추가될 slot들이 JSX에서 generic을 반복하지 않고 같은 item type을 공유할 수 있습니다.
 
+`allowedDirections`는 하나의 Root에서 dismiss로 받아들일 방향을 제한합니다.
+
+```tsx
+<ProfileDeck.Root data={profiles} getKey={(item) => item.id} allowedDirections={['right']}>
+  <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+</ProfileDeck.Root>
+```
+
+- `allowedDirections`를 생략하면 양방향을 모두 허용합니다.
+- `['right']` 또는 `['left']`는 해당 dismiss 방향만 허용합니다.
+- `[]`는 card drag 자체는 가능하지만, 손을 놓으면 항상 snap-back되고 `swipeLeft()` / `swipeRight()`는 `false`를 반환합니다.
+- `canSwipe`는 “dismiss action이 현재 받아들여질 수 있는가”를 의미합니다. 허용된 방향이 없으면 `false`가 됩니다.
+
 Hook과 외부 UI가 공유할 수 있는 이름 붙은 factory instance가 필요하면 이 factory pattern을
 사용하세요.
 

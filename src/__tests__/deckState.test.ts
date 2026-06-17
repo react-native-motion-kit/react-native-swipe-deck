@@ -57,6 +57,21 @@ describe('getSwipeDeckState', () => {
     ).toBe(false);
   });
 
+  it('rejects swipes when no dismiss directions are allowed', () => {
+    expect(
+      getSwipeDeckState({
+        dataLength: 1,
+        activeIndex: 0,
+        disabled: false,
+        layout: { width: 300, height: 500 },
+        isAnimating: false,
+        isDragging: false,
+        hasUndoHistory: false,
+        canDismissAnyDirection: false,
+      }).canSwipe,
+    ).toBe(false);
+  });
+
   it('rejects undo when layout is not measured or runtime is busy', () => {
     expect(
       getSwipeDeckState({

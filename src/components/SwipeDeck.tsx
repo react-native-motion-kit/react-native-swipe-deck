@@ -27,6 +27,7 @@ import type {
   SwipeDeckUndoMotionRecipe,
 } from '../types';
 
+import { createSwipeDeckDirectionPolicy, hasAllowedSwipeDirection } from '../core/directions';
 import { getSwipeDeckStackRenderItems } from '../core/rendering';
 import { shouldResetEndReached } from '../core/state';
 import { getActiveRenderItemId } from '../core/swipeDeckRuntime';
@@ -65,6 +66,7 @@ function Root<T>({
   getKey,
   initialIndex = 0,
   disabled = false,
+  allowedDirections,
   swipeThreshold,
   velocityThreshold,
   motion,
@@ -88,6 +90,10 @@ function Root<T>({
   const signedSwipeProgress = interaction.signedProgress;
   const swipeDirectionSignal = interaction.direction;
   const dismissDirection = interaction.dismissDirection;
+  const directionPolicy = createSwipeDeckDirectionPolicy(allowedDirections);
+  const allowedDirectionPolicy = useSharedValue(directionPolicy);
+  const allowedDirectionPolicyRef = useRef(directionPolicy);
+  const { left: allowsLeftDirection, right: allowsRightDirection } = directionPolicy;
   const activeTranslateX = interaction.translationX;
   const activeTranslateY = interaction.translationY;
   const isDragging = interaction.isDragging;
@@ -148,6 +154,7 @@ function Root<T>({
       isAnimating: runtimeStateRef.current.isAnimating,
       isDragging: runtimeStateRef.current.isDragging,
       hasUndoHistory: hasUndoHistoryRef.current(),
+      canDismissAnyDirection: hasAllowedSwipeDirection(allowedDirectionPolicyRef.current),
     });
   }, []);
 
@@ -212,6 +219,20 @@ function Root<T>({
     [publishDeckStateSnapshot],
   );
 
+  // Keep the JS action/state policy and the UI-thread gesture policy in lockstep.
+  // Do not move this through the deckStore.attach lifecycle: policy-only rerenders must update
+  // actions, gestures, and canSwipe without detaching the Root or clearing event snapshots.
+  useLayoutEffect(() => {
+    const nextDirectionPolicy = {
+      left: allowsLeftDirection,
+      right: allowsRightDirection,
+    };
+
+    allowedDirectionPolicyRef.current = nextDirectionPolicy;
+    allowedDirectionPolicy.set(nextDirectionPolicy);
+    publishDeckStateSnapshot();
+  }, [allowedDirectionPolicy, allowsLeftDirection, allowsRightDirection, publishDeckStateSnapshot]);
+
   useLayoutEffect(() => {
     dataRef.current = data;
     getKeyRef.current = getKey;
@@ -263,6 +284,7 @@ function Root<T>({
     activeRenderItemId,
     activeTranslateX,
     activeTranslateY,
+    allowedDirectionPolicyRef,
     applyImmediateRuntimeState,
     attachmentGeneration,
     attachmentGenerationRef,
@@ -291,6 +313,7 @@ function Root<T>({
     activeItemIndex,
     activeTranslateX,
     activeTranslateY,
+    allowedDirectionPolicy,
     applyScheduledRuntimeState,
     attachmentGeneration,
     cancelSpringConfig,
