@@ -44,6 +44,7 @@ export type {
   SwipeDeckState,
   SwipeDirection,
   SwipeEvent,
+  SwipeEventSource,
   SwipeRenderInfo,
   SwipeRole,
   UndoEvent,

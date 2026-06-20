@@ -12,6 +12,7 @@ import type {
   SwipeDeckLayout,
   SwipeDeckMotionEasing,
   SwipeDirection,
+  SwipeEventSource,
 } from '../types';
 
 import { resolveAllowedSwipeDirection, resolveSwipeDirection } from '../core/directions';
@@ -26,6 +27,7 @@ type CompleteSwipeDismiss = (
   finished: boolean | undefined,
   currentAttachmentGeneration: number,
   direction: SwipeDirection,
+  source: SwipeEventSource,
 ) => void;
 
 type ApplyScheduledRuntimeState = (
@@ -251,7 +253,7 @@ export function useSwipeDeckGestureRuntime({
             withTiming(exitX, dismissTimingConfig, (finished) => {
               'worklet';
 
-              completeSwipeDismiss(finished, currentAttachmentGeneration, direction);
+              completeSwipeDismiss(finished, currentAttachmentGeneration, direction, 'gesture');
             }),
           );
         })

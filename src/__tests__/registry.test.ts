@@ -87,12 +87,14 @@ describe('createSwipeDeckRegistry', () => {
       direction: 'right',
       index: 0,
       item: { id: 'ada' },
+      source: 'gesture',
     });
 
     expect(store.getEventSnapshot('swipe')?.event).toEqual({
       direction: 'right',
       index: 0,
       item: { id: 'ada' },
+      source: 'gesture',
     });
     expect(listener).toHaveBeenCalledTimes(1);
 
@@ -109,6 +111,7 @@ describe('createSwipeDeckRegistry', () => {
       direction: 'left',
       index: 0,
       item: { id: 'grace' },
+      source: 'programmatic',
     });
 
     detach();

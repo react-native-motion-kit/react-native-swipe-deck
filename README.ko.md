@@ -61,8 +61,8 @@ const ProfileDeck = createSwipeDeck<Profile>({
 });
 
 function ProfileDeckEvents() {
-  ProfileDeck.useDeckEventListener('swipe', ({ item, direction }) => {
-    console.log(item, direction);
+  ProfileDeck.useDeckEventListener('swipe', ({ item, direction, source }) => {
+    console.log(item, direction, source);
   });
   ProfileDeck.useDeckEventListener('endReached', () => {
     console.log('No more cards');
@@ -228,7 +228,11 @@ function ProfileDeckEvents() {
 
   return (
     <Text>
-      {endReached ? 'Done' : lastSwipe ? `Last swipe: ${lastSwipe.direction}` : 'No swipe yet'}
+      {endReached
+        ? 'Done'
+        : lastSwipe
+          ? `Last swipe: ${lastSwipe.direction} from ${lastSwipe.source}`
+          : 'No swipe yet'}
     </Text>
   );
 }
@@ -240,7 +244,11 @@ Event hook은 commit 단위의 latest-value API입니다.
 - `initialValue`는 event payload shape, `null`, `undefined`, 또는 `endReached`의 `false`로 제한됩니다.
   `swipe` 같은 object event에는 `null`을 사용하세요. `{}`는 event payload 타입을 넓혀버리지 않도록 의도적으로 막습니다.
 - Object initial value를 넘기면 `eventName`을 기준으로 contextual typing이 걸립니다.
-  그래서 `useDeckEvent('swipe', { ... })`에서는 `item`, `index`, `direction`이 자동완성됩니다.
+  그래서 `useDeckEvent('swipe', { ... })`에서는 `item`, `index`, `direction`, `source`가 자동완성됩니다.
+- Swipe event에는 `source: 'gesture' | 'programmatic'`이 포함됩니다. `gesture`는 사용자가 pan
+  gesture를 threshold/velocity 기준 이상으로 놓아서 commit된 경우입니다. `programmatic`은
+  `actions.swipeLeft()` 또는 `actions.swipeRight()`로 commit된 경우이며, button을 뜻하지는
+  않습니다. 앱 UI에서 그 action을 button으로만 호출한다면 앱에서 button 의미로 매핑하면 됩니다.
 - Initial value 없이 named deck을 읽어야 한다면 id를 두 번째 인자로 넘기면 됩니다.
   `useDeckEvent('swipe', 'nearby')`처럼 사용할 수 있고, initial value도 함께 넘기는 경우에는 id가 세 번째 인자입니다.
 - Root가 attach될 때와 detach될 때 event snapshot은 clear됩니다. 그래서 fresh/detached deck에서는

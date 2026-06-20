@@ -4,6 +4,8 @@ import type { SharedValue, WithSpringConfig, WithTimingConfig } from 'react-nati
 
 export type SwipeDirection = 'left' | 'right';
 
+export type SwipeEventSource = 'gesture' | 'programmatic';
+
 export type SwipeRole = 'current' | 'next';
 
 export type SwipeDeckLayout = {
@@ -23,6 +25,15 @@ export type SwipeEvent<T> = {
   item: T;
   index: number;
   direction: SwipeDirection;
+  /**
+   * How the swipe was committed.
+   *
+   * `gesture` means the user pan gesture released past the configured threshold/velocity policy.
+   * `programmatic` means the swipe was committed through `actions.swipeLeft()` or
+   * `actions.swipeRight()`. Programmatic does not imply a button; callers may map it to their own UI
+   * trigger when appropriate.
+   */
+  source: SwipeEventSource;
 };
 
 export type UndoEvent<T> = {

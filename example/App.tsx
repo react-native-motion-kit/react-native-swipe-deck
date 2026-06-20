@@ -229,8 +229,8 @@ export default function App() {
 
   console.log('indexChangeEvent', indexChangeEvent);
 
-  ProfileDeck.useDeckEventListener('swipe', ({ item, direction }) => {
-    console.log(`Swiped ${item.name} ${direction}`);
+  ProfileDeck.useDeckEventListener('swipe', ({ item, direction, source }) => {
+    console.log(`Swiped ${item.name} ${direction} ${source}`);
   });
   ProfileDeck.useDeckEventListener('undo', ({ item, direction }) => {
     console.log(`Undid ${item.name} ${direction}`);

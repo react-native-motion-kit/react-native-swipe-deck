@@ -119,6 +119,7 @@ describe('SwipeDeck factory hooks', () => {
       direction: 'right',
       index: 0,
       item: profiles[0],
+      source: 'programmatic',
     });
     expect(onIndexChange).toHaveBeenCalledWith(1);
   });
@@ -130,7 +131,9 @@ describe('SwipeDeck factory hooks', () => {
     function DeckControls() {
       const actions = ProfileDeck.useDeckActions();
       const lastSwipe = ProfileDeck.useDeckEvent('swipe', null);
-      const swipeText = lastSwipe ? `${lastSwipe.item.name}:${lastSwipe.direction}` : 'none';
+      const swipeText = lastSwipe
+        ? `${lastSwipe.item.name}:${lastSwipe.direction}:${lastSwipe.source}`
+        : 'none';
 
       return (
         <View>
@@ -166,7 +169,7 @@ describe('SwipeDeck factory hooks', () => {
 
     await user.press(screen.getByRole('button', { name: 'Swipe right' }));
 
-    expect(await screen.findByText('lastSwipe:Ada:right')).toBeOnTheScreen();
+    expect(await screen.findByText('lastSwipe:Ada:right:programmatic')).toBeOnTheScreen();
 
     await renderResult.rerender(<Example mounted={false} />);
 
@@ -328,6 +331,7 @@ describe('SwipeDeck factory hooks', () => {
       direction: 'right',
       index: 0,
       item: profiles[0],
+      source: 'programmatic',
     });
     expect(onIndexChange).toHaveBeenCalledTimes(1);
     expect(onIndexChange).toHaveBeenCalledWith(1);
@@ -497,7 +501,9 @@ describe('SwipeDeck factory hooks', () => {
     function DeckControls() {
       const state = ProfileDeck.useDeckState();
       const lastSwipe = ProfileDeck.useDeckEvent('swipe', null);
-      const swipeText = lastSwipe ? `${lastSwipe.item.name}:${lastSwipe.direction}` : 'none';
+      const swipeText = lastSwipe
+        ? `${lastSwipe.item.name}:${lastSwipe.direction}:${lastSwipe.source}`
+        : 'none';
 
       return (
         <View>
@@ -551,12 +557,12 @@ describe('SwipeDeck factory hooks', () => {
     ]);
 
     expect(await screen.findByText('state:1:true:false')).toBeOnTheScreen();
-    expect(screen.getByText('lastSwipe:Ada:right')).toBeOnTheScreen();
+    expect(screen.getByText('lastSwipe:Ada:right:gesture')).toBeOnTheScreen();
     expect(onSwipe).toHaveBeenCalledTimes(1);
 
     await renderResult.rerender(<Example allowedDirections={['left']} />);
 
-    expect(await screen.findByText('lastSwipe:Ada:right')).toBeOnTheScreen();
+    expect(await screen.findByText('lastSwipe:Ada:right:gesture')).toBeOnTheScreen();
 
     fireGestureHandler(getByGestureTestId('swipe-deck-pan'), [
       { state: 2, y: 250 },
@@ -565,7 +571,7 @@ describe('SwipeDeck factory hooks', () => {
     ]);
 
     expect(await screen.findByText('state:1:true:false')).toBeOnTheScreen();
-    expect(screen.getByText('lastSwipe:Ada:right')).toBeOnTheScreen();
+    expect(screen.getByText('lastSwipe:Ada:right:gesture')).toBeOnTheScreen();
     expect(onSwipe).toHaveBeenCalledTimes(1);
 
     fireGestureHandler(getByGestureTestId('swipe-deck-pan'), [
@@ -575,12 +581,13 @@ describe('SwipeDeck factory hooks', () => {
     ]);
 
     expect(await screen.findByText('state:2:false:true')).toBeOnTheScreen();
-    expect(screen.getByText('lastSwipe:Grace:left')).toBeOnTheScreen();
+    expect(screen.getByText('lastSwipe:Grace:left:gesture')).toBeOnTheScreen();
     expect(onSwipe).toHaveBeenCalledTimes(2);
     expect(onSwipe).toHaveBeenLastCalledWith({
       direction: 'left',
       index: 1,
       item: profiles[1],
+      source: 'gesture',
     });
   });
 
