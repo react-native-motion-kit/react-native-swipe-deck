@@ -61,8 +61,8 @@ const ProfileDeck = createSwipeDeck<Profile>({
 });
 
 function ProfileDeckEvents() {
-  ProfileDeck.useDeckEventListener('swipe', ({ item, direction }) => {
-    console.log(item, direction);
+  ProfileDeck.useDeckEventListener('swipe', ({ item, direction, source }) => {
+    console.log(item, direction, source);
   });
   ProfileDeck.useDeckEventListener('endReached', () => {
     console.log('No more cards');
@@ -227,7 +227,11 @@ function ProfileDeckEvents() {
 
   return (
     <Text>
-      {endReached ? 'Done' : lastSwipe ? `Last swipe: ${lastSwipe.direction}` : 'No swipe yet'}
+      {endReached
+        ? 'Done'
+        : lastSwipe
+          ? `Last swipe: ${lastSwipe.direction} from ${lastSwipe.source}`
+          : 'No swipe yet'}
     </Text>
   );
 }
@@ -240,7 +244,11 @@ Event hooks are commit-level, latest-value APIs:
   `endReached`. Use `null` for object events such as `swipe`; `{}` is intentionally rejected so
   the event payload type is not widened away.
 - If you do pass an object initial value, the object is contextually typed from `eventName`, so
-  `useDeckEvent('swipe', { ... })` autocompletes `item`, `index`, and `direction`.
+  `useDeckEvent('swipe', { ... })` autocompletes `item`, `index`, `direction`, and `source`.
+- Swipe events include `source: 'gesture' | 'programmatic'`. `gesture` means the user committed the
+  swipe by releasing a pan gesture past threshold/velocity. `programmatic` means the swipe was
+  committed through `actions.swipeLeft()` or `actions.swipeRight()`; apps may map that to a button
+  only when those actions are triggered by buttons in that app.
 - For a named deck without an initial value, pass the id as the second argument:
   `useDeckEvent('swipe', 'nearby')`. If you also pass an initial value, the id remains the third
   argument.

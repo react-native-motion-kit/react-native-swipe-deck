@@ -1,4 +1,4 @@
-import type { SwipeEvent } from '../src';
+import type { SwipeEvent, SwipeEventSource } from '../src';
 
 import { createSwipeDeck } from '../src';
 
@@ -12,6 +12,8 @@ const profile: Profile = { id: 'ada', name: 'Ada' };
 
 function expectType<T>(_value: T): void {}
 
+expectType<SwipeEventSource>('gesture');
+expectType<SwipeEventSource>('programmatic');
 expectType<SwipeEvent<Profile> | undefined>(ProfileDeck.useDeckEvent('swipe'));
 expectType<SwipeEvent<Profile> | undefined>(ProfileDeck.useDeckEvent('swipe', 'nearby'));
 expectType<SwipeEvent<Profile> | null>(ProfileDeck.useDeckEvent('swipe', null));
@@ -21,6 +23,7 @@ expectType<SwipeEvent<Profile>>(
     item: profile,
     index: 0,
     direction: 'right',
+    source: 'gesture',
   }),
 );
 expectType<true | undefined>(ProfileDeck.useDeckEvent('endReached'));
@@ -34,6 +37,7 @@ ProfileDeck.useDeckEvent('swipe', {
   item: profile,
   index: 0,
   direction: 'up',
+  source: 'gesture',
 });
 
 const rootWithCallbackProp = (

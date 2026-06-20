@@ -14,6 +14,7 @@ import type {
   SwipeDeckLayout,
   SwipeDeckMotionEasing,
   SwipeDirection,
+  SwipeEventSource,
 } from '../types';
 
 import { isSwipeDirectionAllowed } from '../core/directions';
@@ -82,10 +83,17 @@ type UseSwipeDeckDismissRuntimeArgs<T> = {
 };
 
 type UseSwipeDeckDismissRuntimeResult = {
+  /**
+   * Shared dismiss completion boundary for every accepted swipe source.
+   *
+   * Keep all future gesture/action dismiss entry points on this path so `SwipeEvent.source` remains
+   * commit-time truth instead of an app- or caller-inferred label.
+   */
   completeSwipeDismiss: (
     finished: boolean | undefined,
     currentAttachmentGeneration: number,
     direction: SwipeDirection,
+    source: SwipeEventSource,
   ) => void;
   swipeProgrammatically: (
     direction: SwipeDirection,
@@ -138,7 +146,7 @@ export function useSwipeDeckDismissRuntime<T>({
   const pendingCommitResetRef = useRef(false);
 
   const commitSwipe = useCallback(
-    (direction: SwipeDirection) => {
+    (direction: SwipeDirection, source: SwipeEventSource) => {
       const currentData = dataRef.current;
       const commit = getSwipeCommit(
         currentData.length,
@@ -153,7 +161,7 @@ export function useSwipeDeckDismissRuntime<T>({
       const item = currentData[commit.swipedIndex] as T;
 
       recordSwipeForUndo({ item, index: commit.swipedIndex, direction });
-      emitDeckEvent('swipe', { item, index: commit.swipedIndex, direction });
+      emitDeckEvent('swipe', { item, index: commit.swipedIndex, direction, source });
       emitDeckEvent('indexChange', { index: commit.nextIndex });
       activeIndexRef.current = commit.nextIndex;
       pendingCommitResetRef.current = true;
@@ -177,12 +185,12 @@ export function useSwipeDeckDismissRuntime<T>({
   );
 
   const commitSwipeIfCurrent = useCallback(
-    (generation: number, direction: SwipeDirection) => {
+    (generation: number, direction: SwipeDirection, source: SwipeEventSource) => {
       if (generation !== attachmentGenerationRef.current) {
         return;
       }
 
-      commitSwipe(direction);
+      commitSwipe(direction, source);
     },
     [attachmentGenerationRef, commitSwipe],
   );
@@ -220,6 +228,7 @@ export function useSwipeDeckDismissRuntime<T>({
       finished: boolean | undefined,
       currentAttachmentGeneration: number,
       direction: SwipeDirection,
+      source: SwipeEventSource,
     ) => {
       'worklet';
 
@@ -237,7 +246,7 @@ export function useSwipeDeckDismissRuntime<T>({
       swipeDirectionSignal.set(0);
       isDragging.set(false);
       dragItemIndex.set(-1);
-      scheduleOnRN(commitSwipeIfCurrent, currentAttachmentGeneration, direction);
+      scheduleOnRN(commitSwipeIfCurrent, currentAttachmentGeneration, direction, source);
     },
     [
       activeItemIndex,
@@ -327,7 +336,7 @@ export function useSwipeDeckDismissRuntime<T>({
       const handleDismissCompletion = (finished: boolean | undefined) => {
         'worklet';
 
-        completeSwipeDismiss(finished, currentAttachmentGeneration, direction);
+        completeSwipeDismiss(finished, currentAttachmentGeneration, direction, 'programmatic');
       };
 
       if (actionRuntime.type === 'springboard') {
