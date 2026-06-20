@@ -1,5 +1,30 @@
 # @react-native-motion-kit/swipe-deck
 
+## 1.3.0
+
+### Minor Changes
+
+- [#13](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/13) [`335c5cf`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/335c5cf0b8461e0538179b6c9c82e73e6c0c5ae4) Thanks [@saseungmin](https://github.com/saseungmin)! - Add `source` to committed swipe events so apps can distinguish gesture commits from programmatic action commits.
+
+  ```tsx
+  ProfileDeck.useDeckEventListener("swipe", (event) => {
+    if (event.source === "gesture") {
+      console.log("User swiped", event.direction);
+      return;
+    }
+
+    console.log("Programmatic action swiped", event.direction);
+  });
+  ```
+
+  `event.source` is `'gesture'` when a pan release commits the swipe and `'programmatic'` when
+  `actions.swipeLeft()` or `actions.swipeRight()` commits it. `programmatic` does not mean button; map
+  it to a button only when that matches your app's UI.
+
+  This is a TypeScript-visible event payload shape change: `source` is a required field on
+  `SwipeEvent<T>`, so object literals, fixtures, or `useDeckEvent('swipe', initialValue)` values must
+  include it.
+
 ## 1.2.0
 
 ### Minor Changes
