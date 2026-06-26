@@ -1,24 +1,35 @@
 {
   "name": "@react-native-motion-kit/swipe-deck",
   "version": "1.3.0",
-  "description": "High-performance Tinder-style swipe deck and swipe cards for React Native, powered by Reanimated and Gesture Handler.",
+  "description": "High-performance Tinder-style swipe deck and swipe cards for React Native, powered by Reanimated, Worklets, and Gesture Handler.",
   "keywords": [
     "android",
     "animation",
     "card-stack",
+    "card-swiper",
     "deck-swiper",
+    "expo",
     "gesture",
     "gesture-handler",
     "ios",
     "react-native",
+    "react-native-card-stack",
+    "react-native-card-swiper",
+    "react-native-deck-swiper",
     "react-native-gesture-handler",
+    "react-native-motion-kit",
     "react-native-reanimated",
+    "react-native-swipe-cards",
     "react-native-swipe-deck",
+    "react-native-worklets",
     "reanimated",
     "swipe-cards",
     "swipe-deck",
+    "swipeable-cards",
     "tinder-cards",
-    "tinder-style"
+    "tinder-style",
+    "tinder-swipe",
+    "worklets"
   ],
   "homepage": "https://github.com/react-native-motion-kit/react-native-swipe-deck#readme",
   "bugs": {
@@ -32,7 +43,8 @@
   },
   "workspaces": [
     ".",
-    "example"
+    "example",
+    "docs"
   ],
   "files": [
     "src",

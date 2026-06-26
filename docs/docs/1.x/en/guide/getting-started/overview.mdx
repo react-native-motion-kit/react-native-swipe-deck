@@ -1,0 +1,65 @@
+# Overview
+
+`@react-native-motion-kit/swipe-deck` is a high-performance Tinder-style swipe
+deck for React Native. It is built for apps that need a smooth card stack,
+programmatic like/pass buttons, progress-driven overlays, and a typed API that
+does not make every screen wire a controller by hand.
+
+## Mental Model
+
+The main API is a typed compound component family:
+
+- `createSwipeDeck<T>()` creates one deck family for an item type.
+- `Root` owns data, gesture state, motion options, actions, events, and layout.
+- `Card` renders each mounted item in the bounded forward window.
+- Factory hooks read state, run actions, subscribe to events, and expose
+  Reanimated shared values for animated UI.
+
+```tsx
+import { createSwipeDeck } from '@react-native-motion-kit/swipe-deck';
+
+type Profile = {
+  id: string;
+  name: string;
+};
+
+const ProfileDeck = createSwipeDeck<Profile>();
+```
+
+Create the factory once, export it from a shared module, and use hooks from that
+same factory around a matching `Root`.
+
+## Why It Exists
+
+- The deck does not render the full data set.
+- Promoted cards keep item identity through stable keys.
+- Manual drag motion and programmatic action motion can be tuned separately.
+- Interaction shared values update on the UI thread without rerendering React
+  every gesture frame.
+- Events describe committed model changes such as swipes, undo, index changes,
+  and end reached.
+
+## Core Concepts
+
+### Bounded Forward Window
+
+By default, the deck mounts up to three cards from the active index forward:
+
+1. current card
+2. next card
+3. next buffered card
+
+This keeps the stack continuous without backfilling dismissed cards. Use
+`visibleCardCount` to tune that maximum budget.
+
+### Stable Item Keys
+
+`getKey` is required. The same logical item must return the same key across
+swipes, and different items should not share a key. The deck uses that key as
+the React identity for each mounted card.
+
+### Committed Events vs Live Interaction
+
+Use event hooks for committed model changes. Use interaction shared values for
+frame-synchronous visual feedback while a card is dragging, dismissing, or
+restoring.

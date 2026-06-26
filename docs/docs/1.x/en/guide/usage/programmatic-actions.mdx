@@ -1,0 +1,79 @@
+# Programmatic Actions
+
+Programmatic actions come from `useDeckActions()`. Use them for buttons,
+external controls, or any app logic that should dismiss the active card.
+
+```tsx
+function LikeButton() {
+  const { swipeRight } = ProfileDeck.useDeckActions();
+
+  return (
+    <Pressable onPress={swipeRight}>
+      <Text>Like</Text>
+    </Pressable>
+  );
+}
+```
+
+## Action Motion
+
+`motion` controls manual drag feel. `actionMotion` controls only programmatic
+actions such as `swipeLeft()` and `swipeRight()`.
+
+```tsx
+import {
+  createSwipeDeck,
+  SwipeDeckActionMotion,
+  SwipeDeckMotion,
+} from '@react-native-motion-kit/swipe-deck';
+
+const ProfileDeck = createSwipeDeck<Profile>({
+  motion: SwipeDeckMotion.tinder(),
+  actionMotion: SwipeDeckActionMotion.springboard({
+    anticipationDistance: ({ width }) => width * 0.04,
+    anticipationDuration: 80,
+    dismissDuration: 320,
+  }),
+});
+```
+
+## Recipes
+
+### `SwipeDeckActionMotion.direct(options?)`
+
+Dismisses immediately toward the action direction. Omitted values reuse the
+deck's resolved dismiss duration, easing, and offscreen multiplier.
+
+```tsx
+actions.swipeLeft(
+  SwipeDeckActionMotion.direct({
+    duration: 180,
+  }),
+);
+```
+
+### `SwipeDeckActionMotion.springboard(options?)`
+
+Moves a little in the opposite direction first, then dismisses offscreen. During
+anticipation, swipe progress and live direction stay neutral so opposite-side
+overlays do not flash.
+
+```tsx
+const actionMotion = SwipeDeckActionMotion.springboard({
+  anticipationDistance: 40,
+  anticipationDuration: 160,
+  dismissDuration: 500,
+});
+```
+
+## Precedence
+
+`actionMotion` is replacement-based, not deep-merged:
+
+1. factory `actionMotion` from `createSwipeDeck({ actionMotion })`
+2. `Root actionMotion`, replacing the factory default for that Root
+3. per-call recipe passed to `swipeLeft(recipe)` or `swipeRight(recipe)`
+
+Actions are callback-safe. If a React Native press event is passed to
+`swipeRight` or `swipeLeft`, the event argument is ignored and the configured
+action motion is used.

@@ -1,0 +1,44 @@
+# Visible Card Budget
+
+`visibleCardCount`는 active card부터 forward 방향으로 mount할 card의 최대 개수를 제어합니다.
+
+```tsx
+function CurrentOnlyDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={1}>
+      {/* 현재 카드만 렌더링 */}
+    </SwipeDeck.Root>
+  );
+}
+
+function DefaultDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
+      {/* 더 자연스러운 next-card promotion을 위한 기본 budget */}
+    </SwipeDeck.Root>
+  );
+}
+
+function DeepStackDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={9}>
+      {/* 더 깊은 stack UI */}
+    </SwipeDeck.Root>
+  );
+}
+```
+
+## 규칙
+
+| 입력                                           | Mount되는 card                |
+| ---------------------------------------------- | ----------------------------- |
+| `visibleCardCount={1}`                         | 현재 카드만                   |
+| `visibleCardCount={2}`                         | 데이터가 충분할 때 최대 두 장 |
+| 남은 데이터가 10개이고 `visibleCardCount={20}` | 최대 남은 10장                |
+| 짝수 값                                        | 최대 budget으로 그대로 유지   |
+
+`1`보다 작은 값은 forward data가 충분할 때 `1`로 정규화됩니다. 실제 mount 개수는 active index부터
+남은 data 개수를 넘지 않습니다.
+
+UI가 허용하는 한 작은 budget을 유지하세요. 더 깊은 stack이 실제로 보이거나 더 많은 card를 미리
+mount해야 할 때만 늘리는 것을 권장합니다.

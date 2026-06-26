@@ -1,0 +1,21 @@
+{
+  "name": "@react-native-motion-kit/swipe-deck-docs",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rspress build",
+    "dev": "rspress dev",
+    "preview": "rspress preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@rspress/core": "^2.0.13",
+    "@shikijs/transformers": "^4.1.0",
+    "@types/node": "^24",
+    "@types/react": "^19.2.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "typescript": "^6.0.2"
+  }
+}

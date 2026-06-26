@@ -1,0 +1,69 @@
+# AI 사용 가이드
+
+AI assistant에게 코드를 생성하게 할 때 아래 규칙을 함께 전달하세요. 가장 흔한 integration
+실수를 줄일 수 있습니다.
+
+## AI가 읽기 좋은 문서
+
+이 사이트는 `rspress build` 시 AI 도구가 읽기 좋은 Markdown 파일을 함께 생성합니다.
+
+- [`/ko/llms.txt`](/ko/llms.txt): 페이지 링크와 요약을 담은 compact 문서 index입니다.
+  Agent가 필요한 페이지만 골라 읽게 할 때 사용하세요.
+- [`/ko/llms-full.txt`](/ko/llms-full.txt): 한국어 문서 전체를 하나로 합친 Markdown
+  파일입니다. Agent의 context budget이 충분하고 전체 API를 이해해야 할 때 사용하세요.
+- [`/llms.txt`](/llms.txt)와 [`/llms-full.txt`](/llms-full.txt): English equivalents.
+
+공개 문서 URL이 생기기 전에는 로컬에서 build한 뒤 `docs/doc_build/` 아래의 파일을
+사용하세요.
+
+## 추천 프롬프트
+
+```md
+Use @react-native-motion-kit/swipe-deck.
+
+- Create one createSwipeDeck<T>() factory outside render.
+- Render Root and Card from that same factory.
+- Use a stable getKey(item) value, usually item.id.
+- Use factory hooks from the same factory instance as the Root.
+- Use useDeckState/useDeckActions for React UI.
+- Use useDeckInteraction for Reanimated UI-thread overlays.
+- Use useDeckEvent/useDeckEventListener for committed swipe, undo, indexChange,
+  and endReached events.
+- Add undoEnabled only when the UI exposes undo.
+- Do not derive deck id from item ids, timestamps, or values that change each render.
+```
+
+## 좋은 Factory 형태
+
+```tsx
+// profile-deck.ts
+import { createSwipeDeck } from '@react-native-motion-kit/swipe-deck';
+
+export type Profile = {
+  id: string;
+  name: string;
+};
+
+export const ProfileDeck = createSwipeDeck<Profile>();
+```
+
+```tsx
+// ProfileDeckScreen.tsx
+import { ProfileDeck } from './profile-deck';
+
+export function ProfileDeckScreen({ profiles }: { profiles: Profile[] }) {
+  return (
+    <ProfileDeck.Root data={profiles} getKey={(item) => item.id}>
+      <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+    </ProfileDeck.Root>
+  );
+}
+```
+
+## 피해야 할 실수
+
+- Component render path 안에서 `createSwipeDeck()`을 호출하지 마세요.
+- 한 factory의 hook으로 다른 factory의 Root를 제어하지 마세요.
+- Item이 삽입/삭제/재정렬될 수 있다면 array index를 key로 쓰지 마세요.
+- Commit된 business logic에는 `useDeckInteraction`이 아니라 event hook을 사용하세요.
+- Undo control이 없다면 `undoEnabled`를 켜지 마세요.

@@ -1,0 +1,60 @@
+# 개요
+
+`@react-native-motion-kit/swipe-deck`는 React Native용 고성능 Tinder 스타일
+swipe deck 라이브러리입니다. 부드러운 card stack, like/pass 버튼, progress
+기반 overlay, type-safe compound API가 필요한 앱에 맞춰져 있습니다.
+
+## 핵심 모델
+
+주요 API는 typed compound component family입니다.
+
+- `createSwipeDeck<T>()`가 item type에 맞는 deck family를 만듭니다.
+- `Root`는 data, gesture state, motion option, action, event, layout을 소유합니다.
+- `Card`는 bounded forward window 안에 mount된 item을 렌더링합니다.
+- Factory hook은 state, action, event, animated UI용 Reanimated shared value를 제공합니다.
+
+```tsx
+import { createSwipeDeck } from '@react-native-motion-kit/swipe-deck';
+
+type Profile = {
+  id: string;
+  name: string;
+};
+
+const ProfileDeck = createSwipeDeck<Profile>();
+```
+
+Factory는 한 번 만들고 shared module에서 export하세요. 같은 factory의 `Root` 주변에서
+그 factory hook을 사용해야 합니다.
+
+## 이 라이브러리가 해결하는 것
+
+- 전체 data set을 한 번에 렌더링하지 않습니다.
+- Stable key를 통해 promoted card가 item identity를 유지합니다.
+- Manual drag motion과 programmatic action motion을 따로 조정할 수 있습니다.
+- Interaction shared value는 UI thread에서 업데이트되어 gesture frame마다 React rerender를 만들지 않습니다.
+- Event는 swipe, undo, index change, end reached 같은 commit된 model 변화를 표현합니다.
+
+## 핵심 개념
+
+### Bounded Forward Window
+
+기본적으로 active index부터 최대 세 장을 mount합니다.
+
+1. current card
+2. next card
+3. next buffered card
+
+이 방식은 dismissed card를 다시 채우지 않으면서도 stack의 연속성을 유지합니다.
+`visibleCardCount`로 최대 budget을 조정할 수 있습니다.
+
+### Stable Item Key
+
+`getKey`는 필수입니다. 같은 logical item은 swipe가 진행되어도 같은 key를 반환해야 하고,
+서로 다른 item은 같은 key를 공유하지 않는 것이 좋습니다. Deck은 이 key를 각 mounted
+card의 React identity로 사용합니다.
+
+### Commit Event와 Live Interaction
+
+Commit된 model 변화에는 event hook을 사용하세요. Card가 dragging, dismissing, restoring
+중인지에 따라 frame-synchronous visual feedback이 필요하면 interaction shared value를 사용하세요.

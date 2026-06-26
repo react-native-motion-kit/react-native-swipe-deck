@@ -1,0 +1,133 @@
+---
+description: Reference the main exports, Root and Card props, hooks, events, and built-in motion helpers.
+---
+
+# API Reference
+
+## Main Exports
+
+```ts
+export {
+  SwipeDeckActionMotion,
+  SwipeDeckMotion,
+  createSwipeDeck,
+  SwipeDeck,
+  SwipeDeckUndoMotion,
+} from '@react-native-motion-kit/swipe-deck';
+```
+
+[Go to source](https://github.com/react-native-motion-kit/react-native-swipe-deck/blob/main/src/index.tsx)
+
+## `createSwipeDeck<T>(config?)`
+
+Creates a typed deck family.
+
+```tsx
+const ProfileDeck = createSwipeDeck<Profile>({
+  motion: SwipeDeckMotion.tinder(),
+});
+```
+
+The returned instance includes:
+
+- `Root`
+- `Card`
+- `useDeckState`
+- `useDeckActions`
+- `useDeckInteraction`
+- `useDeckEvent`
+- `useDeckEventListener`
+
+## `SwipeDeck.Root` Props
+
+[Go to source](https://github.com/react-native-motion-kit/react-native-swipe-deck/blob/main/src/types.ts)
+
+| Prop                | Type                                 | Notes                                     |
+| ------------------- | ------------------------------------ | ----------------------------------------- |
+| `id`                | `string`                             | Factory-scoped deck namespace.            |
+| `data`              | `readonly T[]`                       | Ordered items rendered by the deck.       |
+| `getKey`            | `(item: T, index: number) => string` | Required stable item key.                 |
+| `initialIndex`      | `number`                             | Initial active item index.                |
+| `disabled`          | `boolean`                            | Disables accepted actions and gestures.   |
+| `allowedDirections` | `AllowedDirections`                  | Limits accepted dismiss directions.       |
+| `swipeThreshold`    | `SwipeThreshold`                     | Root-level dismiss threshold override.    |
+| `velocityThreshold` | `number`                             | Root-level flick threshold override.      |
+| `motion`            | `SwipeDeckMotionPreset`              | Gesture-driven motion preset.             |
+| `actionMotion`      | `SwipeDeckActionMotionRecipe`        | Programmatic swipe motion recipe.         |
+| `undoMotion`        | `SwipeDeckUndoMotionRecipe`          | Programmatic undo restore motion recipe.  |
+| `undoEnabled`       | `boolean`                            | Enables undo history tracking.            |
+| `visibleCardCount`  | `number`                             | Maximum mounted forward card budget.      |
+| `containerStyle`    | `StyleProp<ViewStyle>`               | Style applied to the deck container.      |
+| `children`          | `ReactNode`                          | Must include a matching `SwipeDeck.Card`. |
+
+```ts
+type AllowedDirections = readonly ('left' | 'right')[];
+type SwipeThreshold = number | ((layout: SwipeDeckLayout) => number);
+```
+
+Static `SwipeDeck.Root` accepts the same props except `id`.
+
+## `SwipeDeck.Card` Props
+
+| Prop       | Type                                      | Notes                                   |
+| ---------- | ----------------------------------------- | --------------------------------------- |
+| `style`    | `StyleProp<ViewStyle>`                    | Style applied to the absolute card.     |
+| `children` | `(info: SwipeRenderInfo<T>) => ReactNode` | Renders one item in the bounded window. |
+
+`SwipeRenderInfo<T>` includes `item`, `index`, `offset`, `role`, and
+`isActive`.
+
+## State And Actions
+
+```ts
+type SwipeDeckState = {
+  activeIndex: number;
+  count: number;
+  isCompleted: boolean;
+  canSwipe: boolean;
+  canUndo: boolean;
+};
+
+type SwipeDeckActions = {
+  swipeLeft: SwipeDeckAction;
+  swipeRight: SwipeDeckAction;
+  undo: SwipeDeckUndoAction;
+};
+```
+
+Programmatic actions return `boolean` to tell whether the action was accepted.
+
+## Interaction
+
+```ts
+type SwipeDeckInteractionPhase = 'idle' | 'dragging' | 'dismissing' | 'undoing';
+```
+
+`useDeckInteraction()` returns Reanimated shared values for `progress`,
+`signedProgress`, `direction`, `dismissDirection`, `translationX`,
+`translationY`, `isDragging`, and `phase`.
+
+## Events
+
+```ts
+type SwipeDeckEventMap<T> = {
+  swipe: SwipeEvent<T>;
+  undo: UndoEvent<T>;
+  indexChange: { index: number };
+  endReached: true;
+};
+```
+
+Use `useDeckEvent` for latest event snapshots and `useDeckEventListener` for
+imperative subscriptions.
+
+## Motion Helpers
+
+- `SwipeDeckMotion.tinder(options?)`
+- `SwipeDeckActionMotion.direct(options?)`
+- `SwipeDeckActionMotion.springboard(options?)`
+- `SwipeDeckUndoMotion.spring(options?)`
+- `SwipeDeckUndoMotion.timing(options?)`
+
+For behavior details, prefer the guide pages over treating this reference as an
+onboarding surface.

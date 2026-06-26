@@ -1,0 +1,73 @@
+# AI Usage Guide
+
+When generating code with an AI assistant, give it these rules. They prevent the
+most common integration mistakes.
+
+## LLM-Readable Docs
+
+This site publishes Markdown files for AI tools during `rspress build`.
+
+- [`/llms.txt`](/llms.txt): compact documentation index with page links and
+  summaries. Use this when the agent should choose only the relevant pages.
+- [`/llms-full.txt`](/llms-full.txt): full English documentation in one
+  Markdown file. Use this when the agent has enough context budget and should
+  understand the whole API surface.
+- [`/ko/llms.txt`](/ko/llms.txt) and
+  [`/ko/llms-full.txt`](/ko/llms-full.txt): Korean equivalents.
+
+Before the public docs URL is available, build locally and read the generated
+files from `docs/doc_build/`.
+
+## Recommended Prompt
+
+```md
+Use @react-native-motion-kit/swipe-deck.
+
+- Create one createSwipeDeck<T>() factory outside render.
+- Render Root and Card from that same factory.
+- Use a stable getKey(item) value, usually item.id.
+- Use factory hooks from the same factory instance as the Root.
+- Use useDeckState/useDeckActions for React UI.
+- Use useDeckInteraction for Reanimated UI-thread overlays.
+- Use useDeckEvent/useDeckEventListener for committed swipe, undo, indexChange,
+  and endReached events.
+- Add undoEnabled only when the UI exposes undo.
+- Do not derive deck id from item ids, timestamps, or values that change each render.
+```
+
+## Good Factory Shape
+
+```tsx
+// profile-deck.ts
+import { createSwipeDeck } from '@react-native-motion-kit/swipe-deck';
+
+export type Profile = {
+  id: string;
+  name: string;
+};
+
+export const ProfileDeck = createSwipeDeck<Profile>();
+```
+
+```tsx
+// ProfileDeckScreen.tsx
+import { ProfileDeck } from './profile-deck';
+
+export function ProfileDeckScreen({ profiles }: { profiles: Profile[] }) {
+  return (
+    <ProfileDeck.Root data={profiles} getKey={(item) => item.id}>
+      <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+    </ProfileDeck.Root>
+  );
+}
+```
+
+## Common Mistakes To Avoid
+
+- Do not call `createSwipeDeck()` inside a component render path.
+- Do not use hooks from one factory to control a Root from another factory.
+- Do not use array indexes as keys when items can be inserted, removed, or
+  reordered.
+- Do not use `useDeckInteraction` for committed business logic; use events for
+  committed model changes.
+- Do not turn on `undoEnabled` unless the deck exposes undo controls.

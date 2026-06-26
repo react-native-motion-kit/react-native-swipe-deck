@@ -1,0 +1,78 @@
+# Event 처리
+
+Event hook은 commit된 model event를 표현합니다. Live interaction value와 분리해서 생각하세요.
+
+## Event Map
+
+| Event         | Payload                              |
+| ------------- | ------------------------------------ |
+| `swipe`       | `{ item, index, direction, source }` |
+| `undo`        | `{ item, index, direction }`         |
+| `indexChange` | `{ index }`                          |
+| `endReached`  | `true`                               |
+
+`swipe.source`는 사용자가 pan gesture를 threshold/velocity 기준 이상으로 놓아 commit한 경우
+`'gesture'`입니다. `actions.swipeLeft()` 또는 `actions.swipeRight()`로 commit된 경우
+`'programmatic'`입니다.
+
+## `useDeckEvent`
+
+`useDeckEvent(eventName, initialValue?, id?)`는 React 렌더링 UI를 위한 최신 commit event
+snapshot을 반환합니다.
+
+```tsx
+function ProfileDeckStatus() {
+  const lastSwipe = ProfileDeck.useDeckEvent('swipe', null);
+  const endReached = ProfileDeck.useDeckEvent('endReached', false);
+
+  return (
+    <Text>
+      {endReached
+        ? 'Done'
+        : lastSwipe
+          ? `Last swipe: ${lastSwipe.direction} from ${lastSwipe.source}`
+          : 'No swipe yet'}
+    </Text>
+  );
+}
+```
+
+이 API는 latest-value API이며 event history가 아닙니다. Root가 attach/detach될 때 event
+snapshot은 clear됩니다.
+
+Initial value는 event payload shape, `null`, `undefined`, 또는 `endReached`의 `false`로
+제한됩니다. `swipe` 같은 object event에는 `null`을 사용하세요.
+
+Initial value 없이 named deck을 읽어야 한다면 id를 두 번째 인자로 넘깁니다.
+
+```tsx
+const lastSwipe = ProfileDeck.useDeckEvent('swipe', 'nearby');
+```
+
+Initial value도 함께 넘기는 경우 id는 세 번째 인자입니다.
+
+## `useDeckEventListener`
+
+`useDeckEventListener(eventName, listener, id?)`는 앱 코드에 별도 React state를 만들지 않고
+imperative하게 event를 구독합니다.
+
+```tsx
+function ProfileDeckEvents() {
+  ProfileDeck.useDeckEventListener('swipe', ({ item, direction, source }) => {
+    console.log(item, direction, source);
+  });
+
+  ProfileDeck.useDeckEventListener('undo', ({ item }) => {
+    console.log('Restored', item);
+  });
+
+  ProfileDeck.useDeckEventListener('endReached', () => {
+    console.log('No more cards');
+  });
+
+  return null;
+}
+```
+
+성공한 swipe는 `swipe -> indexChange -> endReached` 순서로 emit됩니다. Undo는
+`undo -> indexChange` 순서로 emit됩니다.

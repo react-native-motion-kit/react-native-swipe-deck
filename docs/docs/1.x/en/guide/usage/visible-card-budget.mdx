@@ -1,0 +1,45 @@
+# Visible Card Budget
+
+`visibleCardCount` controls the maximum number of cards kept mounted from the
+active card forward.
+
+```tsx
+function CurrentOnlyDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={1}>
+      {/* current card only */}
+    </SwipeDeck.Root>
+  );
+}
+
+function DefaultDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
+      {/* default budget for smoother next-card promotion */}
+    </SwipeDeck.Root>
+  );
+}
+
+function DeepStackDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={9}>
+      {/* deeper stacked UI */}
+    </SwipeDeck.Root>
+  );
+}
+```
+
+## Rules
+
+| Input                                           | Mounted cards                            |
+| ----------------------------------------------- | ---------------------------------------- |
+| `visibleCardCount={1}`                          | Only the current card.                   |
+| `visibleCardCount={2}`                          | Up to two cards when enough data exists. |
+| `visibleCardCount={20}` with 10 remaining items | At most those 10 remaining items.        |
+| Even values                                     | Kept as the maximum budget.              |
+
+Values below `1` normalize to `1` when enough forward data exists. The mounted
+count never exceeds the remaining data from the active index.
+
+Keep the budget as small as your UI allows. Increase it only when your design
+visibly exposes a deeper stack or intentionally needs more cards pre-mounted.

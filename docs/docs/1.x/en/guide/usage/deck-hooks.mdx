@@ -1,0 +1,100 @@
+# Deck Hooks
+
+Factory hooks expose deck state, actions, and interaction values without a
+provider prop or controller object.
+
+```tsx
+const ProfileDeck = createSwipeDeck<Profile>();
+```
+
+## `useDeckState(id?)`
+
+Returns React-rendered deck state.
+
+| Field         | Meaning                                                   |
+| ------------- | --------------------------------------------------------- |
+| `activeIndex` | Current active item index, or `-1` before attach.         |
+| `count`       | Total item count in the attached deck.                    |
+| `isCompleted` | Whether the deck has consumed all items.                  |
+| `canSwipe`    | Whether a dismiss action can currently be accepted.       |
+| `canUndo`     | Whether the latest valid swipe can currently be restored. |
+
+```tsx
+function Counter() {
+  const { activeIndex, count, isCompleted } = ProfileDeck.useDeckState();
+  const current = activeIndex >= 0 ? activeIndex + 1 : 0;
+
+  return <Text>{isCompleted ? 'Done' : `${current} / ${count}`}</Text>;
+}
+```
+
+Derive the current item from your own `data[activeIndex]` when needed. Deck
+state stays primitive and stable.
+
+## `useDeckActions(id?)`
+
+Returns stable action callbacks.
+
+```tsx
+function Controls() {
+  const { canSwipe, canUndo } = ProfileDeck.useDeckState();
+  const { swipeLeft, swipeRight, undo } = ProfileDeck.useDeckActions();
+
+  return (
+    <View>
+      <Pressable disabled={!canSwipe} onPress={swipeLeft}>
+        <Text>Nope</Text>
+      </Pressable>
+      <Pressable disabled={!canUndo} onPress={undo}>
+        <Text>Undo</Text>
+      </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeRight}>
+        <Text>Like</Text>
+      </Pressable>
+    </View>
+  );
+}
+```
+
+`swipeLeft()` and `swipeRight()` return `true` when accepted and `false` when the
+deck is unattached, disabled, animating, unmeasured, completed, or the direction
+is not allowed. `undo()` returns `true` when `canUndo` is true, including after
+the deck is completed.
+
+## `useDeckInteraction(id?)`
+
+Returns Reanimated shared values for progress-driven UI.
+
+```tsx
+function SwipeReactionOverlay() {
+  const { signedProgress } = ProfileDeck.useDeckInteraction();
+
+  const likeStyle = useAnimatedStyle(() => {
+    const progress = Math.max(signedProgress.get(), 0);
+
+    return {
+      opacity: progress,
+      transform: [{ scale: 0.9 + progress * 0.18 }],
+    };
+  });
+
+  return <Animated.View pointerEvents="none" style={likeStyle} />;
+}
+```
+
+Interaction values update on the UI thread and do not rerender React every
+gesture frame.
+
+| Value              | Meaning                                                |
+| ------------------ | ------------------------------------------------------ |
+| `progress`         | Absolute swipe progress from `0` to `1`.               |
+| `signedProgress`   | Signed progress from `-1` to `1`.                      |
+| `direction`        | Raw live direction signal: `-1`, `0`, or `1`.          |
+| `dismissDirection` | Accepted dismiss side: `'left'`, `'right'`, or `null`. |
+| `translationX`     | Active card horizontal translation.                    |
+| `translationY`     | Active card vertical translation.                      |
+| `isDragging`       | Whether the deck is dragging or dismissing.            |
+| `phase`            | `idle`, `dragging`, `dismissing`, or `undoing`.        |
+
+Use `phase` for frame-synchronous visual feedback. Use event hooks for
+committed state changes.

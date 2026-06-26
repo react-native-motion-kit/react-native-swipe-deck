@@ -1,0 +1,103 @@
+# Quick Start
+
+Create one typed deck family for your item type. `Root`, `Card`, hooks, actions,
+and events from that factory share the same registry namespace.
+
+```tsx
+import { Text, View } from 'react-native';
+import { createSwipeDeck, SwipeDeckMotion } from '@react-native-motion-kit/swipe-deck';
+
+type Profile = {
+  id: string;
+  name: string;
+  bio: string;
+};
+
+const ProfileDeck = createSwipeDeck<Profile>({
+  motion: SwipeDeckMotion.tinder({
+    drag: {
+      mode: 'horizontal',
+      liftYFactor: 0.15,
+    },
+    rotation: {
+      mode: 'grab-position',
+    },
+    dismiss: {
+      threshold: ({ width }) => width * 0.3,
+      velocityThreshold: 800,
+      minDuration: 300,
+      maxDuration: 520,
+    },
+  }),
+});
+
+function ProfileDeckEvents() {
+  ProfileDeck.useDeckEventListener('swipe', ({ item, direction, source }) => {
+    console.log(item.name, direction, source);
+  });
+
+  ProfileDeck.useDeckEventListener('endReached', () => {
+    console.log('No more cards');
+  });
+
+  return null;
+}
+
+function ProfileCard({ profile, active }: { profile: Profile; active: boolean }) {
+  return (
+    <View>
+      <Text>{active ? 'Now viewing' : 'Up next'}</Text>
+      <Text>{profile.name}</Text>
+      <Text>{profile.bio}</Text>
+    </View>
+  );
+}
+
+export function ProfileDeckScreen({ profiles }: { profiles: Profile[] }) {
+  return (
+    <>
+      <ProfileDeckEvents />
+      <ProfileDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
+        <ProfileDeck.Card>
+          {({ item, isActive }) => <ProfileCard profile={item} active={isActive} />}
+        </ProfileDeck.Card>
+      </ProfileDeck.Root>
+    </>
+  );
+}
+```
+
+## Add Controls
+
+Use state and action hooks for React-rendered UI such as counters and buttons.
+
+```tsx
+function ProfileDeckControls() {
+  const { activeIndex, count, canSwipe, canUndo, isCompleted } = ProfileDeck.useDeckState();
+  const { swipeLeft, swipeRight, undo } = ProfileDeck.useDeckActions();
+  const current = activeIndex >= 0 ? activeIndex + 1 : 0;
+
+  return (
+    <View>
+      <Text>{isCompleted ? 'Done' : `${current} / ${count}`}</Text>
+      <Pressable disabled={!canSwipe} onPress={swipeLeft}>
+        <Text>Nope</Text>
+      </Pressable>
+      <Pressable disabled={!canUndo} onPress={undo}>
+        <Text>Undo</Text>
+      </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeRight}>
+        <Text>Like</Text>
+      </Pressable>
+    </View>
+  );
+}
+```
+
+Enable undo tracking only when you expose undo UX:
+
+```tsx
+<ProfileDeck.Root data={profiles} getKey={(item) => item.id} undoEnabled>
+  <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+</ProfileDeck.Root>
+```

@@ -1,0 +1,74 @@
+# Undo
+
+Undo는 opt-in입니다. 해당 deck에서 undo/back-swipe UX를 제공할 때 Root에 `undoEnabled`를
+추가하세요.
+
+```tsx
+<ProfileDeck.Root data={profiles} getKey={(item) => item.id} undoEnabled>
+  <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+</ProfileDeck.Root>
+```
+
+활성화되면 성공한 swipe마다 key/index/direction metadata entry 하나를 LIFO undo stack에
+저장합니다. Lookup은 현재 `data`에 대한 key-to-index map을 사용하고, data나 key가 바뀌면
+invalid entry를 prune합니다.
+
+생략하면 성공한 swipe도 undo metadata를 저장하지 않고, `canUndo`는 `false`를 유지하며,
+`actions.undo()`는 `false`를 반환합니다.
+
+## Undo Button
+
+```tsx
+function UndoButton() {
+  const { canUndo } = ProfileDeck.useDeckState();
+  const { undo } = ProfileDeck.useDeckActions();
+
+  return (
+    <Pressable disabled={!canUndo} onPress={undo}>
+      <Text>Undo</Text>
+    </Pressable>
+  );
+}
+```
+
+## Undo Motion
+
+`SwipeDeckUndoMotion`으로 restored card가 들어오는 motion을 조정할 수 있습니다.
+
+```tsx
+import { createSwipeDeck, SwipeDeckUndoMotion } from '@react-native-motion-kit/swipe-deck';
+
+const ProfileDeck = createSwipeDeck<Profile>({
+  undoMotion: SwipeDeckUndoMotion.spring({
+    springConfig: {
+      damping: 36,
+      stiffness: 300,
+      mass: 3,
+    },
+  }),
+});
+```
+
+제공되는 recipe는 다음과 같습니다.
+
+- `SwipeDeckUndoMotion.spring(options?)`: Reanimated `withSpring`으로 restore합니다.
+- `SwipeDeckUndoMotion.timing(options?)`: deterministic한 `withTiming`으로 restore합니다.
+
+두 recipe는 공통으로 다음 옵션을 받습니다.
+
+- `from: 'auto' | 'left' | 'right'`: `auto`는 원래 swipe된 방향에서 card를 되돌립니다.
+- `entryDistance`: 화면 밖 시작 거리를 number 또는 layout callback으로 지정합니다.
+
+`timing`은 `duration`, `easing`을 추가로 받고 기본 duration은 `0`입니다. 별도 motion을
+설정하지 않으면 card를 즉시 복원합니다. `spring`은 `springConfig`를 받습니다.
+
+## 우선순위
+
+`undoMotion`은 replacement 방식입니다.
+
+1. `createSwipeDeck({ undoMotion })`의 factory `undoMotion`
+2. 해당 Root에서 factory default를 대체하는 `Root undoMotion`
+3. `actions.undo(recipe)`에 넘긴 per-call recipe
+
+Undo도 callback으로 바로 넘겨도 안전합니다. React Native press event가 `undo`로 전달되면
+그 event 인자는 무시됩니다.

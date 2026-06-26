@@ -1,0 +1,56 @@
+# Multi-Instance Management
+
+같은 factory에서 여러 Root를 렌더링할 때만 `id`를 사용하세요.
+
+```tsx
+function MultiDeckScreen() {
+  const nearbyState = ProfileDeck.useDeckState('nearby');
+
+  return (
+    <>
+      <ProfileDeck.Root id="recommended" data={recommended} getKey={(item) => item.id}>
+        <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+      </ProfileDeck.Root>
+
+      <ProfileDeck.Root id="nearby" data={nearby} getKey={(item) => item.id}>
+        <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+      </ProfileDeck.Root>
+
+      <Text>{nearbyState.activeIndex + 1}</Text>
+    </>
+  );
+}
+```
+
+`id`는 item key가 아니라 factory 안에서 deck instance를 구분하는 namespace입니다. 서로 다른
+factory는 둘 다 default id를 써도 충돌하지 않지만, 같은 factory와 같은 id의 Root 두 개가
+동시에 mount되는 것은 잘못된 사용입니다.
+
+## Id 규칙
+
+- 안정적이고 적은 개수의 id를 사용하세요.
+- `"nearby"`, `"recommended"` 같은 화면/용도 단위 이름을 사용하세요.
+- Item id, timestamp, 매 render마다 바뀌는 값, 일회성 route 값에서 id를 만들지 마세요.
+- Factory와 id는 render path 밖에서 안정적으로 만들고 유지하세요.
+
+Registry는 hook, action, interaction shared value의 identity를 안정적으로 유지하기 위해 factory
+lifetime 동안 id별 store를 유지합니다.
+
+## Same-Factory Rule
+
+Hook, action, interaction은 같은 factory instance에서 만든 Root에만 연결됩니다.
+
+```ts
+const ProfileDeck = createSwipeDeck<Profile>();
+
+export const {
+  Root: ProfileDeckRoot,
+  Card: ProfileDeckCard,
+  useDeckState: useProfileDeckState,
+  useDeckActions: useProfileDeckActions,
+  useDeckInteraction: useProfileDeckInteraction,
+} = ProfileDeck;
+```
+
+Item type과 id가 같아도 `createSwipeDeck<Profile>()`를 다시 호출하면 별도 registry namespace가
+만들어집니다.
