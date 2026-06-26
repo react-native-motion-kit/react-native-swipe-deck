@@ -1,23 +1,47 @@
-# @react-native-motion-kit/swipe-deck
+# React Native Swipe Deck
 
-[English](README.md)
+> [English](./README.md) | 한국어
 
 <div align="center">
-  <img src="./assets/logo.png" width="300px" alt="React Native Motion Kit logo" />
+  <img src="./assets/logo.png" width="300px" alt="React Native Motion Kit 로고" />
 </div>
 
-Reanimated, Worklets, Gesture Handler 기반의 고성능 React Native용 Tinder 스타일
-swipe deck / swipe card 라이브러리입니다.
+## 개요
 
-## 특징
+React Native에서 Tinder 스타일 card stack을 만들 때 gesture state, programmatic action, animation state, commit event를 매 화면마다 직접 연결하고 있나요?
 
-- **작은 render window**: 현재 카드와 bounded forward stack만 mount합니다.
-- **Item-keyed rendering**: promoted card가 React Native view identity를 유지합니다.
-- **Typed compound API**: `createSwipeDeck<T>()`로 typed deck family를 만듭니다.
-- **Deck hooks**: state, action, event, animated overlay를 같은 factory에서 다룹니다.
-- **Motion recipes**: gesture motion, programmatic action, undo restore를 따로 조정합니다.
+`@react-native-motion-kit/swipe-deck`는 React Native용 고성능 swipe deck 라이브러리입니다.
+Reanimated, Worklets, Gesture Handler를 기반으로 card stack, like/pass button, progress 기반 overlay, undo flow, 여러 독립 deck instance를 typed compound API로 다룰 수 있습니다.
 
-## 설치
+### 주요 기능
+
+- 🤌 **Gesture 중심 Deck UX** - Tinder 스타일 card stack에 맞춰 drag, flick, threshold, direction control을 조정합니다
+- 🏎️ **고성능 애니메이션** - React Native Reanimated와 Worklets 기반으로 UI thread에서 부드러운 card motion을 만듭니다
+- 🪟 **Bounded Render Window** - 전체 데이터가 아니라 active card와 작은 forward stack만 mount합니다
+- 🧬 **Item-Stable Promotion** - 안정적인 item key로 promoted card가 React Native view identity를 유지합니다
+- 🧠 **Typed Compound API** - Root, Card, hook, action, event를 하나의 typed deck family로 묶습니다
+- 🎛️ **외부 제어 API** - button이나 다른 UI에서 swipeLeft, swipeRight, undo를 programmatic하게 실행합니다
+- 🎨 **Motion Recipes** - gesture motion, programmatic action, undo restore를 각각 독립적으로 조정합니다
+- 🧩 **Multi-Instance Management** - 안정적인 factory-scoped id로 여러 deck root를 독립적으로 관리합니다
+- ↩️ **Undo Support** - action-safe undo motion과 LIFO history로 back-swipe UX를 opt-in으로 제공합니다
+- 🪄 **쉬운 API** - Root와 Card로 시작하고 control이나 event가 필요할 때만 hook을 추가합니다
+
+## 빠른 시작
+
+### 📚 문서
+
+전체 문서는 여기에서 확인할 수 있습니다: <https://react-native-swipe-deck.pages.dev/ko/>
+
+### 예제 & 데모
+
+- [📁 예제 프로젝트](https://github.com/react-native-motion-kit/react-native-swipe-deck/tree/main/example) - 다양한 use case를 담은 실제 구현 코드입니다
+
+### 🤖 AI
+
+- [llms.txt](https://react-native-swipe-deck.pages.dev/ko/llms.txt): 모든 문서 페이지의 제목, 링크, 간단한 설명을 담은 structured index 파일입니다.
+- [llms-full.txt](https://react-native-swipe-deck.pages.dev/ko/llms-full.txt): 모든 문서 페이지의 전체 내용을 하나로 합친 full-content 파일입니다.
+
+### 설치
 
 ```sh
 npm install @react-native-motion-kit/swipe-deck react-native-gesture-handler react-native-reanimated react-native-worklets
@@ -26,15 +50,16 @@ npm install @react-native-motion-kit/swipe-deck react-native-gesture-handler rea
 사용 중인 React Native 또는 Expo 버전에 맞춰 Reanimated/Worklets 설정을 완료하세요.
 Babel 설정에서는 `react-native-worklets/plugin`을 마지막 Babel plugin으로 추가해야 합니다.
 
-## 빠른 시작
+### 기본 사용법
 
 ```tsx
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { createSwipeDeck, SwipeDeckMotion } from '@react-native-motion-kit/swipe-deck';
 
 type Profile = {
   id: string;
   name: string;
+  bio: string;
 };
 
 const ProfileDeck = createSwipeDeck<Profile>({
@@ -45,38 +70,49 @@ function ProfileCard({ profile }: { profile: Profile }) {
   return (
     <View>
       <Text>{profile.name}</Text>
+      <Text>{profile.bio}</Text>
+    </View>
+  );
+}
+
+function ProfileDeckControls() {
+  const { activeIndex, count, canSwipe } = ProfileDeck.useDeckState();
+  const { swipeLeft, swipeRight } = ProfileDeck.useDeckActions();
+  const current = activeIndex >= 0 ? activeIndex + 1 : 0;
+
+  return (
+    <View>
+      <Text>{`${current} / ${count}`}</Text>
+      <Pressable disabled={!canSwipe} onPress={swipeLeft}>
+        <Text>Nope</Text>
+      </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeRight}>
+        <Text>Like</Text>
+      </Pressable>
     </View>
   );
 }
 
 export function ProfileDeckScreen({ profiles }: { profiles: Profile[] }) {
   return (
-    <ProfileDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
-      <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
-    </ProfileDeck.Root>
+    <View>
+      <ProfileDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
+        <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+      </ProfileDeck.Root>
+
+      <ProfileDeckControls />
+    </View>
   );
 }
 ```
 
-Control, animated overlay, commit event가 필요하다면 같은 factory Root 주변에서
-`ProfileDeck.useDeckState()`, `ProfileDeck.useDeckActions()`,
-`ProfileDeck.useDeckInteraction()`, `ProfileDeck.useDeckEvent()`,
-`ProfileDeck.useDeckEventListener()`를 사용하세요.
+Control, animated overlay, commit event가 필요하다면 `Root`와 같은 `ProfileDeck` factory에서 제공하는 hook을 사용하세요:
+`ProfileDeck.useDeckState()`, `ProfileDeck.useDeckActions()`, `ProfileDeck.useDeckInteraction()`, `ProfileDeck.useDeckEvent()`, `ProfileDeck.useDeckEventListener()`.
 
-## 문서
+## 기여
 
-공개 사이트를 준비하는 동안 전체 가이드는 이 저장소의 `docs/` 아래에서 관리합니다.
-
-- [개요](docs/docs/1.x/ko/guide/getting-started/overview.mdx)
-- [빠른 시작](docs/docs/1.x/ko/guide/getting-started/quick-start.mdx)
-- [API 레퍼런스](docs/docs/1.x/ko/guide/usage/api-reference.mdx)
-- [AI 사용 가이드](docs/docs/1.x/ko/guide/getting-started/ai.mdx)
-
-AI가 읽기 좋은 문서는 docs build 시 생성됩니다.
-
-- [llms.txt](docs/doc_build/ko/llms.txt)
-- [llms-full.txt](docs/doc_build/ko/llms-full.txt)
+프로젝트 기여 방법과 개발 환경 설정은 [Contributing Guide](CONTRIBUTING.md)를 참고하세요.
 
 ## 라이선스
 
-MIT
+[MIT](./LICENSE)

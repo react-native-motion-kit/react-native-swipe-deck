@@ -1,16 +1,10 @@
+import { PackageManagerTabs } from '@rspress/core/theme';
+
 # 설치
 
-패키지와 React Native gesture/animation peer dependency를 설치합니다.
+패키지와 필수 React Native gesture/animation peer dependency를 함께 설치합니다.
 
-```sh
-npm install @react-native-motion-kit/swipe-deck react-native-gesture-handler react-native-reanimated react-native-worklets
-```
-
-Yarn을 사용한다면:
-
-```sh
-yarn add @react-native-motion-kit/swipe-deck react-native-gesture-handler react-native-reanimated react-native-worklets
-```
+<PackageManagerTabs command="@react-native-motion-kit/swipe-deck react-native-gesture-handler react-native-reanimated react-native-worklets" />
 
 ## 최소 지원 버전
 
@@ -24,7 +18,11 @@ yarn add @react-native-motion-kit/swipe-deck react-native-gesture-handler react-
 
 ## React Native 설정
 
-사용 중인 React Native 또는 Expo 버전에 맞춰 Reanimated와 Worklets 설정을 완료하세요.
+사용 중인 React Native 또는 Expo 버전에 맞춰 공식 setup guide를 확인하세요.
+
+- [React Native Reanimated getting started](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started/)
+- [React Native Gesture Handler installation](https://docs.swmansion.com/react-native-gesture-handler/docs/fundamentals/installation)
+
 Babel 설정에서는 `react-native-worklets/plugin`을 마지막 Babel plugin으로 추가해야 합니다.
 
 ```js title="babel.config.js"
