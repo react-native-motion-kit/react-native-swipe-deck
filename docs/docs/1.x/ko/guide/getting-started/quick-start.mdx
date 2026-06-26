@@ -1,0 +1,103 @@
+# 빠른 시작
+
+Item type에 맞는 typed deck family를 하나 만드세요. 같은 factory의 `Root`, `Card`,
+hook, action, event가 같은 registry namespace를 공유합니다.
+
+```tsx
+import { Text, View } from 'react-native';
+import { createSwipeDeck, SwipeDeckMotion } from '@react-native-motion-kit/swipe-deck';
+
+type Profile = {
+  id: string;
+  name: string;
+  bio: string;
+};
+
+const ProfileDeck = createSwipeDeck<Profile>({
+  motion: SwipeDeckMotion.tinder({
+    drag: {
+      mode: 'horizontal',
+      liftYFactor: 0.15,
+    },
+    rotation: {
+      mode: 'grab-position',
+    },
+    dismiss: {
+      threshold: ({ width }) => width * 0.3,
+      velocityThreshold: 800,
+      minDuration: 300,
+      maxDuration: 520,
+    },
+  }),
+});
+
+function ProfileDeckEvents() {
+  ProfileDeck.useDeckEventListener('swipe', ({ item, direction, source }) => {
+    console.log(item.name, direction, source);
+  });
+
+  ProfileDeck.useDeckEventListener('endReached', () => {
+    console.log('No more cards');
+  });
+
+  return null;
+}
+
+function ProfileCard({ profile, active }: { profile: Profile; active: boolean }) {
+  return (
+    <View>
+      <Text>{active ? '현재 카드' : '다음 카드'}</Text>
+      <Text>{profile.name}</Text>
+      <Text>{profile.bio}</Text>
+    </View>
+  );
+}
+
+export function ProfileDeckScreen({ profiles }: { profiles: Profile[] }) {
+  return (
+    <>
+      <ProfileDeckEvents />
+      <ProfileDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
+        <ProfileDeck.Card>
+          {({ item, isActive }) => <ProfileCard profile={item} active={isActive} />}
+        </ProfileDeck.Card>
+      </ProfileDeck.Root>
+    </>
+  );
+}
+```
+
+## Control 추가
+
+Counter와 button처럼 React로 렌더링되는 UI에는 state/action hook을 사용하세요.
+
+```tsx
+function ProfileDeckControls() {
+  const { activeIndex, count, canSwipe, canUndo, isCompleted } = ProfileDeck.useDeckState();
+  const { swipeLeft, swipeRight, undo } = ProfileDeck.useDeckActions();
+  const current = activeIndex >= 0 ? activeIndex + 1 : 0;
+
+  return (
+    <View>
+      <Text>{isCompleted ? 'Done' : `${current} / ${count}`}</Text>
+      <Pressable disabled={!canSwipe} onPress={swipeLeft}>
+        <Text>Nope</Text>
+      </Pressable>
+      <Pressable disabled={!canUndo} onPress={undo}>
+        <Text>Undo</Text>
+      </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeRight}>
+        <Text>Like</Text>
+      </Pressable>
+    </View>
+  );
+}
+```
+
+Undo UX를 노출할 때만 `undoEnabled`를 켜세요.
+
+```tsx
+<ProfileDeck.Root data={profiles} getKey={(item) => item.id} undoEnabled>
+  <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+</ProfileDeck.Root>
+```

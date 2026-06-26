@@ -1,0 +1,139 @@
+# Motion
+
+`SwipeDeckMotion.tinder()` is the built-in motion preset for Tinder-style card
+stacks.
+
+```tsx
+import { SwipeDeckMotion } from '@react-native-motion-kit/swipe-deck';
+
+const motion = SwipeDeckMotion.tinder({
+  drag: {
+    mode: 'horizontal',
+    liftYFactor: 0.15,
+  },
+  rotation: {
+    mode: 'grab-position',
+  },
+  dismiss: {
+    threshold: ({ width }) => width * 0.3,
+    velocityThreshold: 800,
+    minDuration: 300,
+    maxDuration: 520,
+  },
+});
+```
+
+## What Follows Swipe Progress?
+
+Buffered next cards animate with swipe progress:
+
+- scale moves toward `1`
+- opacity moves toward `1`
+- `translateY` moves toward `0`
+
+When a swipe commits, the dismissed card exits offscreen, the promoted next card
+keeps its item identity, and a new future item enters the bounded window.
+
+## Drag Mode
+
+`drag.mode` controls how the active card uses finger translation while dragging.
+
+| Mode         | Active card movement                                       |
+| ------------ | ---------------------------------------------------------- |
+| `free`       | Follows both horizontal and vertical finger movement.      |
+| `horizontal` | Ignores vertical finger movement and uses horizontal drag. |
+
+`drag.liftYFactor` lifts the active card upward by
+`abs(translationX) * liftYFactor`.
+
+## Rotation
+
+`rotation.mode` controls whether the rotation anchor is fixed or resolved from
+the gesture start position.
+
+### Fixed Rotation
+
+Use fixed rotation when every gesture should use the same anchor.
+
+| Origin          | Feel                            |
+| --------------- | ------------------------------- |
+| `center`        | Rotates around the card center. |
+| `top-center`    | The upper edge feels anchored.  |
+| `bottom-center` | The lower edge feels anchored.  |
+
+```tsx
+SwipeDeckMotion.tinder({
+  rotation: {
+    mode: 'fixed',
+    origin: 'bottom-center',
+    direction: 'default',
+  },
+});
+```
+
+Use `direction: 'reverse'` when you want the same fixed anchor with the opposite
+rotation sign.
+
+### Grab-Position Rotation
+
+Grab-position rotation is the default Tinder-like behavior.
+
+```tsx
+SwipeDeckMotion.tinder({
+  rotation: {
+    mode: 'grab-position',
+    direction: 'default',
+    maxDegrees: 25,
+  },
+});
+```
+
+Upper-half grabs use a top-center anchor with the default rotation sign.
+Lower-half grabs use a bottom-center anchor with the reverse rotation sign.
+`direction: 'reverse'` flips that mapping.
+
+## Dismiss Target
+
+`dismiss.offscreenMultiplier` controls the successful swipe release target.
+
+- Successful swipes always dismiss offscreen.
+- The default `1.5` sends the card to `clearDistance * 1.5`.
+- `clearDistance` is resolved at release from the swipe direction, rotation
+  mode, rotation direction, and gesture start position.
+- Values below `1` normalize to `1`.
+- If `duration` is omitted, velocity-derived timing is computed from the
+  remaining distance to this target.
+
+Most apps can tune only `threshold`, `velocityThreshold`, `duration`,
+`minDuration`, `maxDuration`, and `easing`.
+
+## Motion Precedence
+
+Motion values resolve in this order:
+
+1. factory motion defaults from `createSwipeDeck({ motion })`
+2. `Root motion`, partially overriding only the fields it specifies
+3. direct root props such as `swipeThreshold` and `velocityThreshold`
+
+Factory and Root motion are deep-merged. Changing `rotation.mode` does not reset
+numeric rotation tuning such as `maxDegrees` or `inputRange`.
+
+## Preset Stability
+
+Keep motion presets stable with a module-scope constant or `useMemo`.
+
+```tsx
+const profileDeckMotion = SwipeDeckMotion.tinder({
+  rotation: {
+    mode: 'fixed',
+    origin: 'bottom-center',
+  },
+  dismiss: {
+    threshold: ({ width }) => width * 0.3,
+  },
+});
+
+const ProfileDeck = createSwipeDeck<Profile>({
+  motion: profileDeckMotion,
+});
+```

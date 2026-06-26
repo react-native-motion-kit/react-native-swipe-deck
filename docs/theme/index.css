@@ -1,0 +1,8 @@
+.rp-home-hero .home-install-command {
+  width: min(100%, 450px);
+  margin-top: 1rem;
+}
+
+.rp-home-hero .home-install-command .rp-tabs {
+  margin: 0;
+}

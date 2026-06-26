@@ -1,0 +1,80 @@
+# Handling Events
+
+Event hooks describe committed model events. They are separate from live
+interaction values.
+
+## Event Map
+
+| Event         | Payload                              |
+| ------------- | ------------------------------------ |
+| `swipe`       | `{ item, index, direction, source }` |
+| `undo`        | `{ item, index, direction }`         |
+| `indexChange` | `{ index }`                          |
+| `endReached`  | `true`                               |
+
+`swipe.source` is `'gesture'` when the user releases a pan gesture past the
+configured threshold or velocity policy. It is `'programmatic'` when the swipe
+commits through `actions.swipeLeft()` or `actions.swipeRight()`.
+
+## `useDeckEvent`
+
+`useDeckEvent(eventName, initialValue?, id?)` returns the latest committed event
+snapshot for React-rendered UI.
+
+```tsx
+function ProfileDeckStatus() {
+  const lastSwipe = ProfileDeck.useDeckEvent('swipe', null);
+  const endReached = ProfileDeck.useDeckEvent('endReached', false);
+
+  return (
+    <Text>
+      {endReached
+        ? 'Done'
+        : lastSwipe
+          ? `Last swipe: ${lastSwipe.direction} from ${lastSwipe.source}`
+          : 'No swipe yet'}
+    </Text>
+  );
+}
+```
+
+This is a latest-value API, not an event history. Event snapshots clear when a
+Root attaches or detaches.
+
+Initial values are intentionally restricted to the event payload shape, `null`,
+`undefined`, or `false` for `endReached`. Use `null` for object events such as
+`swipe`.
+
+For a named deck without an initial value, pass the id as the second argument:
+
+```tsx
+const lastSwipe = ProfileDeck.useDeckEvent('swipe', 'nearby');
+```
+
+If you also pass an initial value, id is the third argument.
+
+## `useDeckEventListener`
+
+`useDeckEventListener(eventName, listener, id?)` subscribes imperatively without
+forcing React state into your app code.
+
+```tsx
+function ProfileDeckEvents() {
+  ProfileDeck.useDeckEventListener('swipe', ({ item, direction, source }) => {
+    console.log(item, direction, source);
+  });
+
+  ProfileDeck.useDeckEventListener('undo', ({ item }) => {
+    console.log('Restored', item);
+  });
+
+  ProfileDeck.useDeckEventListener('endReached', () => {
+    console.log('No more cards');
+  });
+
+  return null;
+}
+```
+
+Successful swipe events emit in `swipe -> indexChange -> endReached` order. Undo
+emits `undo -> indexChange`.

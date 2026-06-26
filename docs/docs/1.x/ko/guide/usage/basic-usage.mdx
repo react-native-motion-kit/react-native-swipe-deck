@@ -1,0 +1,78 @@
+---
+description: Factory API, Card render info, allowedDirections, static SwipeDeck API를 언제 쓰는지 정리합니다.
+---
+
+# 기본 사용법
+
+## Factory API
+
+Factory API가 기본 API입니다. Deck state, action, event, interaction shared value,
+또는 여러 named instance가 필요하다면 factory API를 사용하세요.
+
+```tsx
+import { createSwipeDeck } from '@react-native-motion-kit/swipe-deck';
+
+const ProfileDeck = createSwipeDeck<Profile>();
+
+function Screen() {
+  return (
+    <ProfileDeck.Root data={profiles} getKey={(item) => item.id}>
+      <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+    </ProfileDeck.Root>
+  );
+}
+```
+
+Factory는 `Root`, `Card`, hook이 같은 item type을 공유하도록 해 JSX에서 generic을
+반복하지 않아도 됩니다.
+
+## Card Render Info
+
+`Card`는 mounted item마다 render info를 받습니다.
+
+| Field      | 의미                                                       |
+| ---------- | ---------------------------------------------------------- |
+| `item`     | 사용자의 `data` 배열에 있는 item입니다.                    |
+| `index`    | `data` 안에서의 item index입니다.                          |
+| `offset`   | active item으로부터의 card offset입니다.                   |
+| `role`     | active card는 `'current'`, buffered card는 `'next'`입니다. |
+| `isActive` | active card에서만 `true`입니다.                            |
+
+```tsx
+<ProfileDeck.Card>
+  {({ item, role, isActive }) => <ProfileCard profile={item} role={role} active={isActive} />}
+</ProfileDeck.Card>
+```
+
+## Allowed Directions
+
+`allowedDirections`는 dismiss로 받아들일 방향을 제한합니다.
+
+```tsx
+<ProfileDeck.Root data={profiles} getKey={(item) => item.id} allowedDirections={['right']}>
+  <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+</ProfileDeck.Root>
+```
+
+- 생략하면 양방향을 모두 허용합니다.
+- `['left']` 또는 `['right']`는 한 방향만 허용합니다.
+- `[]`는 drag는 허용하지만 모든 dismiss release와 programmatic swipe action을 거절합니다.
+
+## Static API
+
+Card rendering만 필요하고 factory hook이 필요 없다면 static API를 사용할 수 있습니다.
+
+```tsx
+import { SwipeDeck } from '@react-native-motion-kit/swipe-deck';
+
+function InlineDeck() {
+  return (
+    <SwipeDeck.Root data={profiles} getKey={(item) => item.id}>
+      <SwipeDeck.Card<Profile>>{({ item }) => <ProfileCard profile={item} />}</SwipeDeck.Card>
+    </SwipeDeck.Root>
+  );
+}
+```
+
+Static `Root`는 `id`를 받지 않습니다. Static `Root`와 `Card`는 factory처럼 item type을
+함께 고정하지 않으므로, typed render prop이 필요하면 `Card`에 item type을 직접 넘기세요.

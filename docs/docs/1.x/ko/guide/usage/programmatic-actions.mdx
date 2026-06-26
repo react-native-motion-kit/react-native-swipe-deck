@@ -1,0 +1,73 @@
+# Programmatic Actions
+
+Programmatic action은 `useDeckActions()`에서 가져옵니다. 버튼, 외부 control, 앱 로직에서
+active card를 dismiss할 때 사용하세요.
+
+```tsx
+function LikeButton() {
+  const { swipeRight } = ProfileDeck.useDeckActions();
+
+  return <Pressable onPress={swipeRight}>Like</Pressable>;
+}
+```
+
+## Action Motion
+
+`motion`은 manual drag feel을 제어합니다. `actionMotion`은 `swipeLeft()`와 `swipeRight()`
+같은 programmatic action만 제어합니다.
+
+```tsx
+import {
+  createSwipeDeck,
+  SwipeDeckActionMotion,
+  SwipeDeckMotion,
+} from '@react-native-motion-kit/swipe-deck';
+
+const ProfileDeck = createSwipeDeck<Profile>({
+  motion: SwipeDeckMotion.tinder(),
+  actionMotion: SwipeDeckActionMotion.springboard({
+    anticipationDistance: ({ width }) => width * 0.04,
+    anticipationDuration: 80,
+    dismissDuration: 320,
+  }),
+});
+```
+
+## Recipe
+
+### `SwipeDeckActionMotion.direct(options?)`
+
+Action 방향으로 바로 dismiss합니다. 생략한 값은 deck에서 resolve된 dismiss duration, easing,
+offscreen multiplier를 재사용합니다.
+
+```tsx
+actions.swipeLeft(
+  SwipeDeckActionMotion.direct({
+    duration: 180,
+  }),
+);
+```
+
+### `SwipeDeckActionMotion.springboard(options?)`
+
+최종 방향의 반대쪽으로 살짝 움직인 뒤 화면 밖으로 dismiss합니다. Anticipation 동안 swipe
+progress와 live direction은 neutral 상태로 유지되어 반대쪽 overlay가 순간적으로 보이지 않습니다.
+
+```tsx
+const actionMotion = SwipeDeckActionMotion.springboard({
+  anticipationDistance: 40,
+  anticipationDuration: 160,
+  dismissDuration: 500,
+});
+```
+
+## 우선순위
+
+`actionMotion`은 deep merge가 아니라 replacement 방식입니다.
+
+1. `createSwipeDeck({ actionMotion })`의 factory `actionMotion`
+2. 해당 Root에서 factory default를 대체하는 `Root actionMotion`
+3. `swipeLeft(recipe)` 또는 `swipeRight(recipe)`에 넘긴 per-call recipe
+
+Action은 callback으로 바로 넘겨도 안전합니다. React Native press event가 `swipeRight` 또는
+`swipeLeft`로 전달되면 그 event 인자는 무시됩니다.

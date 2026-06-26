@@ -1,0 +1,77 @@
+# Undo
+
+Undo is opt-in. Add `undoEnabled` to a Root when the deck exposes undo or
+back-swipe UX.
+
+```tsx
+<ProfileDeck.Root data={profiles} getKey={(item) => item.id} undoEnabled>
+  <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
+</ProfileDeck.Root>
+```
+
+When enabled, each successful swipe stores one key/index/direction metadata
+entry in a LIFO undo stack. Lookups use a key-to-index map for the current
+`data`, and invalid entries are pruned when data or keys change.
+
+When omitted, successful swipes do not store undo metadata, `canUndo` stays
+`false`, and `actions.undo()` returns `false`.
+
+## Undo Button
+
+```tsx
+function UndoButton() {
+  const { canUndo } = ProfileDeck.useDeckState();
+  const { undo } = ProfileDeck.useDeckActions();
+
+  return (
+    <Pressable disabled={!canUndo} onPress={undo}>
+      <Text>Undo</Text>
+    </Pressable>
+  );
+}
+```
+
+## Undo Motion
+
+Use `SwipeDeckUndoMotion` to customize how a restored card enters.
+
+```tsx
+import { createSwipeDeck, SwipeDeckUndoMotion } from '@react-native-motion-kit/swipe-deck';
+
+const ProfileDeck = createSwipeDeck<Profile>({
+  undoMotion: SwipeDeckUndoMotion.spring({
+    springConfig: {
+      damping: 36,
+      stiffness: 300,
+      mass: 3,
+    },
+  }),
+});
+```
+
+Available recipes:
+
+- `SwipeDeckUndoMotion.spring(options?)`: restores with Reanimated `withSpring`.
+- `SwipeDeckUndoMotion.timing(options?)`: restores with deterministic
+  `withTiming`.
+
+Both recipes accept:
+
+- `from: 'auto' | 'left' | 'right'`: `auto` returns from the original swipe
+  direction.
+- `entryDistance`: number or layout callback for the offscreen start distance.
+
+`timing` also accepts `duration` and `easing`. Its default duration is `0`, so
+the card is restored immediately unless you opt into custom motion. `spring`
+accepts `springConfig`.
+
+## Precedence
+
+`undoMotion` is replacement-based:
+
+1. factory `undoMotion` from `createSwipeDeck({ undoMotion })`
+2. `Root undoMotion`, replacing the factory default for that Root
+3. per-call recipe passed to `actions.undo(recipe)`
+
+Undo is callback-safe. If a React Native press event is passed to `undo`, the
+event argument is ignored.

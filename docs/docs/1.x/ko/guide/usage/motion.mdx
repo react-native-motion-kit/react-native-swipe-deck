@@ -1,0 +1,133 @@
+# Motion
+
+`SwipeDeckMotion.tinder()`는 Tinder 스타일 card stack을 위한 기본 motion preset입니다.
+
+```tsx
+import { SwipeDeckMotion } from '@react-native-motion-kit/swipe-deck';
+
+const motion = SwipeDeckMotion.tinder({
+  drag: {
+    mode: 'horizontal',
+    liftYFactor: 0.15,
+  },
+  rotation: {
+    mode: 'grab-position',
+  },
+  dismiss: {
+    threshold: ({ width }) => width * 0.3,
+    velocityThreshold: 800,
+    minDuration: 300,
+    maxDuration: 520,
+  },
+});
+```
+
+## Swipe Progress를 따라가는 것
+
+Buffered next card는 swipe progress에 따라 애니메이션됩니다.
+
+- scale은 `1`에 가까워집니다.
+- opacity는 `1`에 가까워집니다.
+- `translateY`는 `0`에 가까워집니다.
+
+Swipe가 commit되면 dismissed card는 화면 밖으로 나가고, promoted next card는 item identity를
+유지하며, 새로운 future item이 bounded window에 들어옵니다.
+
+## Drag Mode
+
+`drag.mode`는 drag 중 active card가 손가락 translation을 어떻게 사용할지 제어합니다.
+
+| Mode         | Active card 움직임                              |
+| ------------ | ----------------------------------------------- |
+| `free`       | 손가락의 X/Y 이동을 모두 따라갑니다.            |
+| `horizontal` | 손가락의 Y 이동은 무시하고 X 이동만 반영합니다. |
+
+`drag.liftYFactor`는 active card를 `abs(translationX) * liftYFactor`만큼 위로 올립니다.
+
+## Rotation
+
+`rotation.mode`는 회전 기준점을 고정할지, gesture 시작 위치에서 계산할지 제어합니다.
+
+### Fixed Rotation
+
+모든 gesture가 같은 anchor를 사용해야 한다면 fixed rotation을 사용하세요.
+
+| Origin          | 느낌                                         |
+| --------------- | -------------------------------------------- |
+| `center`        | 카드 중앙을 기준으로 회전합니다.             |
+| `top-center`    | 카드 위쪽 edge가 고정된 축처럼 느껴집니다.   |
+| `bottom-center` | 카드 아래쪽 edge가 고정된 축처럼 느껴집니다. |
+
+```tsx
+SwipeDeckMotion.tinder({
+  rotation: {
+    mode: 'fixed',
+    origin: 'bottom-center',
+    direction: 'default',
+  },
+});
+```
+
+같은 고정 anchor에서 회전 부호만 반대로 만들고 싶다면 `direction: 'reverse'`를 사용하세요.
+
+### Grab-Position Rotation
+
+Grab-position rotation은 기본 Tinder-like 동작입니다.
+
+```tsx
+SwipeDeckMotion.tinder({
+  rotation: {
+    mode: 'grab-position',
+    direction: 'default',
+    maxDegrees: 25,
+  },
+});
+```
+
+카드 위쪽에서 잡으면 top-center anchor와 default rotation sign을 사용합니다. 아래쪽에서 잡으면
+bottom-center anchor와 reverse rotation sign을 사용합니다. `direction: 'reverse'`는 이 mapping을
+뒤집습니다.
+
+## Dismiss Target
+
+`dismiss.offscreenMultiplier`는 성공한 swipe의 release target을 제어합니다.
+
+- 성공한 swipe는 항상 화면 밖으로 dismiss됩니다.
+- 기본값 `1.5`는 카드를 `clearDistance * 1.5` 위치로 보냅니다.
+- `clearDistance`는 swipe direction, rotation mode, rotation direction, gesture start position으로 계산합니다.
+- `1`보다 작은 값은 `1`로 정규화됩니다.
+- `duration`을 생략하면 target까지 남은 거리로 velocity-derived timing을 계산합니다.
+
+대부분의 앱은 `threshold`, `velocityThreshold`, `duration`, `minDuration`, `maxDuration`,
+`easing`만 조정해도 충분합니다.
+
+## Motion 우선순위
+
+Motion 값은 다음 순서로 resolve됩니다.
+
+1. `createSwipeDeck({ motion })`의 factory motion default
+2. 명시한 field만 부분 override하는 `Root motion`
+3. `swipeThreshold`, `velocityThreshold` 같은 direct root prop
+
+Factory motion과 Root motion은 deep merge됩니다. `rotation.mode`를 바꿔도 `maxDegrees`,
+`inputRange` 같은 numeric rotation tuning은 reset되지 않습니다.
+
+## Preset 안정성
+
+Motion preset은 module-scope constant 또는 `useMemo`로 안정적으로 유지하세요.
+
+```tsx
+const profileDeckMotion = SwipeDeckMotion.tinder({
+  rotation: {
+    mode: 'fixed',
+    origin: 'bottom-center',
+  },
+  dismiss: {
+    threshold: ({ width }) => width * 0.3,
+  },
+});
+
+const ProfileDeck = createSwipeDeck<Profile>({
+  motion: profileDeckMotion,
+});
+```

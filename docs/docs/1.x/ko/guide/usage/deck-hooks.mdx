@@ -1,0 +1,97 @@
+# Deck Hooks
+
+Factory hook은 Provider prop이나 controller object 없이 deck state, action, interaction 값을
+제공합니다.
+
+```tsx
+const ProfileDeck = createSwipeDeck<Profile>();
+```
+
+## `useDeckState(id?)`
+
+React로 렌더링되는 deck state를 반환합니다.
+
+| Field         | 의미                                                    |
+| ------------- | ------------------------------------------------------- |
+| `activeIndex` | 현재 active item index입니다. attach 전에는 `-1`입니다. |
+| `count`       | attach된 deck의 전체 item 수입니다.                     |
+| `isCompleted` | 모든 item을 소비했는지 여부입니다.                      |
+| `canSwipe`    | dismiss action이 현재 받아들여질 수 있는지 여부입니다.  |
+| `canUndo`     | 최신 valid swipe를 현재 복원할 수 있는지 여부입니다.    |
+
+```tsx
+function Counter() {
+  const { activeIndex, count, isCompleted } = ProfileDeck.useDeckState();
+  const current = activeIndex >= 0 ? activeIndex + 1 : 0;
+
+  return <Text>{isCompleted ? 'Done' : `${current} / ${count}`}</Text>;
+}
+```
+
+현재 item이 필요하면 사용자의 `data[activeIndex]`에서 직접 계산하세요. Deck state는
+primitive하고 stable하게 유지됩니다.
+
+## `useDeckActions(id?)`
+
+Stable action callback을 반환합니다.
+
+```tsx
+function Controls() {
+  const { canSwipe, canUndo } = ProfileDeck.useDeckState();
+  const { swipeLeft, swipeRight, undo } = ProfileDeck.useDeckActions();
+
+  return (
+    <View>
+      <Pressable disabled={!canSwipe} onPress={swipeLeft}>
+        <Text>Nope</Text>
+      </Pressable>
+      <Pressable disabled={!canUndo} onPress={undo}>
+        <Text>Undo</Text>
+      </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeRight}>
+        <Text>Like</Text>
+      </Pressable>
+    </View>
+  );
+}
+```
+
+`swipeLeft()`와 `swipeRight()`는 action이 받아들여지면 `true`, deck이 unattached,
+disabled, animating, unmeasured, completed 상태이거나 direction이 허용되지 않으면 `false`를
+반환합니다. `undo()`는 deck 완료 후에도 `canUndo`가 true이면 `true`를 반환합니다.
+
+## `useDeckInteraction(id?)`
+
+Progress 기반 UI를 위한 Reanimated shared value를 반환합니다.
+
+```tsx
+function SwipeReactionOverlay() {
+  const { signedProgress } = ProfileDeck.useDeckInteraction();
+
+  const likeStyle = useAnimatedStyle(() => {
+    const progress = Math.max(signedProgress.get(), 0);
+
+    return {
+      opacity: progress,
+      transform: [{ scale: 0.9 + progress * 0.18 }],
+    };
+  });
+
+  return <Animated.View pointerEvents="none" style={likeStyle} />;
+}
+```
+
+Interaction value는 UI thread에서 업데이트되고 gesture frame마다 React rerender를 만들지 않습니다.
+
+| Value              | 의미                                                      |
+| ------------------ | --------------------------------------------------------- |
+| `progress`         | `0`부터 `1`까지의 absolute swipe progress입니다.          |
+| `signedProgress`   | `-1`부터 `1`까지의 signed progress입니다.                 |
+| `direction`        | raw live direction signal입니다. `-1`, `0`, `1`.          |
+| `dismissDirection` | accepted dismiss side입니다. `'left'`, `'right'`, `null`. |
+| `translationX`     | active card의 horizontal translation입니다.               |
+| `translationY`     | active card의 vertical translation입니다.                 |
+| `isDragging`       | deck이 dragging 또는 dismissing 중인지 여부입니다.        |
+| `phase`            | `idle`, `dragging`, `dismissing`, `undoing`.              |
+
+Frame-synchronous visual feedback에는 `phase`를 사용하세요. Commit된 state 변화에는 event hook을 사용하세요.

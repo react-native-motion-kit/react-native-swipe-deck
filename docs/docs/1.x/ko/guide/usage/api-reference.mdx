@@ -1,0 +1,130 @@
+---
+description: 주요 export, Root와 Card props, hook, event, built-in motion helper를 빠르게 확인합니다.
+---
+
+# API 레퍼런스
+
+## 주요 export
+
+```ts
+export {
+  SwipeDeckActionMotion,
+  SwipeDeckMotion,
+  createSwipeDeck,
+  SwipeDeck,
+  SwipeDeckUndoMotion,
+} from '@react-native-motion-kit/swipe-deck';
+```
+
+[Source 보기](https://github.com/react-native-motion-kit/react-native-swipe-deck/blob/main/src/index.tsx)
+
+## `createSwipeDeck<T>(config?)`
+
+Typed deck family를 만듭니다.
+
+```tsx
+const ProfileDeck = createSwipeDeck<Profile>({
+  motion: SwipeDeckMotion.tinder(),
+});
+```
+
+반환되는 instance는 다음을 포함합니다.
+
+- `Root`
+- `Card`
+- `useDeckState`
+- `useDeckActions`
+- `useDeckInteraction`
+- `useDeckEvent`
+- `useDeckEventListener`
+
+## `SwipeDeck.Root` props
+
+[Source 보기](https://github.com/react-native-motion-kit/react-native-swipe-deck/blob/main/src/types.ts)
+
+| Prop                | Type                                 | 설명                                           |
+| ------------------- | ------------------------------------ | ---------------------------------------------- |
+| `id`                | `string`                             | Factory-scoped deck namespace입니다.           |
+| `data`              | `readonly T[]`                       | Deck이 렌더링할 ordered item입니다.            |
+| `getKey`            | `(item: T, index: number) => string` | 필수 stable item key입니다.                    |
+| `initialIndex`      | `number`                             | 초기 active item index입니다.                  |
+| `disabled`          | `boolean`                            | accepted action과 gesture를 비활성화합니다.    |
+| `allowedDirections` | `AllowedDirections`                  | 허용할 dismiss direction을 제한합니다.         |
+| `swipeThreshold`    | `SwipeThreshold`                     | Root-level dismiss threshold override입니다.   |
+| `velocityThreshold` | `number`                             | Root-level flick threshold override입니다.     |
+| `motion`            | `SwipeDeckMotionPreset`              | Gesture-driven motion preset입니다.            |
+| `actionMotion`      | `SwipeDeckActionMotionRecipe`        | Programmatic swipe motion recipe입니다.        |
+| `undoMotion`        | `SwipeDeckUndoMotionRecipe`          | Programmatic undo restore motion recipe입니다. |
+| `undoEnabled`       | `boolean`                            | Undo history tracking을 활성화합니다.          |
+| `visibleCardCount`  | `number`                             | Forward mounted card의 최대 budget입니다.      |
+| `containerStyle`    | `StyleProp<ViewStyle>`               | Deck container에 적용할 style입니다.           |
+| `children`          | `ReactNode`                          | Matching `SwipeDeck.Card`를 포함해야 합니다.   |
+
+```ts
+type AllowedDirections = readonly ('left' | 'right')[];
+type SwipeThreshold = number | ((layout: SwipeDeckLayout) => number);
+```
+
+Static `SwipeDeck.Root`는 `id`를 제외한 같은 props를 받습니다.
+
+## `SwipeDeck.Card` props
+
+| Prop       | Type                                      | 설명                                       |
+| ---------- | ----------------------------------------- | ------------------------------------------ |
+| `style`    | `StyleProp<ViewStyle>`                    | Absolute card container에 적용됩니다.      |
+| `children` | `(info: SwipeRenderInfo<T>) => ReactNode` | Bounded window의 item 하나를 렌더링합니다. |
+
+`SwipeRenderInfo<T>`는 `item`, `index`, `offset`, `role`, `isActive`를 포함합니다.
+
+## State와 Actions
+
+```ts
+type SwipeDeckState = {
+  activeIndex: number;
+  count: number;
+  isCompleted: boolean;
+  canSwipe: boolean;
+  canUndo: boolean;
+};
+
+type SwipeDeckActions = {
+  swipeLeft: SwipeDeckAction;
+  swipeRight: SwipeDeckAction;
+  undo: SwipeDeckUndoAction;
+};
+```
+
+Programmatic action은 action이 받아들여졌는지 알려주는 `boolean`을 반환합니다.
+
+## Interaction
+
+```ts
+type SwipeDeckInteractionPhase = 'idle' | 'dragging' | 'dismissing' | 'undoing';
+```
+
+`useDeckInteraction()`은 `progress`, `signedProgress`, `direction`, `dismissDirection`,
+`translationX`, `translationY`, `isDragging`, `phase` Reanimated shared value를 반환합니다.
+
+## Events
+
+```ts
+type SwipeDeckEventMap<T> = {
+  swipe: SwipeEvent<T>;
+  undo: UndoEvent<T>;
+  indexChange: { index: number };
+  endReached: true;
+};
+```
+
+최신 event snapshot에는 `useDeckEvent`를, imperative subscription에는 `useDeckEventListener`를
+사용하세요.
+
+## Motion Helpers
+
+- `SwipeDeckMotion.tinder(options?)`
+- `SwipeDeckActionMotion.direct(options?)`
+- `SwipeDeckActionMotion.springboard(options?)`
+- `SwipeDeckUndoMotion.spring(options?)`
+- `SwipeDeckUndoMotion.timing(options?)`
+
+동작 세부 사항은 이 reference보다 guide page를 먼저 참고하는 것을 권장합니다.
