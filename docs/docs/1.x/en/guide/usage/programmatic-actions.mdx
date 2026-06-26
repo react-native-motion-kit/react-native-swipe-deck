@@ -7,7 +7,11 @@ external controls, or any app logic that should dismiss the active card.
 function LikeButton() {
   const { swipeRight } = ProfileDeck.useDeckActions();
 
-  return <Pressable onPress={swipeRight}>Like</Pressable>;
+  return (
+    <Pressable onPress={swipeRight}>
+      <Text>Like</Text>
+    </Pressable>
+  );
 }
 ```
 

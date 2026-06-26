@@ -7,7 +7,11 @@ active card를 dismiss할 때 사용하세요.
 function LikeButton() {
   const { swipeRight } = ProfileDeck.useDeckActions();
 
-  return <Pressable onPress={swipeRight}>Like</Pressable>;
+  return (
+    <Pressable onPress={swipeRight}>
+      <Text>Like</Text>
+    </Pressable>
+  );
 }
 ```
 
