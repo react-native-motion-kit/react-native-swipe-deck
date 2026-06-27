@@ -26,13 +26,13 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Check formatting
-        run: yarn format:check
+        run: pnpm format:check
 
       - name: Lint files
-        run: yarn lint:ci
+        run: pnpm lint:ci
 
       - name: Typecheck files
-        run: yarn typecheck
+        run: pnpm typecheck
 
   test:
     runs-on: ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Run unit tests
-        run: yarn test --maxWorkers=2 --coverage
+        run: pnpm test --maxWorkers=2 --coverage
 
   build-library:
     runs-on: ubuntu-latest
@@ -58,7 +58,13 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Build package
-        run: yarn prepare
+        run: pnpm build
 
       - name: Build example bundle
-        run: yarn example:build
+        run: pnpm example:build
+
+      - name: Typecheck docs
+        run: pnpm docs:typecheck
+
+      - name: Build docs
+        run: pnpm docs:build

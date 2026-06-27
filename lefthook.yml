@@ -3,20 +3,20 @@ pre-commit:
   commands:
     fmt:
       glob: '**/*.{js,jsx,ts,tsx,json,yml,yaml,md}'
-      run: yarn format {staged_files}
+      run: pnpm format {staged_files}
       stage_fixed: true
     fmt-config:
       glob: '.ox*.json'
-      run: yarn format {staged_files}
+      run: pnpm format {staged_files}
       stage_fixed: true
     lint:
       glob: '**/*.{js,ts,jsx,tsx}'
-      run: yarn lint {staged_files}
+      run: pnpm lint {staged_files}
     types:
       glob: '**/*.{js,jsx,ts,tsx}'
-      run: yarn typecheck
+      run: pnpm typecheck
 commit-msg:
   parallel: true
   commands:
     commitlint:
-      run: yarn commitlint --edit {1}
+      run: pnpm exec commitlint --edit {1}

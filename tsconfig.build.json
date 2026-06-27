@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig",
   "include": ["src"],
-  "exclude": ["example", "lib", "type-tests"]
+  "exclude": ["lib", "type-tests"]
 }

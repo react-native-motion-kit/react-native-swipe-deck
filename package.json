@@ -41,25 +41,11 @@
     "type": "git",
     "url": "git+https://github.com/react-native-motion-kit/react-native-swipe-deck.git"
   },
-  "workspaces": [
-    ".",
-    "example",
-    "docs"
-  ],
   "files": [
     "src",
     "lib",
-    "android",
-    "ios",
-    "cpp",
-    "*.podspec",
-    "react-native.config.js",
-    "!ios/build",
-    "!android/build",
-    "!android/gradle",
-    "!android/gradlew",
-    "!android/gradlew.bat",
-    "!android/local.properties",
+    "assets",
+    "CHANGELOG.md",
     "!**/__tests__",
     "!**/__fixtures__",
     "!**/__mocks__",
@@ -81,9 +67,11 @@
   "scripts": {
     "build": "bob build",
     "changeset": "changeset",
-    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
-    "example": "yarn workspace example",
-    "example:build": "yarn example build",
+    "clean": "del-cli lib",
+    "docs:build": "pnpm -C docs build",
+    "docs:typecheck": "pnpm -C docs typecheck",
+    "example": "pnpm -C example run",
+    "example:build": "pnpm -C example build",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "oxlint",
@@ -116,7 +104,7 @@
     "react-native-builder-bob": "^0.41.0",
     "react-native-gesture-handler": "^2.28.0",
     "react-native-reanimated": "^4.1.0",
-    "react-native-worklets": "^0.9.0",
+    "react-native-worklets": "^0.10.0",
     "test-renderer": "^1.2.0",
     "turbo": "^2.8.21",
     "typescript": "^6.0.2"
@@ -134,6 +122,12 @@
     ]
   },
   "jest": {
+    "moduleNameMapper": {
+      "^react$": "<rootDir>/node_modules/react",
+      "^react/jsx-dev-runtime$": "<rootDir>/node_modules/react/jsx-dev-runtime.js",
+      "^react/jsx-runtime$": "<rootDir>/node_modules/react/jsx-runtime.js",
+      "^test-renderer$": "<rootDir>/node_modules/test-renderer"
+    },
     "modulePathIgnorePatterns": [
       "<rootDir>/example/node_modules",
       "<rootDir>/lib/"
@@ -150,7 +144,7 @@
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-gesture-handler|react-native-reanimated|react-native-worklets)/)"
     ]
   },
-  "packageManager": "yarn@4.15.0",
+  "packageManager": "pnpm@11.7.0",
   "create-react-native-library": {
     "type": "library",
     "languages": "js",

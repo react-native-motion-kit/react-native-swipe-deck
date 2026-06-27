@@ -68,5 +68,5 @@
   "globals": {
     "__DEV__": "readonly"
   },
-  "ignorePatterns": [".yarn/**", "lib/**"]
+  "ignorePatterns": ["lib/**"]
 }
