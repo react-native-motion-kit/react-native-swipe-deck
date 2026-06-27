@@ -1,5 +1,13 @@
 # @react-native-motion-kit/swipe-deck
 
+## 1.3.1
+
+### Patch Changes
+
+- [#15](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/15) [`3521a83`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/3521a83948a521a94eef9c0a9dd6acd9e7baf1a5) Thanks [@saseungmin](https://github.com/saseungmin)! - Add the Rspress documentation site and refresh the npm package metadata.
+
+- [#18](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/18) [`4a326d6`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/4a326d623ccfd88b6844994dfd9d7c665a37a18b) Thanks [@saseungmin](https://github.com/saseungmin)! - Migrate repository tooling from Yarn to pnpm while keeping the npm package published from the repository root.
+
 ## 1.3.0
 
 ### Minor Changes
