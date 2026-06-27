@@ -8,12 +8,6 @@ import { useEffect } from 'react';
 
 const GUIDE_SECTION_NAMES = new Set(['getting-started', 'usage']);
 const INSTALL_PACKAGES = '@react-native-motion-kit/swipe-deck';
-const INSTALL_COMMANDS = {
-  npm: `npm install ${INSTALL_PACKAGES}`,
-  yarn: `yarn add ${INSTALL_PACKAGES}`,
-  pnpm: `pnpm add ${INSTALL_PACKAGES}`,
-  bun: `bun add ${INSTALL_PACKAGES}`,
-};
 
 function getGuideRedirectPath(pathname: string) {
   const parts = pathname.split('/').filter(Boolean);
@@ -49,7 +43,7 @@ function HomeLayout() {
     <BasicHomeLayout
       afterHeroActions={
         <div className="rspress-doc home-install-command">
-          <PackageManagerTabs command={INSTALL_COMMANDS} />
+          <PackageManagerTabs command={INSTALL_PACKAGES} />
         </div>
       }
     />

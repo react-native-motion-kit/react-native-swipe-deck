@@ -1,16 +1,10 @@
+import { PackageManagerTabs } from '@rspress/core/theme';
+
 # Installation
 
-Install the package and its React Native gesture/animation peer dependencies:
+Install the package and its required React Native gesture/animation peer dependencies:
 
-```sh
-npm install @react-native-motion-kit/swipe-deck react-native-gesture-handler react-native-reanimated react-native-worklets
-```
-
-You can use your package manager of choice. For Yarn:
-
-```sh
-yarn add @react-native-motion-kit/swipe-deck react-native-gesture-handler react-native-reanimated react-native-worklets
-```
+<PackageManagerTabs command="@react-native-motion-kit/swipe-deck react-native-gesture-handler react-native-reanimated react-native-worklets" />
 
 ## Minimum Versions
 
@@ -24,9 +18,13 @@ yarn add @react-native-motion-kit/swipe-deck react-native-gesture-handler react-
 
 ## React Native Setup
 
-Follow the Reanimated and Worklets setup instructions for your React Native or
-Expo version. In Babel config, make sure `react-native-worklets/plugin` is the
-last Babel plugin.
+Follow the official setup guides for your React Native or Expo version:
+
+- [React Native Reanimated getting started](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started/)
+- [React Native Gesture Handler installation](https://docs.swmansion.com/react-native-gesture-handler/docs/fundamentals/installation)
+
+In Babel config, make sure `react-native-worklets/plugin` is the last Babel
+plugin.
 
 ```js title="babel.config.js"
 module.exports = {
