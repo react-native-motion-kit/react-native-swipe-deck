@@ -44,7 +44,6 @@
   "files": [
     "src",
     "lib",
-    "assets",
     "CHANGELOG.md",
     "!**/__tests__",
     "!**/__fixtures__",
@@ -122,12 +121,6 @@
     ]
   },
   "jest": {
-    "moduleNameMapper": {
-      "^react$": "<rootDir>/node_modules/react",
-      "^react/jsx-dev-runtime$": "<rootDir>/node_modules/react/jsx-dev-runtime.js",
-      "^react/jsx-runtime$": "<rootDir>/node_modules/react/jsx-runtime.js",
-      "^test-renderer$": "<rootDir>/node_modules/test-renderer"
-    },
     "modulePathIgnorePatterns": [
       "<rootDir>/example/node_modules",
       "<rootDir>/lib/"
