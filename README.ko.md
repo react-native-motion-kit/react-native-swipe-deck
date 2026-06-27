@@ -35,6 +35,7 @@ Reanimated, Worklets, Gesture Handler를 기반으로 card stack, like/pass butt
 ### 예제 & 데모
 
 - [📁 예제 프로젝트](https://github.com/react-native-motion-kit/react-native-swipe-deck/tree/main/example) - 다양한 use case를 담은 실제 구현 코드입니다
+- [🤖 Expo Snack](https://snack.expo.dev/@harang/react-native-swipe-deck) - Expo Snack에서 바로 체험할 수 있습니다
 
 ### 🤖 AI
 
