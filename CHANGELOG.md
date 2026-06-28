@@ -1,5 +1,11 @@
 # @react-native-motion-kit/swipe-deck
 
+## 1.3.2
+
+### Patch Changes
+
+- [#19](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/19) [`16b7636`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/16b76360f837758ad48baa6b1ea48f935e40e9fa) Thanks [@saseungmin](https://github.com/saseungmin)! - Update the README and docs quick start links for the published docs site and Expo Snack demo.
+
 ## 1.3.1
 
 ### Patch Changes
