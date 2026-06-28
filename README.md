@@ -34,6 +34,7 @@ Full documentation is available at: <https://react-native-swipe-deck.pages.dev>
 ### Examples & Demo
 
 - [📁 Example Project](https://github.com/react-native-motion-kit/react-native-swipe-deck/tree/main/example) - Real implementation code with various use cases
+- [🤖 Expo Snack](https://snack.expo.dev/@harang/react-native-swipe-deck) - Try it instantly on Expo Snack
 
 ### 🤖 AI
 

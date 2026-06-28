@@ -2,7 +2,6 @@ packages:
   - .
   - example
   - docs
-nodeLinker: hoisted
 autoInstallPeers: true
 allowBuilds:
   lefthook: true

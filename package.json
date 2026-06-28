@@ -120,23 +120,6 @@
       "@commitlint/config-conventional"
     ]
   },
-  "jest": {
-    "modulePathIgnorePatterns": [
-      "<rootDir>/example/node_modules",
-      "<rootDir>/lib/"
-    ],
-    "preset": "@react-native/jest-preset",
-    "resolver": "react-native-worklets/jest/resolver",
-    "setupFiles": [
-      "react-native-gesture-handler/jestSetup.js"
-    ],
-    "setupFilesAfterEnv": [
-      "<rootDir>/jest-setup.js"
-    ],
-    "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-gesture-handler|react-native-reanimated|react-native-worklets)/)"
-    ]
-  },
   "packageManager": "pnpm@11.7.0",
   "create-react-native-library": {
     "type": "library",
