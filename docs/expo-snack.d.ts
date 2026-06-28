@@ -1,6 +1,7 @@
 interface Window {
   ExpoSnack?: {
+    append?: (element: HTMLElement) => void;
     initialize?: () => void;
-    embed?: (element: HTMLElement) => void;
+    remove?: (element: HTMLElement) => void;
   };
 }
