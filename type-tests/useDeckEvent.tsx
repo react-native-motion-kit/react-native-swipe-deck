@@ -1,4 +1,9 @@
-import type { SwipeEvent, SwipeEventSource } from '../src';
+import type {
+  SwipeDeckCardInteractive,
+  SwipeEvent,
+  SwipeEventSource,
+  SwipeRenderInfo,
+} from '../src';
 
 import { createSwipeDeck } from '../src';
 
@@ -12,6 +17,13 @@ const profile: Profile = { id: 'ada', name: 'Ada' };
 
 function expectType<T>(_value: T): void {}
 
+expectType<SwipeDeckCardInteractive<Profile>>(true);
+expectType<SwipeDeckCardInteractive<Profile>>((info) => {
+  expectType<SwipeRenderInfo<Profile>>(info);
+  expectType<Profile>(info.item);
+
+  return info.isActive;
+});
 expectType<SwipeEventSource>('gesture');
 expectType<SwipeEventSource>('programmatic');
 expectType<SwipeEvent<Profile> | undefined>(ProfileDeck.useDeckEvent('swipe'));
@@ -47,4 +59,26 @@ const rootWithCallbackProp = (
   </ProfileDeck.Root>
 );
 
+const booleanInteractiveCard = <ProfileDeck.Card interactive>{() => null}</ProfileDeck.Card>;
+const predicateInteractiveCard = (
+  <ProfileDeck.Card
+    interactive={(info) => {
+      expectType<SwipeRenderInfo<Profile>>(info);
+      expectType<Profile>(info.item);
+
+      return info.item.id === profile.id;
+    }}
+  >
+    {() => null}
+  </ProfileDeck.Card>
+);
+
+const invalidInteractiveCard = (
+  // @ts-expect-error Card interactive only accepts a boolean or typed predicate.
+  <ProfileDeck.Card interactive="yes">{() => null}</ProfileDeck.Card>
+);
+
+void booleanInteractiveCard;
+void predicateInteractiveCard;
+void invalidInteractiveCard;
 void rootWithCallbackProp;

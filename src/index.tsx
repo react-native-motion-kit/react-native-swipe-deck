@@ -9,6 +9,7 @@ export type {
   SwipeDeckActionMotionRecipe,
   SwipeDeckActionSpringboardMotionOptions,
   SwipeDeckActionSpringboardMotionRecipe,
+  SwipeDeckCardInteractive,
   SwipeDeckCardProps,
   SwipeDeckActions,
   SwipeDeckEventHook,

@@ -44,6 +44,29 @@ Factory는 `Root`, `Card`, hook이 같은 item type을 공유하도록 해 JSX�
 </ProfileDeck.Card>
 ```
 
+## Interactive Card Content
+
+Card는 기본적으로 non-interactive입니다. 그래야 deck이 swipe gesture를 안전하게 소유할 수 있습니다.
+Active card 안에 CTA button이나 link 같은 touchable children이 있다면 `interactive`를 사용하세요.
+
+```tsx
+<ProfileDeck.Card interactive>
+  {({ item }) => <AdCard ad={item} onPressCta={() => openAd(item)} />}
+</ProfileDeck.Card>
+```
+
+일부 item에서만 touchable children을 열어야 한다면 predicate form을 사용하세요.
+
+```tsx
+<ProfileDeck.Card interactive={({ item }) => item.type === 'ad'}>
+  {({ item }) => <SwipeVoteCard item={item} />}
+</ProfileDeck.Card>
+```
+
+`interactive`는 active card에만 적용됩니다. 뒤쪽 card는 계속 non-interactive입니다.
+Card 내부 carousel이나 scroll view처럼 더 깊은 nested gesture 조정은 raw `pointerEvents`를
+노출하기보다 별도의 gesture-coordination API로 다루는 것이 좋습니다.
+
 ## Allowed Directions
 
 `allowedDirections`는 dismiss로 받아들일 방향을 제한합니다.

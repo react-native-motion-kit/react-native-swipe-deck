@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import type { ViewStyle } from 'react-native';
 
 import { Fragment } from 'react';
 import { StyleSheet } from 'react-native';
@@ -7,7 +8,7 @@ import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reani
 import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
 import type { SwipeRenderTransition } from '../core/rendering';
 import type { SwipeWindowDescriptor } from '../core/windowing';
-import type { SwipeDeckCardProps, SwipeRenderInfo } from '../types';
+import type { SwipeDeckCardInteractive, SwipeDeckCardProps, SwipeRenderInfo } from '../types';
 
 import {
   resolveSwipeDeckDragTranslateY,
@@ -16,6 +17,8 @@ import {
 } from '../motion/animation';
 
 const STACK_TRANSFORM_ORIGIN: [string, string, number] = ['50%', '0%', 0];
+
+type SwipeDeckCardPointerEvents = NonNullable<ViewStyle['pointerEvents']>;
 
 type SwipeDeckRenderedCardProps<T> = {
   itemIndex: number;
@@ -35,6 +38,32 @@ type SwipeDeckRenderedCardProps<T> = {
   gestureStartYRatio: SharedValue<number>;
   motionConfig: SwipeDeckRenderedCardMotionConfig;
 };
+
+function resolveSwipeDeckCardInteractive<T>(
+  interactive: SwipeDeckCardInteractive<T> | undefined,
+  renderInfo: SwipeRenderInfo<T>,
+): boolean {
+  if (!renderInfo.isActive) {
+    return false;
+  }
+
+  if (typeof interactive === 'function') {
+    return interactive(renderInfo);
+  }
+
+  return interactive === true;
+}
+
+function resolveSwipeDeckCardPointerEvents<T>(
+  interactive: SwipeDeckCardInteractive<T> | undefined,
+  renderInfo: SwipeRenderInfo<T>,
+): SwipeDeckCardPointerEvents {
+  if (resolveSwipeDeckCardInteractive(interactive, renderInfo)) {
+    return 'box-none';
+  }
+
+  return 'none';
+}
 
 export function SwipeDeckRenderedCard<T>({
   itemIndex,
@@ -171,11 +200,16 @@ export function SwipeDeckRenderedCard<T>({
 
   const content = cardSlot.props.children(renderInfo);
   const cardStyle = cardSlot.props.style;
+  const cardPointerEvents = resolveSwipeDeckCardPointerEvents(
+    cardSlot.props.interactive,
+    renderInfo,
+  );
+  const cardPointerEventsStyle =
+    cardPointerEvents === 'box-none' ? styles.interactiveCard : styles.nonInteractiveCard;
 
   return (
     <Animated.View
-      pointerEvents="none"
-      style={[styles.card, cardStyle, cardAnimatedStyle]}
+      style={[styles.card, cardStyle, cardAnimatedStyle, cardPointerEventsStyle]}
       testID={`swipe-deck-card-${descriptor.role}`}
     >
       <Fragment key={itemKey}>{content}</Fragment>
@@ -190,5 +224,11 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
+  },
+  interactiveCard: {
+    pointerEvents: 'box-none',
+  },
+  nonInteractiveCard: {
+    pointerEvents: 'none',
   },
 });

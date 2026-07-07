@@ -21,6 +21,8 @@ export type SwipeRenderInfo<T> = {
   isActive: boolean;
 };
 
+export type SwipeDeckCardInteractive<T> = boolean | ((info: SwipeRenderInfo<T>) => boolean);
+
 export type SwipeEvent<T> = {
   item: T;
   index: number;
@@ -474,6 +476,13 @@ export type SwipeDeckProps<T> = {
 };
 
 export type SwipeDeckCardProps<T> = {
+  /**
+   * Allows touchable children such as buttons or links to receive touches on the active card.
+   *
+   * Background cards always remain non-interactive. Use the predicate form when only specific
+   * items, such as ad cards with CTA buttons, should expose touchable children.
+   */
+  interactive?: SwipeDeckCardInteractive<T>;
   /** Style applied to the absolute card container. */
   style?: StyleProp<ViewStyle>;
   /** Renders a card for one item in the bounded window. */

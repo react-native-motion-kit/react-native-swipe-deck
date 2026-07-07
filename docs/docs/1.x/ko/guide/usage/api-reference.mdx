@@ -69,10 +69,11 @@ Static `SwipeDeck.Root`는 `id`를 제외한 같은 props를 받습니다.
 
 ## `SwipeDeck.Card` props
 
-| Prop       | Type                                      | 설명                                       |
-| ---------- | ----------------------------------------- | ------------------------------------------ |
-| `style`    | `StyleProp<ViewStyle>`                    | Absolute card container에 적용됩니다.      |
-| `children` | `(info: SwipeRenderInfo<T>) => ReactNode` | Bounded window의 item 하나를 렌더링합니다. |
+| Prop          | Type                                                 | 설명                                                |
+| ------------- | ---------------------------------------------------- | --------------------------------------------------- |
+| `interactive` | `boolean \| ((info: SwipeRenderInfo<T>) => boolean)` | Active card 안의 touchable children을 활성화합니다. |
+| `style`       | `StyleProp<ViewStyle>`                               | Absolute card container에 적용됩니다.               |
+| `children`    | `(info: SwipeRenderInfo<T>) => ReactNode`            | Bounded window의 item 하나를 렌더링합니다.          |
 
 `SwipeRenderInfo<T>`는 `item`, `index`, `offset`, `role`, `isActive`를 포함합니다.
 
