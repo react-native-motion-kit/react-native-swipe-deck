@@ -1,5 +1,23 @@
 # @react-native-motion-kit/swipe-deck
 
+## 1.4.0
+
+### Minor Changes
+
+- [#21](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/21) [`e95ea8a`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/e95ea8a2f47786fc2a1f56f814c0dc0b3f4292ca) Thanks [@saseungmin](https://github.com/saseungmin)! - Add `interactive` to `SwipeDeck.Card` so active-card children such as CTA buttons or links can receive touches without exposing raw React Native `pointerEvents`.
+
+  ```tsx
+  <ProfileDeck.Card interactive={({ item }) => item.type === "ad"}>
+    {({ item }) => <AdCard ad={item} onPressCta={() => openAd(item)} />}
+  </ProfileDeck.Card>
+  ```
+
+  Only the active card can become interactive. Background cards remain non-interactive to preserve swipe-deck safety.
+
+### Patch Changes
+
+- [#19](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/19) [`16b7636`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/16b76360f837758ad48baa6b1ea48f935e40e9fa) Thanks [@saseungmin](https://github.com/saseungmin)! - Update the README and docs quick start links for the published docs site and Expo Snack demo.
+
 ## 1.3.1
 
 ### Patch Changes
