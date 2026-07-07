@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
-import type { SwipeDirection } from '../index';
+import type { SwipeDeckCardInteractive, SwipeDirection } from '../index';
 
 import { createSwipeDeck, SwipeDeck, SwipeDeckActionMotion, SwipeDeckUndoMotion } from '../index';
 
@@ -363,6 +363,107 @@ describe('SwipeDeck factory hooks', () => {
 
     expect(screen.getByText('Profile 0')).toBeOnTheScreen();
     expect(getVisibleProfileKey).toHaveBeenCalled();
+  });
+
+  it('enables touchable children only for interactive active cards', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+
+    function expectCardPointerEvents(current: 'box-none' | 'none', next: 'none') {
+      expect(screen.getByTestId('swipe-deck-card-current')).toHaveStyle({
+        pointerEvents: current,
+      });
+      expect(screen.getByTestId('swipe-deck-card-next')).toHaveStyle({
+        pointerEvents: next,
+      });
+    }
+
+    function Example({
+      interactive,
+      styledPointerEvents = false,
+      visibleProfiles = profiles,
+    }: {
+      interactive?: SwipeDeckCardInteractive<Profile>;
+      styledPointerEvents?: boolean;
+      visibleProfiles?: readonly Profile[];
+    }) {
+      return (
+        <ProfileDeck.Root data={visibleProfiles} getKey={getProfileKey}>
+          <ProfileDeck.Card
+            interactive={interactive}
+            style={styledPointerEvents ? { pointerEvents: 'auto' } : undefined}
+          >
+            {({ item }) => <Text>{item.name}</Text>}
+          </ProfileDeck.Card>
+        </ProfileDeck.Root>
+      );
+    }
+
+    const renderResult = await render(<Example />);
+
+    expectCardPointerEvents('none', 'none');
+
+    await renderResult.rerender(<Example interactive />);
+
+    expectCardPointerEvents('box-none', 'none');
+
+    await renderResult.rerender(<Example styledPointerEvents />);
+
+    expectCardPointerEvents('none', 'none');
+
+    await renderResult.rerender(<Example interactive styledPointerEvents />);
+
+    expectCardPointerEvents('box-none', 'none');
+
+    await renderResult.rerender(<Example interactive={({ item }) => item.id === 'ada'} />);
+
+    expectCardPointerEvents('box-none', 'none');
+
+    await renderResult.rerender(
+      <Example
+        interactive={({ item }) => item.id === 'ada'}
+        visibleProfiles={[graceProfile, adaProfile]}
+      />,
+    );
+
+    expectCardPointerEvents('none', 'none');
+  });
+
+  it('allows nested pressables only when the active card is interactive', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const onOpenProfile = jest.fn();
+    const user = userEvent.setup();
+
+    function Example({ interactive = false }: { interactive?: boolean }) {
+      return (
+        <ProfileDeck.Root data={profiles} getKey={getProfileKey}>
+          <ProfileDeck.Card interactive={interactive}>
+            {({ item }) => (
+              <Pressable
+                accessibilityLabel={`Open ${item.name}`}
+                accessibilityRole="button"
+                onPress={() => onOpenProfile(item.id)}
+              >
+                <Text>{item.name}</Text>
+              </Pressable>
+            )}
+          </ProfileDeck.Card>
+        </ProfileDeck.Root>
+      );
+    }
+
+    const renderResult = await render(<Example />);
+
+    await user.press(screen.getByRole('button', { name: 'Open Ada' }));
+
+    expect(onOpenProfile).not.toHaveBeenCalled();
+
+    await renderResult.rerender(<Example interactive />);
+
+    await user.press(screen.getByRole('button', { name: 'Open Ada' }));
+    await user.press(screen.getByRole('button', { name: 'Open Grace' }));
+
+    expect(onOpenProfile).toHaveBeenCalledTimes(1);
+    expect(onOpenProfile).toHaveBeenCalledWith('ada');
   });
 
   it('updates action gating when disabled changes after mount', async () => {

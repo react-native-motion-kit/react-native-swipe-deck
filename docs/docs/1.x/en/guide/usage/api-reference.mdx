@@ -69,10 +69,11 @@ Static `SwipeDeck.Root` accepts the same props except `id`.
 
 ## `SwipeDeck.Card` Props
 
-| Prop       | Type                                      | Notes                                   |
-| ---------- | ----------------------------------------- | --------------------------------------- |
-| `style`    | `StyleProp<ViewStyle>`                    | Style applied to the absolute card.     |
-| `children` | `(info: SwipeRenderInfo<T>) => ReactNode` | Renders one item in the bounded window. |
+| Prop          | Type                                                 | Notes                                               |
+| ------------- | ---------------------------------------------------- | --------------------------------------------------- |
+| `interactive` | `boolean \| ((info: SwipeRenderInfo<T>) => boolean)` | Enables touchable children on the active card only. |
+| `style`       | `StyleProp<ViewStyle>`                               | Style applied to the absolute card.                 |
+| `children`    | `(info: SwipeRenderInfo<T>) => ReactNode`            | Renders one item in the bounded window.             |
 
 `SwipeRenderInfo<T>` includes `item`, `index`, `offset`, `role`, and
 `isActive`.

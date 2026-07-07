@@ -44,6 +44,29 @@ repeating generics in JSX.
 </ProfileDeck.Card>
 ```
 
+## Interactive Card Content
+
+Cards are non-interactive by default so the deck can own swipe gestures safely.
+Use `interactive` when the active card contains touchable children such as CTA buttons or links.
+
+```tsx
+<ProfileDeck.Card interactive>
+  {({ item }) => <AdCard ad={item} onPressCta={() => openAd(item)} />}
+</ProfileDeck.Card>
+```
+
+Use the predicate form when only some items should expose touchable children.
+
+```tsx
+<ProfileDeck.Card interactive={({ item }) => item.type === 'ad'}>
+  {({ item }) => <SwipeVoteCard item={item} />}
+</ProfileDeck.Card>
+```
+
+`interactive` only affects the active card. Background cards remain non-interactive.
+For deeper nested gestures such as card-local carousels or scroll views, prefer a dedicated
+future gesture-coordination API instead of exposing raw `pointerEvents`.
+
 ## Allowed Directions
 
 `allowedDirections` limits which directions can be accepted as a dismiss.
