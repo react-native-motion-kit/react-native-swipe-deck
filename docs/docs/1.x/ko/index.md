@@ -14,8 +14,8 @@ hero:
       text: GitHub
       link: https://github.com/react-native-motion-kit/react-native-swipe-deck
   image:
-    src: /logo.png
-    alt: React Native Motion Kit 로고
+    src: https://raw.githubusercontent.com/react-native-motion-kit/react-native-swipe-deck/main/assets/react-native-swipe-deck-preview.webp
+    alt: React Native Swipe Deck Preview
 features:
   - title: Gesture 중심 Deck UX
     details: Tinder 스타일 card stack에 맞춰 drag, flick, threshold, direction control을 조정합니다.
