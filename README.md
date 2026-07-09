@@ -12,6 +12,10 @@ Need Tinder-style cards without hand-wiring gesture state, programmatic actions,
 
 `@react-native-motion-kit/swipe-deck` is a high-performance swipe deck library for React Native. It is built on Reanimated, Worklets, and Gesture Handler, with a typed compound API for card stacks, like/pass buttons, progress-driven overlays, undo flows, and multiple independent deck instances.
 
+<p align="center">
+  <img src="./assets/react-native-swipe-deck-preview.webp" width="600" alt="React Native Swipe Deck preview" />
+</p>
+
 ### Key Features
 
 - 🤌 **Gesture-First Deck UX** - Drag, flick, threshold, and direction controls tuned for Tinder-style card stacks
