@@ -1,5 +1,11 @@
 # @react-native-motion-kit/swipe-deck
 
+## 1.4.1
+
+### Patch Changes
+
+- [`607a44e`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/607a44edf676a6fa10296c760b3a59a6f7e42774) Thanks [@saseungmin](https://github.com/saseungmin)! - docs: add swipe deck preview asset
+
 ## 1.4.0
 
 ### Minor Changes
