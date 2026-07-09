@@ -6,7 +6,7 @@ import {
   type SwipeRole,
 } from '@react-native-motion-kit/swipe-deck';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { Easing, useAnimatedStyle } from 'react-native-reanimated';
 
@@ -15,6 +15,7 @@ type Profile = {
   name: string;
   bio: string;
   accent: string;
+  imageUrl: string;
 };
 
 const profiles: Profile[] = Array.from({ length: 150 }, (_, index) => ({
@@ -22,6 +23,7 @@ const profiles: Profile[] = Array.from({ length: 150 }, (_, index) => ({
   name: `Profile ${index + 1}`,
   bio: `Swipe deck item ${index + 1}`,
   accent: index % 2 === 0 ? '#7c3aed' : '#0891b2',
+  imageUrl: `https://picsum.photos/seed/swipe-deck-${index + 1}/900/1200`,
 }));
 
 const ProfileDeck = createSwipeDeck<Profile>({
@@ -167,15 +169,21 @@ type ProfileCardProps = {
 
 function ProfileCard({ isActive, profile, role }: ProfileCardProps) {
   return (
-    <View style={[styles.card, { backgroundColor: profile.accent }]}>
+    <ImageBackground
+      imageStyle={styles.cardImage}
+      resizeMode="cover"
+      source={{ uri: profile.imageUrl }}
+      style={[styles.card, { backgroundColor: profile.accent }]}
+    >
+      <View style={styles.cardScrim} />
       <Text style={styles.role}>{role}</Text>
       {isActive ? <SwipeReactionOverlay /> : null}
-      <View>
+      <View style={styles.cardContent}>
         <Text style={styles.name}>{profile.name}</Text>
         <Text style={styles.bio}>{profile.bio}</Text>
         <Text style={styles.active}>{isActive ? 'Active card' : 'Buffered card'}</Text>
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -310,7 +318,8 @@ const styles = StyleSheet.create({
   },
   deck: {
     flex: 0,
-    height: 440,
+    height: 520,
+    marginBottom: 40,
   },
   cardShadow: {
     shadowColor: '#000',
@@ -324,7 +333,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     overflow: 'hidden',
-    padding: 28,
+    padding: 32,
+  },
+  cardContent: {
+    zIndex: 1,
+  },
+  cardImage: {
+    borderRadius: 32,
+  },
+  cardScrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0,0,0,0.32)',
   },
   role: {
     alignSelf: 'flex-start',
