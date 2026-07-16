@@ -33,7 +33,7 @@ features:
     details: Root, Card, hook, action, event를 하나의 typed deck family로 묶습니다.
     icon: 🧠
   - title: 외부 제어 API
-    details: button이나 다른 UI에서 swipeLeft, swipeRight, undo를 programmatic하게 실행합니다.
+    details: button이나 다른 UI에서 swipeLeft, swipeRight, swipeUp, undo를 programmatic하게 실행합니다.
     icon: 🎛️
   - title: Motion Recipes
     details: gesture motion, programmatic action, undo restore를 각각 독립적으로 조정합니다.

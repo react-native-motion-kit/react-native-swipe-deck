@@ -61,7 +61,7 @@ The returned instance includes:
 | `children`          | `ReactNode`                          | Must include a matching `SwipeDeck.Card`. |
 
 ```ts
-type AllowedDirections = readonly ('left' | 'right')[];
+type AllowedDirections = readonly ('left' | 'right' | 'up')[];
 type SwipeThreshold = number | ((layout: SwipeDeckLayout) => number);
 ```
 
@@ -92,6 +92,7 @@ type SwipeDeckState = {
 type SwipeDeckActions = {
   swipeLeft: SwipeDeckAction;
   swipeRight: SwipeDeckAction;
+  swipeUp: SwipeDeckAction;
   undo: SwipeDeckUndoAction;
 };
 ```
@@ -104,9 +105,20 @@ Programmatic actions return `boolean` to tell whether the action was accepted.
 type SwipeDeckInteractionPhase = 'idle' | 'dragging' | 'dismissing' | 'undoing';
 ```
 
+`SwipeDirection` is `'left' | 'right' | 'up'`. Omitted `allowedDirections`
+allows only left and right; upward dismisses are opt-in.
+
 `useDeckInteraction()` returns Reanimated shared values for `progress`,
-`signedProgress`, `direction`, `dismissDirection`, `translationX`,
-`translationY`, `isDragging`, and `phase`.
+`signedProgress`, `direction`, `intentDirection`, `dismissDirection`,
+`translationX`, `translationY`, `isDragging`, and `phase`. `intentDirection`
+is the policy-filtered live semantic source for overlays: `'left'`, `'right'`,
+`'up'`, or `null`. Only centered upward gestures enter the internal up cone;
+ordinary upper-left and upper-right diagonals remain horizontal. If that raw
+horizontal winner is not allowed, `intentDirection`, `progress`, and
+`signedProgress` stay neutral while card translation still follows the finger.
+`signedProgress` and numeric `direction` remain horizontal-only and are `0` for
+upward intent or dismiss. `dismissDirection` can be `'left'`, `'right'`, `'up'`,
+or `null` after a dismiss is accepted.
 
 ## Events
 

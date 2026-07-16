@@ -21,11 +21,12 @@ import { isSwipeDirectionAllowed } from '../core/directions';
 import { getSwipeCommit, shouldDeferActiveItemSync } from '../core/state';
 import {
   resetSwipeDeckInteractionSignals,
+  resolveSwipeDirectionSignal,
   resolveSwipeDeckProgrammaticActionMotion,
 } from '../core/swipeDeckRuntime';
 import {
-  resolveSwipeDeckDismissDestinationDistance,
-  resolveSwipeDeckDismissDuration,
+  resolveSwipeDeckDismissDestination,
+  resolveSwipeDeckDismissAxisDuration,
 } from '../motion/animation';
 
 type SwipeDeckDismissRuntime = {
@@ -70,6 +71,7 @@ type UseSwipeDeckDismissRuntimeArgs<T> = {
     event: SwipeDeckEventMap<T>[K],
   ) => void;
   gestureStartYRatio: SharedValue<number>;
+  intentDirection: SharedValue<SwipeDirection | null>;
   isAnimating: SharedValue<boolean>;
   isDragging: SharedValue<boolean>;
   interactionPhase: SharedValue<SwipeDeckInteractionPhase>;
@@ -132,6 +134,7 @@ export function useSwipeDeckDismissRuntime<T>({
   endReachedRef,
   emitDeckEvent,
   gestureStartYRatio,
+  intentDirection,
   isAnimating,
   isDragging,
   interactionPhase,
@@ -201,6 +204,7 @@ export function useSwipeDeckDismissRuntime<T>({
     activeTranslateY.set(0);
     resetSwipeDeckInteractionSignals({
       dismissDirection,
+      intentDirection,
       signedSwipeProgress,
       swipeDirectionSignal,
       swipeProgress,
@@ -216,6 +220,7 @@ export function useSwipeDeckDismissRuntime<T>({
     dismissDirection,
     dragItemIndex,
     gestureStartYRatio,
+    intentDirection,
     isDragging,
     interactionPhase,
     signedSwipeProgress,
@@ -305,11 +310,12 @@ export function useSwipeDeckDismissRuntime<T>({
       isDragging.set(true);
       interactionPhase.set('dismissing');
       dismissDirection.set(direction);
+      intentDirection.set(direction);
       applyImmediateRuntimeState(true, true);
       gestureStartYRatio.set(0.5);
       dragItemIndex.set(activeItemIndex.get());
 
-      const destinationDistance = resolveSwipeDeckDismissDestinationDistance({
+      const destination = resolveSwipeDeckDismissDestination({
         offscreenMultiplier: actionRuntime.offscreenMultiplier,
         layout: currentLayout,
         rotationMaxDegrees: runtime.rotationMaxDegrees,
@@ -318,13 +324,14 @@ export function useSwipeDeckDismissRuntime<T>({
         rotationDirection: runtime.rotationDirection,
         gestureStartYRatio: 0.5,
         swipeDirection: direction,
-      });
-      const exitX = direction === 'right' ? destinationDistance : -destinationDistance;
-      const progressDirection = direction === 'right' ? 1 : -1;
-      const resolvedDismissDuration = resolveSwipeDeckDismissDuration({
         translationX: activeTranslateX.get(),
-        velocityX: 0,
-        destinationX: exitX,
+        translationY: 0,
+      });
+      const progressDirection = resolveSwipeDirectionSignal(direction);
+      const resolvedDismissDuration = resolveSwipeDeckDismissAxisDuration({
+        translation: destination.axis === 'x' ? activeTranslateX.get() : 0,
+        velocity: 0,
+        destination: destination.axis === 'x' ? destination.translateX : destination.translateY,
         duration: actionRuntime.dismissDuration,
         minDuration: runtime.minDuration,
         maxDuration: runtime.maxDuration,
@@ -344,7 +351,9 @@ export function useSwipeDeckDismissRuntime<T>({
           duration: actionRuntime.anticipationDuration,
           easing: actionRuntime.anticipationEasing,
         };
-        const anticipationX = -progressDirection * actionRuntime.anticipationDistance;
+        const anticipationX =
+          destination.axis === 'x' ? -progressDirection * actionRuntime.anticipationDistance : 0;
+        const anticipationY = destination.axis === 'y' ? actionRuntime.anticipationDistance : 0;
         const handleAnticipationCompletion = (finished: boolean | undefined) => {
           'worklet';
 
@@ -366,12 +375,39 @@ export function useSwipeDeckDismissRuntime<T>({
           withSequence(withTiming(0, anticipationTimingConfig), withTiming(1, dismissTimingConfig)),
         );
         activeTranslateY.set(
-          withSequence(withTiming(0, anticipationTimingConfig), withTiming(0, dismissTimingConfig)),
+          withSequence(
+            withTiming(anticipationY, anticipationTimingConfig, (finished) => {
+              'worklet';
+
+              if (destination.axis === 'y') {
+                handleAnticipationCompletion(finished);
+              }
+            }),
+            withTiming(destination.translateY, dismissTimingConfig, (finished) => {
+              'worklet';
+
+              if (destination.axis === 'y') {
+                handleDismissCompletion(finished);
+              }
+            }),
+          ),
         );
         activeTranslateX.set(
           withSequence(
-            withTiming(anticipationX, anticipationTimingConfig, handleAnticipationCompletion),
-            withTiming(exitX, dismissTimingConfig, handleDismissCompletion),
+            withTiming(anticipationX, anticipationTimingConfig, (finished) => {
+              'worklet';
+
+              if (destination.axis === 'x') {
+                handleAnticipationCompletion(finished);
+              }
+            }),
+            withTiming(destination.translateX, dismissTimingConfig, (finished) => {
+              'worklet';
+
+              if (destination.axis === 'x') {
+                handleDismissCompletion(finished);
+              }
+            }),
           ),
         );
 
@@ -381,8 +417,24 @@ export function useSwipeDeckDismissRuntime<T>({
       swipeDirectionSignal.set(progressDirection);
       signedSwipeProgress.set(withTiming(progressDirection, dismissTimingConfig));
       swipeProgress.set(withTiming(1, dismissTimingConfig));
-      activeTranslateY.set(withTiming(0, dismissTimingConfig));
-      activeTranslateX.set(withTiming(exitX, dismissTimingConfig, handleDismissCompletion));
+      activeTranslateY.set(
+        withTiming(destination.translateY, dismissTimingConfig, (finished) => {
+          'worklet';
+
+          if (destination.axis === 'y') {
+            handleDismissCompletion(finished);
+          }
+        }),
+      );
+      activeTranslateX.set(
+        withTiming(destination.translateX, dismissTimingConfig, (finished) => {
+          'worklet';
+
+          if (destination.axis === 'x') {
+            handleDismissCompletion(finished);
+          }
+        }),
+      );
 
       return true;
     },
@@ -403,6 +455,7 @@ export function useSwipeDeckDismissRuntime<T>({
       dismissDirection,
       dragItemIndex,
       gestureStartYRatio,
+      intentDirection,
       isAnimating,
       isDragging,
       interactionPhase,

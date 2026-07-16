@@ -23,7 +23,7 @@ Need Tinder-style cards without hand-wiring gesture state, programmatic actions,
 - 🪟 **Bounded Render Window** - Mount only the active card and a small forward stack instead of the whole data set
 - 🧬 **Item-Stable Promotion** - Stable item keys let promoted cards keep their React Native view identity
 - 🧠 **Typed Compound API** - Create one typed deck family with Root, Card, hooks, actions, and events
-- 🎛️ **External Control API** - Trigger swipeLeft, swipeRight, and undo from buttons or other UI components
+- 🎛️ **External Control API** - Trigger swipeLeft, swipeRight, swipeUp, and undo from buttons or other UI components
 - 🎨 **Motion Recipes** - Tune gesture motion, programmatic actions, and undo restores independently
 - 🧩 **Multi-Instance Management** - Manage multiple deck roots independently with stable factory-scoped IDs
 - ↩️ **Undo Support** - Opt into back-swipe UX with action-safe undo motion and LIFO history
@@ -81,7 +81,7 @@ function ProfileCard({ profile }: { profile: Profile }) {
 
 function ProfileDeckControls() {
   const { activeIndex, count, canSwipe } = ProfileDeck.useDeckState();
-  const { swipeLeft, swipeRight } = ProfileDeck.useDeckActions();
+  const { swipeLeft, swipeRight, swipeUp } = ProfileDeck.useDeckActions();
   const current = activeIndex >= 0 ? activeIndex + 1 : 0;
 
   return (
@@ -93,6 +93,9 @@ function ProfileDeckControls() {
       <Pressable disabled={!canSwipe} onPress={swipeRight}>
         <Text>Like</Text>
       </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeUp}>
+        <Text>Up</Text>
+      </Pressable>
     </View>
   );
 }
@@ -100,7 +103,12 @@ function ProfileDeckControls() {
 export function ProfileDeckScreen({ profiles }: { profiles: Profile[] }) {
   return (
     <View>
-      <ProfileDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
+      <ProfileDeck.Root
+        data={profiles}
+        getKey={(item) => item.id}
+        allowedDirections={['left', 'right', 'up']}
+        visibleCardCount={3}
+      >
         <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
       </ProfileDeck.Root>
 

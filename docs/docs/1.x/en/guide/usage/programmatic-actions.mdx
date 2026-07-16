@@ -5,20 +5,29 @@ external controls, or any app logic that should dismiss the active card.
 
 ```tsx
 function LikeButton() {
-  const { swipeRight } = ProfileDeck.useDeckActions();
+  const { swipeRight, swipeUp } = ProfileDeck.useDeckActions();
 
   return (
-    <Pressable onPress={swipeRight}>
-      <Text>Like</Text>
-    </Pressable>
+    <>
+      <Pressable onPress={swipeRight}>
+        <Text>Like</Text>
+      </Pressable>
+      <Pressable onPress={swipeUp}>
+        <Text>Up</Text>
+      </Pressable>
+    </>
   );
 }
 ```
 
+`swipeUp()` is accepted only when the Root explicitly includes `'up'` in
+`allowedDirections`. Gesture up also requires free drag mode; programmatic
+`swipeUp()` is still available when drag mode is horizontal.
+
 ## Action Motion
 
 `motion` controls manual drag feel. `actionMotion` controls only programmatic
-actions such as `swipeLeft()` and `swipeRight()`.
+actions such as `swipeLeft()`, `swipeRight()`, and `swipeUp()`.
 
 ```tsx
 import {
@@ -72,8 +81,8 @@ const actionMotion = SwipeDeckActionMotion.springboard({
 
 1. factory `actionMotion` from `createSwipeDeck({ actionMotion })`
 2. `Root actionMotion`, replacing the factory default for that Root
-3. per-call recipe passed to `swipeLeft(recipe)` or `swipeRight(recipe)`
+3. per-call recipe passed to `swipeLeft(recipe)`, `swipeRight(recipe)`, or `swipeUp(recipe)`
 
 Actions are callback-safe. If a React Native press event is passed to
-`swipeRight` or `swipeLeft`, the event argument is ignored and the configured
-action motion is used.
+`swipeRight`, `swipeLeft`, or `swipeUp`, the event argument is ignored and the
+configured action motion is used.

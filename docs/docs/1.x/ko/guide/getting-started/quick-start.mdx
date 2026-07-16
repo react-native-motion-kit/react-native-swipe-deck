@@ -85,7 +85,7 @@ Counter와 button처럼 React로 렌더링되는 UI에는 state/action hook을 �
 ```tsx
 function ProfileDeckControls() {
   const { activeIndex, count, canSwipe, canUndo, isCompleted } = ProfileDeck.useDeckState();
-  const { swipeLeft, swipeRight, undo } = ProfileDeck.useDeckActions();
+  const { swipeLeft, swipeRight, swipeUp, undo } = ProfileDeck.useDeckActions();
   const current = activeIndex >= 0 ? activeIndex + 1 : 0;
 
   return (
@@ -100,10 +100,17 @@ function ProfileDeckControls() {
       <Pressable disabled={!canSwipe} onPress={swipeRight}>
         <Text>Like</Text>
       </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeUp}>
+        <Text>Up</Text>
+      </Pressable>
     </View>
   );
 }
 ```
+
+Up action을 사용하려면 `Root`에 `allowedDirections={['left', 'right', 'up']}`을 추가하세요.
+Upward gesture에는 `drag.mode: 'free'`도 필요합니다. 위의 horizontal 설정은 손가락의 수직 이동을
+의도적으로 비활성화합니다.
 
 Undo UX를 노출할 때만 `undoEnabled`를 켜세요.
 

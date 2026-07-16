@@ -89,11 +89,16 @@ function Root<T>({
   const swipeProgress = interaction.progress;
   const signedSwipeProgress = interaction.signedProgress;
   const swipeDirectionSignal = interaction.direction;
+  const intentDirection = interaction.intentDirection;
   const dismissDirection = interaction.dismissDirection;
   const directionPolicy = createSwipeDeckDirectionPolicy(allowedDirections);
   const allowedDirectionPolicy = useSharedValue(directionPolicy);
   const allowedDirectionPolicyRef = useRef(directionPolicy);
-  const { left: allowsLeftDirection, right: allowsRightDirection } = directionPolicy;
+  const {
+    left: allowsLeftDirection,
+    right: allowsRightDirection,
+    up: allowsUpDirection,
+  } = directionPolicy;
   const activeTranslateX = interaction.translationX;
   const activeTranslateY = interaction.translationY;
   const isDragging = interaction.isDragging;
@@ -101,6 +106,7 @@ function Root<T>({
   const dragItemIndex = useSharedValue(-1);
   const undoProgress = useSharedValue(0);
   const undoFromTranslateX = useSharedValue(0);
+  const undoFromTranslateY = useSharedValue(0);
   const activeItemIndex = useSharedValue(-1);
   const gestureStartYRatio = useSharedValue(0.5);
   const attachmentGeneration = useSharedValue(0);
@@ -226,12 +232,19 @@ function Root<T>({
     const nextDirectionPolicy = {
       left: allowsLeftDirection,
       right: allowsRightDirection,
+      up: allowsUpDirection,
     };
 
     allowedDirectionPolicyRef.current = nextDirectionPolicy;
     allowedDirectionPolicy.set(nextDirectionPolicy);
     publishDeckStateSnapshot();
-  }, [allowedDirectionPolicy, allowsLeftDirection, allowsRightDirection, publishDeckStateSnapshot]);
+  }, [
+    allowedDirectionPolicy,
+    allowsLeftDirection,
+    allowsRightDirection,
+    allowsUpDirection,
+    publishDeckStateSnapshot,
+  ]);
 
   useLayoutEffect(() => {
     dataRef.current = data;
@@ -257,6 +270,7 @@ function Root<T>({
     dragItemIndex,
     endReachedRef,
     gestureStartYRatio,
+    intentDirection,
     getKey,
     hasUndoHistoryRef,
     isAnimating,
@@ -272,6 +286,7 @@ function Root<T>({
     swipeProgress,
     undoEnabled,
     undoFromTranslateX,
+    undoFromTranslateY,
     undoMotionRef,
     undoProgress,
   });
@@ -296,6 +311,7 @@ function Root<T>({
     dragItemIndex,
     endReachedRef,
     gestureStartYRatio,
+    intentDirection,
     isAnimating,
     isDragging,
     interactionPhase,
@@ -329,6 +345,7 @@ function Root<T>({
     dragItemIndex,
     gestureStartYRatio,
     hasActiveCard,
+    intentDirection,
     isAnimating,
     isDragging,
     interactionPhase,
@@ -426,10 +443,12 @@ function Root<T>({
               swipeProgress={swipeProgress}
               activeTranslateX={activeTranslateX}
               activeTranslateY={activeTranslateY}
+              dismissDirection={dismissDirection}
               dragItemIndex={dragItemIndex}
               undoItemKey={undoTransition?.key}
               undoProgress={undoProgress}
               undoFromTranslateX={undoFromTranslateX}
+              undoFromTranslateY={undoFromTranslateY}
               activeItemIndex={activeItemIndex}
               gestureStartYRatio={gestureStartYRatio}
               motionConfig={cardMotionConfig}

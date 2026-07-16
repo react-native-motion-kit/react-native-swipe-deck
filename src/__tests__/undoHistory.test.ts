@@ -209,6 +209,21 @@ describe('undo history helpers', () => {
     ]);
   });
 
+  it('preserves up direction entries through prune and resolve', () => {
+    const history: SwipeDeckUndoHistoryEntry[] = [
+      { token: 1, key: 'ada', index: 0, direction: 'up' },
+    ];
+    const keyIndex = createSwipeDeckUndoKeyIndex([adaProfile], getProfileKey);
+
+    expect(pruneSwipeDeckUndoHistory(history, keyIndex)).toEqual(history);
+    expect(resolveLatestSwipeDeckUndoHistoryEntry(history, [adaProfile], keyIndex)).toMatchObject({
+      entry: {
+        direction: 'up',
+      },
+      item: adaProfile,
+    });
+  });
+
   it('checks whether any valid undo entry remains', () => {
     expect(
       hasValidSwipeDeckUndoHistoryEntry(

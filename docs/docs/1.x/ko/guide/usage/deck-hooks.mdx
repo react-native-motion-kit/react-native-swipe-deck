@@ -38,7 +38,7 @@ Stable action callback을 반환합니다.
 ```tsx
 function Controls() {
   const { canSwipe, canUndo } = ProfileDeck.useDeckState();
-  const { swipeLeft, swipeRight, undo } = ProfileDeck.useDeckActions();
+  const { swipeLeft, swipeRight, swipeUp, undo } = ProfileDeck.useDeckActions();
 
   return (
     <View>
@@ -51,14 +51,18 @@ function Controls() {
       <Pressable disabled={!canSwipe} onPress={swipeRight}>
         <Text>Like</Text>
       </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeUp}>
+        <Text>Up</Text>
+      </Pressable>
     </View>
   );
 }
 ```
 
-`swipeLeft()`와 `swipeRight()`는 action이 받아들여지면 `true`, deck이 unattached,
+`swipeLeft()`, `swipeRight()`, `swipeUp()`은 action이 받아들여지면 `true`, deck이 unattached,
 disabled, animating, unmeasured, completed 상태이거나 direction이 허용되지 않으면 `false`를
-반환합니다. `undo()`는 deck 완료 후에도 `canUndo`가 true이면 `true`를 반환합니다.
+반환합니다. `swipeUp()`은 `allowedDirections`에 `'up'`이 있어야 하지만 horizontal drag mode에는
+막히지 않습니다. `undo()`는 deck 완료 후에도 `canUndo`가 true이면 `true`를 반환합니다.
 
 ## `useDeckInteraction(id?)`
 
@@ -66,7 +70,7 @@ Progress 기반 UI를 위한 Reanimated shared value를 반환합니다.
 
 ```tsx
 function SwipeReactionOverlay() {
-  const { signedProgress } = ProfileDeck.useDeckInteraction();
+  const { intentDirection, progress, signedProgress } = ProfileDeck.useDeckInteraction();
 
   const likeStyle = useAnimatedStyle(() => {
     const progress = Math.max(signedProgress.get(), 0);
@@ -77,21 +81,39 @@ function SwipeReactionOverlay() {
     };
   });
 
-  return <Animated.View pointerEvents="none" style={likeStyle} />;
+  const upStyle = useAnimatedStyle(() => {
+    const upProgress = intentDirection.get() === 'up' ? progress.get() : 0;
+
+    return {
+      opacity: upProgress,
+      transform: [{ scale: 0.9 + upProgress * 0.18 }],
+    };
+  });
+
+  return (
+    <View pointerEvents="none">
+      <Animated.Text style={likeStyle}>LIKE</Animated.Text>
+      <Animated.Text style={upStyle}>SUPER LIKE</Animated.Text>
+    </View>
+  );
 }
 ```
 
 Interaction value는 UI thread에서 업데이트되고 gesture frame마다 React rerender를 만들지 않습니다.
 
-| Value              | 의미                                                      |
-| ------------------ | --------------------------------------------------------- |
-| `progress`         | `0`부터 `1`까지의 absolute swipe progress입니다.          |
-| `signedProgress`   | `-1`부터 `1`까지의 signed progress입니다.                 |
-| `direction`        | raw live direction signal입니다. `-1`, `0`, `1`.          |
-| `dismissDirection` | accepted dismiss side입니다. `'left'`, `'right'`, `null`. |
-| `translationX`     | active card의 horizontal translation입니다.               |
-| `translationY`     | active card의 vertical translation입니다.                 |
-| `isDragging`       | deck이 dragging 또는 dismissing 중인지 여부입니다.        |
-| `phase`            | `idle`, `dragging`, `dismissing`, `undoing`.              |
+| Value              | 의미                                                                             |
+| ------------------ | -------------------------------------------------------------------------------- |
+| `progress`         | `0`부터 `1`까지의 dominant enabled-axis progress입니다.                          |
+| `signedProgress`   | horizontal signed progress입니다. Up은 `0`입니다.                                |
+| `direction`        | horizontal live signal입니다. `-1`, `0`, `1`; up은 `0`.                          |
+| `intentDirection`  | policy-filtered live semantic intent입니다. `'left'`, `'right'`, `'up'`, `null`. |
+| `dismissDirection` | accepted dismiss side입니다. `'left'`, `'right'`, `'up'`, `null`.                |
+| `translationX`     | active card의 horizontal translation입니다.                                      |
+| `translationY`     | active card의 vertical translation입니다.                                        |
+| `isDragging`       | deck이 dragging 또는 dismissing 중인지 여부입니다.                               |
+| `phase`            | `idle`, `dragging`, `dismissing`, `undoing`.                                     |
 
-Frame-synchronous visual feedback에는 `phase`를 사용하세요. Commit된 state 변화에는 event hook을 사용하세요.
+한 번에 하나의 reaction overlay를 보여줄 때는 `intentDirection`을 사용하세요. 이 값은 drag
+frame마다 업데이트되고, accepted direction은 dismiss 중 유지되며, 다른 interaction value와 함께
+reset됩니다. Frame-synchronous visual feedback에는 `phase`를 사용하세요. Commit된 state 변화에는
+event hook을 사용하세요.

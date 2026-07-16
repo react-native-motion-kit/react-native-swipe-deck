@@ -5,19 +5,28 @@ active card를 dismiss할 때 사용하세요.
 
 ```tsx
 function LikeButton() {
-  const { swipeRight } = ProfileDeck.useDeckActions();
+  const { swipeRight, swipeUp } = ProfileDeck.useDeckActions();
 
   return (
-    <Pressable onPress={swipeRight}>
-      <Text>Like</Text>
-    </Pressable>
+    <>
+      <Pressable onPress={swipeRight}>
+        <Text>Like</Text>
+      </Pressable>
+      <Pressable onPress={swipeUp}>
+        <Text>Up</Text>
+      </Pressable>
+    </>
   );
 }
 ```
 
+`swipeUp()`은 Root의 `allowedDirections`에 `'up'`이 명시되어 있을 때만 받아들여집니다.
+Gesture up은 free drag mode가 필요하지만, programmatic `swipeUp()`은 horizontal drag mode에서도
+사용할 수 있습니다.
+
 ## Action Motion
 
-`motion`은 manual drag feel을 제어합니다. `actionMotion`은 `swipeLeft()`와 `swipeRight()`
+`motion`은 manual drag feel을 제어합니다. `actionMotion`은 `swipeLeft()`, `swipeRight()`, `swipeUp()`
 같은 programmatic action만 제어합니다.
 
 ```tsx
@@ -71,7 +80,7 @@ const actionMotion = SwipeDeckActionMotion.springboard({
 
 1. `createSwipeDeck({ actionMotion })`의 factory `actionMotion`
 2. 해당 Root에서 factory default를 대체하는 `Root actionMotion`
-3. `swipeLeft(recipe)` 또는 `swipeRight(recipe)`에 넘긴 per-call recipe
+3. `swipeLeft(recipe)`, `swipeRight(recipe)`, `swipeUp(recipe)`에 넘긴 per-call recipe
 
-Action은 callback으로 바로 넘겨도 안전합니다. React Native press event가 `swipeRight` 또는
-`swipeLeft`로 전달되면 그 event 인자는 무시됩니다.
+Action은 callback으로 바로 넘겨도 안전합니다. React Native press event가 `swipeRight`,
+`swipeLeft`, `swipeUp`으로 전달되면 그 event 인자는 무시됩니다.

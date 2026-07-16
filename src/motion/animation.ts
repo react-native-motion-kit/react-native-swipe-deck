@@ -14,6 +14,9 @@ import type {
   SwipeDeckTinderMotionConfig,
   SwipeDeckTinderMotionPreset,
 } from '../types';
+import type { SwipeDeckMotionTranslation, SwipeDeckMotionVector } from './motionGeometry';
+
+import { resolveSwipeDeckDirectionTranslation } from './motionGeometry';
 
 const DEFAULT_DISMISS_MIN_DURATION = 120;
 const DEFAULT_DISMISS_MAX_DURATION = 320;
@@ -22,6 +25,8 @@ const DEFAULT_EDGE_MAX_DEGREES = 18;
 const DEFAULT_OFFSCREEN_MULTIPLIER = 1.5;
 const DEFAULT_DRAG_MODE: SwipeDeckTinderDragMode = 'free';
 const DEFAULT_DISMISS_EASING: SwipeDeckMotionEasing = Easing.out(Easing.cubic);
+
+type HorizontalSwipeDirection = Extract<SwipeDirection, 'left' | 'right'>;
 
 function resolveLayoutValue(
   value: number | ((layout: SwipeDeckLayout) => number) | undefined,
@@ -60,12 +65,18 @@ function degreesToRadians(degrees: number): number {
 type SwipeDeckRotationBounds = {
   minX: number;
   maxX: number;
+  minY: number;
+  maxY: number;
 };
 
 type SwipeDeckRotationPoint = {
   x: number;
   y: number;
 };
+
+export type SwipeDeckTranslation = SwipeDeckMotionTranslation;
+
+export type SwipeDeckDismissDestination = SwipeDeckMotionVector;
 
 type ResolveSwipeDeckTinderRotationAnchorArgs = {
   mode: SwipeDeckTinderRotationMode;
@@ -139,6 +150,27 @@ function rotatePointX({
   return originX + dx * Math.cos(radians) - dy * Math.sin(radians);
 }
 
+function rotatePointY({
+  x,
+  y,
+  originX,
+  originY,
+  radians,
+}: {
+  x: number;
+  y: number;
+  originX: number;
+  originY: number;
+  radians: number;
+}): number {
+  'worklet';
+
+  const dx = x - originX;
+  const dy = y - originY;
+
+  return originY + dx * Math.sin(radians) + dy * Math.cos(radians);
+}
+
 function resolveRotatedCardBounds({
   width,
   height,
@@ -158,10 +190,16 @@ function resolveRotatedCardBounds({
   const topRightX = rotatePointX({ x: width, y: 0, originX, originY, radians });
   const bottomLeftX = rotatePointX({ x: 0, y: height, originX, originY, radians });
   const bottomRightX = rotatePointX({ x: width, y: height, originX, originY, radians });
+  const topLeftY = rotatePointY({ x: 0, y: 0, originX, originY, radians });
+  const topRightY = rotatePointY({ x: width, y: 0, originX, originY, radians });
+  const bottomLeftY = rotatePointY({ x: 0, y: height, originX, originY, radians });
+  const bottomRightY = rotatePointY({ x: width, y: height, originX, originY, radians });
 
   return {
     minX: Math.min(topLeftX, topRightX, bottomLeftX, bottomRightX),
     maxX: Math.max(topLeftX, topRightX, bottomLeftX, bottomRightX),
+    minY: Math.min(topLeftY, topRightY, bottomLeftY, bottomRightY),
+    maxY: Math.max(topLeftY, topRightY, bottomLeftY, bottomRightY),
   };
 }
 
@@ -197,7 +235,16 @@ export type ResolveSwipeDeckDismissDestinationDistanceArgs = {
   rotationOrigin?: SwipeDeckTinderFixedRotationOrigin;
   rotationDirection?: SwipeDeckTinderRotationDirection;
   gestureStartYRatio: number;
+  swipeDirection: HorizontalSwipeDirection;
+};
+
+export type ResolveSwipeDeckDismissDestinationArgs = Omit<
+  ResolveSwipeDeckDismissDestinationDistanceArgs,
+  'swipeDirection'
+> & {
   swipeDirection: SwipeDirection;
+  translationX: number;
+  translationY: number;
 };
 
 export function resolveSwipeDeckDismissDestinationDistance({
@@ -238,6 +285,58 @@ export function resolveSwipeDeckDismissDestinationDistance({
   const clearDistance = swipeDirection === 'right' ? width - bounds.minX : bounds.maxX;
 
   return clearDistance * resolveOffscreenMultiplier(offscreenMultiplier);
+}
+
+export function resolveSwipeDeckDismissDestination(
+  args: ResolveSwipeDeckDismissDestinationArgs,
+): SwipeDeckDismissDestination {
+  'worklet';
+
+  const swipeDirection = args.swipeDirection;
+
+  if (swipeDirection === 'up') {
+    const width = Math.max(args.layout.width, 1);
+    const height = Math.max(args.layout.height, 1);
+    const originPoint = resolveSwipeDeckTinderRotationOriginPoint({
+      mode: args.rotationMode,
+      origin: args.rotationOrigin,
+      gestureStartYRatio: args.gestureStartYRatio,
+      width,
+      height,
+    });
+    const positiveBounds = resolveRotatedCardBounds({
+      width,
+      height,
+      originX: originPoint.x,
+      originY: originPoint.y,
+      radians: degreesToRadians(args.rotationMaxDegrees),
+    });
+    const negativeBounds = resolveRotatedCardBounds({
+      width,
+      height,
+      originX: originPoint.x,
+      originY: originPoint.y,
+      radians: degreesToRadians(-args.rotationMaxDegrees),
+    });
+    const clearDistance = Math.max(height, positiveBounds.maxY, negativeBounds.maxY);
+
+    return resolveSwipeDeckDirectionTranslation({
+      direction: 'up',
+      distance: clearDistance * resolveOffscreenMultiplier(args.offscreenMultiplier),
+      crossAxisTranslation: args.translationX,
+    });
+  }
+
+  const destinationDistance = resolveSwipeDeckDismissDestinationDistance({
+    ...args,
+    swipeDirection,
+  });
+
+  return resolveSwipeDeckDirectionTranslation({
+    direction: swipeDirection,
+    distance: destinationDistance,
+    crossAxisTranslation: args.translationY,
+  });
 }
 
 function mergeSwipeDeckTinderRotationConfig(
@@ -451,32 +550,32 @@ export function resolveSwipeDeckMotionConfig(
   return resolveTinderMotionConfig(preset.config, layout);
 }
 
-export type ResolveSwipeDeckDismissDurationArgs = {
-  translationX: number;
-  velocityX: number;
-  destinationX: number;
+export type ResolveSwipeDeckDismissAxisDurationArgs = {
+  translation: number;
+  velocity: number;
+  destination: number;
   duration?: number;
   minDuration: number;
   maxDuration: number;
 };
 
-export function resolveSwipeDeckDismissDuration({
-  translationX,
-  velocityX,
-  destinationX,
+export function resolveSwipeDeckDismissAxisDuration({
+  translation,
+  velocity: releaseVelocity,
+  destination,
   duration,
   minDuration,
   maxDuration,
-}: ResolveSwipeDeckDismissDurationArgs): number {
+}: ResolveSwipeDeckDismissAxisDurationArgs): number {
   'worklet';
 
   if (duration !== undefined) {
     return duration;
   }
 
-  const remainingDistance = Math.abs(destinationX - translationX);
-  const destinationDirection = destinationX >= translationX ? 1 : -1;
-  const velocityTowardDestination = velocityX * destinationDirection;
+  const remainingDistance = Math.abs(destination - translation);
+  const destinationDirection = destination >= translation ? 1 : -1;
+  const velocityTowardDestination = releaseVelocity * destinationDirection;
   const velocity = Math.max(velocityTowardDestination, 1);
   const velocityDuration = (remainingDistance / velocity) * 1000;
 

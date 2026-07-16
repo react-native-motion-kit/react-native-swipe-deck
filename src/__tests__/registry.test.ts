@@ -43,6 +43,7 @@ describe('createSwipeDeckRegistry', () => {
     });
     expect(store.actions.swipeLeft()).toBe(false);
     expect(store.actions.swipeRight()).toBe(false);
+    expect(store.actions.swipeUp()).toBe(false);
     expect(store.actions.undo()).toBe(false);
   });
 
@@ -53,6 +54,7 @@ describe('createSwipeDeckRegistry', () => {
     expect(registry.getStore('profiles').actions).toBe(store.actions);
     expect(registry.getStore('profiles').interaction).toBe(store.interaction);
     expect(store.interaction.phase.get()).toBe('idle');
+    expect(store.interaction.intentDirection.get()).toBeNull();
     expect(store.interaction.dismissDirection.get()).toBeNull();
   });
 
@@ -162,6 +164,8 @@ describe('createSwipeDeckRegistry', () => {
     });
     expect(store.actions.swipeRight()).toBe(true);
     expect(swipe).toHaveBeenCalledWith('right', undefined);
+    expect(store.actions.swipeUp()).toBe(true);
+    expect(swipe).toHaveBeenCalledWith('up', undefined);
 
     expect(() =>
       store.attach({
@@ -203,12 +207,14 @@ describe('createSwipeDeckRegistry', () => {
     });
 
     expect(store.actions.swipeRight(springboardMotion)).toBe(true);
+    expect(store.actions.swipeUp(springboardMotion)).toBe(true);
     expect(store.actions.swipeLeft({ nativeEvent: {} } as unknown as GestureResponderEvent)).toBe(
       true,
     );
 
     expect(swipe).toHaveBeenNthCalledWith(1, 'right', springboardMotion);
-    expect(swipe).toHaveBeenNthCalledWith(2, 'left', undefined);
+    expect(swipe).toHaveBeenNthCalledWith(2, 'up', springboardMotion);
+    expect(swipe).toHaveBeenNthCalledWith(3, 'left', undefined);
 
     detach();
   });
@@ -274,7 +280,8 @@ describe('createSwipeDeckRegistry', () => {
     store.interaction.progress.set(1);
     store.interaction.signedProgress.set(-1);
     store.interaction.direction.set(-1);
-    store.interaction.dismissDirection.set('left');
+    store.interaction.intentDirection.set('left');
+    store.interaction.dismissDirection.set('up');
     store.interaction.translationX.set(-120);
     store.interaction.translationY.set(24);
     store.interaction.isDragging.set(true);
@@ -285,6 +292,7 @@ describe('createSwipeDeckRegistry', () => {
     expect(store.interaction.progress.get()).toBe(0);
     expect(store.interaction.signedProgress.get()).toBe(0);
     expect(store.interaction.direction.get()).toBe(0);
+    expect(store.interaction.intentDirection.get()).toBeNull();
     expect(store.interaction.dismissDirection.get()).toBeNull();
     expect(store.interaction.translationX.get()).toBe(0);
     expect(store.interaction.translationY.get()).toBe(0);

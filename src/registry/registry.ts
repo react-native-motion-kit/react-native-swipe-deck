@@ -70,6 +70,7 @@ function createInteraction(): SwipeDeckInteraction {
     progress: makeMutable(0),
     signedProgress: makeMutable(0),
     direction: makeMutable<-1 | 0 | 1>(0),
+    intentDirection: makeMutable<SwipeDirection | null>(null),
     dismissDirection: makeMutable<SwipeDirection | null>(null),
     translationX: makeMutable(0),
     translationY: makeMutable(0),
@@ -82,6 +83,7 @@ function resetInteraction(interaction: SwipeDeckInteraction) {
   interaction.progress.set(0);
   interaction.signedProgress.set(0);
   interaction.direction.set(0);
+  interaction.intentDirection.set(null);
   interaction.dismissDirection.set(null);
   interaction.translationX.set(0);
   interaction.translationY.set(0);
@@ -166,6 +168,11 @@ function createStore<T>(label: string): SwipeDeckStore<T> {
       const motion = isSwipeDeckActionMotionRecipe(motionOrEvent) ? motionOrEvent : undefined;
 
       return controllerSlot.getController()?.swipe('right', motion) ?? false;
+    },
+    swipeUp: (motionOrEvent?: unknown) => {
+      const motion = isSwipeDeckActionMotionRecipe(motionOrEvent) ? motionOrEvent : undefined;
+
+      return controllerSlot.getController()?.swipe('up', motion) ?? false;
     },
     undo: (motionOrEvent?: unknown) => {
       const motion = isSwipeDeckUndoMotionRecipe(motionOrEvent) ? motionOrEvent : undefined;

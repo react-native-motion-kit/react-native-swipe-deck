@@ -85,7 +85,7 @@ Use state and action hooks for React-rendered UI such as counters and buttons.
 ```tsx
 function ProfileDeckControls() {
   const { activeIndex, count, canSwipe, canUndo, isCompleted } = ProfileDeck.useDeckState();
-  const { swipeLeft, swipeRight, undo } = ProfileDeck.useDeckActions();
+  const { swipeLeft, swipeRight, swipeUp, undo } = ProfileDeck.useDeckActions();
   const current = activeIndex >= 0 ? activeIndex + 1 : 0;
 
   return (
@@ -100,10 +100,17 @@ function ProfileDeckControls() {
       <Pressable disabled={!canSwipe} onPress={swipeRight}>
         <Text>Like</Text>
       </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeUp}>
+        <Text>Up</Text>
+      </Pressable>
     </View>
   );
 }
 ```
+
+Add `allowedDirections={['left', 'right', 'up']}` on `Root` to enable the up action. Upward
+gestures also require `drag.mode: 'free'`; the horizontal configuration above intentionally keeps
+vertical finger movement disabled.
 
 Enable undo tracking only when you expose undo UX:
 
