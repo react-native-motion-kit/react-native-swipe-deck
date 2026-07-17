@@ -72,13 +72,19 @@ Card 내부 carousel이나 scroll view처럼 더 깊은 nested gesture 조정은
 `allowedDirections`는 dismiss로 받아들일 방향을 제한합니다.
 
 ```tsx
-<ProfileDeck.Root data={profiles} getKey={(item) => item.id} allowedDirections={['right']}>
+<ProfileDeck.Root
+  data={profiles}
+  getKey={(item) => item.id}
+  allowedDirections={['left', 'right', 'up']}
+>
   <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
 </ProfileDeck.Root>
 ```
 
-- 생략하면 양방향을 모두 허용합니다.
-- `['left']` 또는 `['right']`는 한 방향만 허용합니다.
+- 생략하면 left와 right를 허용합니다.
+- upward dismiss는 `'up'`을 명시적으로 포함해야 합니다.
+- gesture up은 기본값인 `SwipeDeckMotion.tinder({ drag: { mode: 'free' } })`에서 동작합니다.
+- `drag.mode: 'horizontal'`은 gesture up만 거절하며 `actions.swipeUp()`은 막지 않습니다.
 - `[]`는 drag는 허용하지만 모든 dismiss release와 programmatic swipe action을 거절합니다.
 
 ## Static API

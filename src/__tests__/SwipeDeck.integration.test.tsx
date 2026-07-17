@@ -1,12 +1,25 @@
+import type {
+  GestureStateChangeEvent,
+  GestureUpdateEvent,
+  PanGestureHandlerEventPayload,
+} from 'react-native-gesture-handler';
+
 import { describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, screen, userEvent } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, userEvent } from '@testing-library/react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
 import type { SwipeDeckCardInteractive, SwipeDirection } from '../index';
 
-import { createSwipeDeck, SwipeDeck, SwipeDeckActionMotion, SwipeDeckUndoMotion } from '../index';
+import { resolveSwipeProgressIntent } from '../core/swipeDeckRuntime';
+import {
+  createSwipeDeck,
+  SwipeDeck,
+  SwipeDeckActionMotion,
+  SwipeDeckMotion,
+  SwipeDeckUndoMotion,
+} from '../index';
 
 type Profile = {
   id: string;
@@ -268,11 +281,11 @@ describe('SwipeDeck factory hooks', () => {
       const actions = ProfileDeck.useDeckActions();
       const interaction = ProfileDeck.useDeckInteraction();
       const [lastActionResult, setLastActionResult] = useState('none');
-      const [interactionText, setInteractionText] = useState('0:0:0:null:idle');
+      const [interactionText, setInteractionText] = useState('0:0:0:null:null:idle');
 
       useEffect(() => {
         setInteractionText(
-          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
+          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.intentDirection.get() ?? 'null'}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
         );
       }, [interaction, state.activeIndex, state.canSwipe, state.isCompleted]);
 
@@ -318,13 +331,13 @@ describe('SwipeDeck factory hooks', () => {
     await measureDeckFromVisibleCard('Ada');
 
     expect(await screen.findByText('state:0:2:true:false')).toBeOnTheScreen();
-    expect(screen.getByText('interaction:0:0:0:null:idle')).toBeOnTheScreen();
+    expect(screen.getByText('interaction:0:0:0:null:null:idle')).toBeOnTheScreen();
 
     await user.press(screen.getByRole('button', { name: 'Force swipe right' }));
 
     expect(await screen.findByText('action:true')).toBeOnTheScreen();
     expect(await screen.findByText('state:1:2:true:false')).toBeOnTheScreen();
-    expect(screen.getByText('interaction:0:0:0:null:idle')).toBeOnTheScreen();
+    expect(screen.getByText('interaction:0:0:0:null:null:idle')).toBeOnTheScreen();
     expect(screen.getByText('Grace')).toBeOnTheScreen();
     expect(onSwipe).toHaveBeenCalledTimes(1);
     expect(onSwipe).toHaveBeenCalledWith({
@@ -595,6 +608,600 @@ describe('SwipeDeck factory hooks', () => {
     expect(screen.getByText('Ada')).toBeOnTheScreen();
   });
 
+  it('keeps upward swipes opt-in while preserving default left/right actions', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const onSwipe = jest.fn();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const actions = ProfileDeck.useDeckActions();
+      const interaction = ProfileDeck.useDeckInteraction();
+      const [lastActionResult, setLastActionResult] = useState('none');
+
+      return (
+        <View>
+          <Text>
+            state:{state.activeIndex}:{String(state.canSwipe)}:{String(state.isCompleted)}
+          </Text>
+          <Text>action:{lastActionResult}</Text>
+          <Pressable
+            accessibilityLabel="Force swipe up"
+            accessibilityRole="button"
+            onPress={() => {
+              const accepted = actions.swipeUp();
+
+              setLastActionResult(
+                `${String(accepted)}:${interaction.dismissDirection.get() ?? 'null'}`,
+              );
+            }}
+          >
+            <Text>Force swipe up</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Force swipe right"
+            accessibilityRole="button"
+            onPress={() => setLastActionResult(String(actions.swipeRight()))}
+          >
+            <Text>Force swipe right</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('swipe', onSwipe);
+
+      return null;
+    }
+
+    function Example() {
+      return (
+        <>
+          <DeckControls />
+          <DeckEvents />
+          <ProfileDeck.Root data={[adaProfile, graceProfile, linusProfile]} getKey={getProfileKey}>
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    await user.press(screen.getByRole('button', { name: 'Force swipe up' }));
+
+    expect(await screen.findByText('action:false:null')).toBeOnTheScreen();
+    expect(screen.getByText('Ada')).toBeOnTheScreen();
+
+    fireGestureHandler(getByGestureTestId('swipe-deck-pan'), [
+      { state: 2, y: 250 },
+      { state: 4, translationX: 0, translationY: -180, velocityX: 0, velocityY: 0, y: 250 },
+      { state: 5, translationX: 0, translationY: -180, velocityX: 0, velocityY: 0, y: 250 },
+    ]);
+
+    expect(await screen.findByText('state:0:true:false')).toBeOnTheScreen();
+    expect(screen.getByText('Ada')).toBeOnTheScreen();
+    expect(onSwipe).not.toHaveBeenCalled();
+
+    await user.press(screen.getByRole('button', { name: 'Force swipe right' }));
+
+    expect(await screen.findByText('state:1:true:false')).toBeOnTheScreen();
+    expect(onSwipe).toHaveBeenCalledWith({
+      direction: 'right',
+      index: 0,
+      item: profiles[0],
+      source: 'programmatic',
+    });
+  });
+
+  it('accepts programmatic swipeUp through up-only policy with horizontal signals zeroed', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const onSwipe = jest.fn();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const actions = ProfileDeck.useDeckActions();
+      const interaction = ProfileDeck.useDeckInteraction();
+      const [probe, setProbe] = useState('none');
+
+      return (
+        <View>
+          <Text>
+            state:{state.activeIndex}:{String(state.canSwipe)}:{String(state.isCompleted)}
+          </Text>
+          <Text>probe:{probe}</Text>
+          <Pressable
+            accessibilityLabel="Probe swipe up"
+            accessibilityRole="button"
+            onPress={() => {
+              const accepted = actions.swipeUp();
+
+              setProbe(
+                `${String(accepted)}:${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.intentDirection.get() ?? 'null'}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
+              );
+            }}
+          >
+            <Text>Probe swipe up</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Probe swipe left"
+            accessibilityRole="button"
+            onPress={() => setProbe(String(actions.swipeLeft()))}
+          >
+            <Text>Probe swipe left</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('swipe', onSwipe);
+
+      return null;
+    }
+
+    function Example() {
+      return (
+        <>
+          <DeckControls />
+          <DeckEvents />
+          <ProfileDeck.Root allowedDirections={['up']} data={profiles} getKey={getProfileKey}>
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    await user.press(screen.getByRole('button', { name: 'Probe swipe left' }));
+
+    expect(await screen.findByText('probe:false')).toBeOnTheScreen();
+    expect(screen.getByText('Ada')).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Probe swipe up' }));
+
+    expect(await screen.findByText('probe:true:0:0:0:up:up:dismissing')).toBeOnTheScreen();
+    expect(await screen.findByText('state:1:true:false')).toBeOnTheScreen();
+    expect(onSwipe).toHaveBeenCalledWith({
+      direction: 'up',
+      index: 0,
+      item: profiles[0],
+      source: 'programmatic',
+    });
+  });
+
+  it('runs springboard swipeUp in horizontal drag mode', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const onSwipe = jest.fn();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const actions = ProfileDeck.useDeckActions();
+      const [accepted, setAccepted] = useState('none');
+
+      return (
+        <View>
+          <Text>activeIndex:{state.activeIndex}</Text>
+          <Text>accepted:{accepted}</Text>
+          <Pressable
+            accessibilityLabel="Springboard swipe up"
+            accessibilityRole="button"
+            onPress={() => setAccepted(String(actions.swipeUp()))}
+          >
+            <Text>Springboard swipe up</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('swipe', onSwipe);
+
+      return null;
+    }
+
+    function Example() {
+      return (
+        <>
+          <DeckControls />
+          <DeckEvents />
+          <ProfileDeck.Root
+            actionMotion={SwipeDeckActionMotion.springboard({
+              anticipationDuration: 120,
+              dismissDuration: 240,
+            })}
+            allowedDirections={['up']}
+            data={profiles}
+            getKey={getProfileKey}
+            motion={SwipeDeckMotion.tinder({ drag: { mode: 'horizontal' } })}
+          >
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    await user.press(screen.getByRole('button', { name: 'Springboard swipe up' }));
+
+    expect(await screen.findByText('accepted:true')).toBeOnTheScreen();
+    expect(await screen.findByText('activeIndex:1')).toBeOnTheScreen();
+    expect(screen.getByText('Grace')).toBeOnTheScreen();
+    expect(onSwipe).toHaveBeenCalledWith({
+      direction: 'up',
+      index: 0,
+      item: profiles[0],
+      source: 'programmatic',
+    });
+  });
+
+  it('supports gesture up only in free drag mode while swipeUp ignores drag mode', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const onSwipe = jest.fn();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const actions = ProfileDeck.useDeckActions();
+      const [lastActionResult, setLastActionResult] = useState('none');
+
+      return (
+        <View>
+          <Text>
+            state:{state.activeIndex}:{String(state.canSwipe)}:{String(state.isCompleted)}
+          </Text>
+          <Text>action:{lastActionResult}</Text>
+          <Pressable
+            accessibilityLabel="Force swipe up"
+            accessibilityRole="button"
+            onPress={() => setLastActionResult(String(actions.swipeUp()))}
+          >
+            <Text>Force swipe up</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('swipe', onSwipe);
+
+      return null;
+    }
+
+    function Example({ dragMode }: { dragMode: 'free' | 'horizontal' }) {
+      return (
+        <>
+          <DeckControls />
+          <DeckEvents />
+          <ProfileDeck.Root
+            allowedDirections={['up']}
+            data={profiles}
+            getKey={getProfileKey}
+            motion={SwipeDeckMotion.tinder({ drag: { mode: dragMode } })}
+          >
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    const renderResult = await render(<Example dragMode="horizontal" />);
+    await measureDeckFromVisibleCard('Ada');
+
+    fireGestureHandler(getByGestureTestId('swipe-deck-pan'), [
+      { state: 2, y: 250 },
+      { state: 4, translationX: 0, translationY: -180, velocityX: 0, velocityY: 0, y: 250 },
+      { state: 5, translationX: 0, translationY: -180, velocityX: 0, velocityY: 0, y: 250 },
+    ]);
+
+    expect(await screen.findByText('state:0:true:false')).toBeOnTheScreen();
+    expect(onSwipe).not.toHaveBeenCalled();
+
+    await user.press(screen.getByRole('button', { name: 'Force swipe up' }));
+
+    expect(await screen.findByText('action:true')).toBeOnTheScreen();
+    expect(await screen.findByText('state:1:true:false')).toBeOnTheScreen();
+    expect(onSwipe).toHaveBeenCalledWith({
+      direction: 'up',
+      index: 0,
+      item: profiles[0],
+      source: 'programmatic',
+    });
+
+    await renderResult.rerender(<Example dragMode="free" />);
+
+    fireGestureHandler(getByGestureTestId('swipe-deck-pan'), [
+      { state: 2, y: 250 },
+      { state: 4, translationX: 25, translationY: -180, velocityX: 0, velocityY: -10, y: 250 },
+      { state: 5, translationX: 25, translationY: -180, velocityX: 0, velocityY: -10, y: 250 },
+    ]);
+
+    expect(await screen.findByText('state:2:false:true')).toBeOnTheScreen();
+    expect(onSwipe).toHaveBeenLastCalledWith({
+      direction: 'up',
+      index: 1,
+      item: profiles[1],
+      source: 'gesture',
+    });
+  });
+
+  it('publishes neutral horizontal signals during nonzero-X upward-dominant live drag', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const [probe, setProbe] = useState('none');
+
+      return (
+        <View>
+          <Text>probe:{probe}</Text>
+          <Pressable
+            accessibilityLabel="Probe live drag"
+            accessibilityRole="button"
+            onPress={() => {
+              const intent = resolveSwipeProgressIntent({
+                translationX: 25,
+                translationY: -80,
+                distance: 100,
+                directionPolicy: { left: true, right: true, up: true },
+                dragMode: 'free',
+              });
+
+              setProbe(
+                `${intent.progress}:${intent.signedProgress}:${intent.direction}:${intent.intentDirection ?? 'null'}`,
+              );
+            }}
+          >
+            <Text>Probe live drag</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function Example() {
+      return (
+        <>
+          <DeckControls />
+          <ProfileDeck.Root
+            allowedDirections={['left', 'right', 'up']}
+            data={profiles}
+            getKey={getProfileKey}
+            motion={SwipeDeckMotion.tinder({ drag: { mode: 'free' } })}
+          >
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    await user.press(screen.getByRole('button', { name: 'Probe live drag' }));
+
+    expect(await screen.findByText('probe:0.8:0:0:up')).toBeOnTheScreen();
+  });
+
+  it('keeps filtered up-only free-drag intent null while live translation is preserved', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const interaction = ProfileDeck.useDeckInteraction();
+      const [probe, setProbe] = useState('none');
+
+      return (
+        <View>
+          <Text>probe:{probe}</Text>
+          <Pressable
+            accessibilityLabel="Probe live interaction"
+            accessibilityRole="button"
+            onPress={() => {
+              setProbe(
+                `${interaction.intentDirection.get() ?? 'null'}:${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.translationX.get()}:${interaction.translationY.get()}`,
+              );
+            }}
+          >
+            <Text>Probe live interaction</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function Example() {
+      return (
+        <>
+          <DeckControls />
+          <ProfileDeck.Root
+            allowedDirections={['up']}
+            data={profiles}
+            getKey={getProfileKey}
+            motion={SwipeDeckMotion.tinder({ drag: { mode: 'free' } })}
+          >
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    const panGesture = getByGestureTestId('swipe-deck-pan');
+    const onBegin = panGesture.handlers.onBegin as
+      | ((event: GestureStateChangeEvent<PanGestureHandlerEventPayload>) => void)
+      | undefined;
+    const onStart = panGesture.handlers.onStart as
+      | ((event: GestureStateChangeEvent<PanGestureHandlerEventPayload>) => void)
+      | undefined;
+    const onUpdate = panGesture.handlers.onUpdate as
+      | ((event: GestureUpdateEvent<PanGestureHandlerEventPayload>) => void)
+      | undefined;
+
+    if (onBegin === undefined || onStart === undefined || onUpdate === undefined) {
+      throw new Error('Expected registered pan gesture callbacks');
+    }
+
+    await act(() => {
+      onBegin({ y: 250 } as GestureStateChangeEvent<PanGestureHandlerEventPayload>);
+      onStart({} as GestureStateChangeEvent<PanGestureHandlerEventPayload>);
+      onUpdate({
+        translationX: 120,
+        translationY: -160,
+      } as GestureUpdateEvent<PanGestureHandlerEventPayload>);
+    });
+
+    await user.press(screen.getByRole('button', { name: 'Probe live interaction' }));
+
+    expect(await screen.findByText('probe:null:0:0:0:120:-160')).toBeOnTheScreen();
+  });
+
+  it('filters up-only outside-cone diagonal releases without emitting up', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const onSwipe = jest.fn();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const interaction = ProfileDeck.useDeckInteraction();
+      const [probe, setProbe] = useState('none');
+
+      return (
+        <View>
+          <Text>probe:{probe}</Text>
+          <Pressable
+            accessibilityLabel="Probe interaction"
+            accessibilityRole="button"
+            onPress={() => {
+              setProbe(
+                `${interaction.intentDirection.get() ?? 'null'}:${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.translationX.get()}:${interaction.translationY.get()}`,
+              );
+            }}
+          >
+            <Text>Probe interaction</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('swipe', onSwipe);
+
+      return null;
+    }
+
+    function Example() {
+      return (
+        <>
+          <DeckControls />
+          <DeckEvents />
+          <ProfileDeck.Root
+            allowedDirections={['up']}
+            data={profiles}
+            getKey={getProfileKey}
+            motion={SwipeDeckMotion.tinder({ drag: { mode: 'free' } })}
+          >
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    fireGestureHandler(getByGestureTestId('swipe-deck-pan'), [
+      { state: 2, y: 250 },
+      { state: 4, translationX: 120, translationY: -160, velocityX: 0, velocityY: 0, y: 250 },
+      { state: 5, translationX: 120, translationY: -160, velocityX: 0, velocityY: 0, y: 250 },
+    ]);
+
+    await user.press(screen.getByRole('button', { name: 'Probe interaction' }));
+
+    expect(await screen.findByText('probe:null:0:0:0:0:0')).toBeOnTheScreen();
+    expect(screen.getByText('Ada')).toBeOnTheScreen();
+    expect(onSwipe).not.toHaveBeenCalled();
+  });
+
+  it('records and restores up swipes through a nonzero timing undo', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const onUndo = jest.fn();
+    const user = userEvent.setup();
+
+    function DeckControls() {
+      const state = ProfileDeck.useDeckState();
+      const actions = ProfileDeck.useDeckActions();
+
+      return (
+        <View>
+          <Text>
+            state:{state.activeIndex}:{String(state.canSwipe)}:{String(state.canUndo)}:
+            {String(state.isCompleted)}
+          </Text>
+          <Pressable
+            accessibilityLabel="Swipe up"
+            accessibilityRole="button"
+            onPress={actions.swipeUp}
+          >
+            <Text>Swipe up</Text>
+          </Pressable>
+          <Pressable accessibilityLabel="Undo" accessibilityRole="button" onPress={actions.undo}>
+            <Text>Undo</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    function DeckEvents() {
+      ProfileDeck.useDeckEventListener('undo', onUndo);
+
+      return null;
+    }
+
+    function Example() {
+      return (
+        <>
+          <DeckControls />
+          <DeckEvents />
+          <ProfileDeck.Root
+            allowedDirections={['up']}
+            data={profiles}
+            getKey={getProfileKey}
+            undoMotion={SwipeDeckUndoMotion.timing({ duration: 120 })}
+            undoEnabled
+          >
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    await render(<Example />);
+    await measureDeckFromVisibleCard('Ada');
+
+    await user.press(screen.getByRole('button', { name: 'Swipe up' }));
+
+    expect(await screen.findByText('state:1:true:true:false')).toBeOnTheScreen();
+    expect(screen.getByText('Grace')).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(await screen.findByText('state:0:true:false:false')).toBeOnTheScreen();
+    expect(screen.getByText('Ada')).toBeOnTheScreen();
+    expect(onUndo).toHaveBeenCalledWith({
+      direction: 'up',
+      index: 0,
+      item: profiles[0],
+    });
+  });
+
   it('uses the latest allowedDirections for gesture release without clearing event snapshots', async () => {
     const ProfileDeck = createSwipeDeck<Profile>();
     const onSwipe = jest.fn();
@@ -783,7 +1390,7 @@ describe('SwipeDeck factory hooks', () => {
               const accepted = actions.swipeRight();
 
               setProbe(
-                `${String(accepted)}:${interaction.direction.get()}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
+                `${String(accepted)}:${interaction.direction.get()}:${interaction.intentDirection.get() ?? 'null'}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
               );
             }}
           >
@@ -821,7 +1428,7 @@ describe('SwipeDeck factory hooks', () => {
 
     await user.press(screen.getByRole('button', { name: 'Probe swipe right' }));
 
-    expect(await screen.findByText('probe:true:1:right:dismissing')).toBeOnTheScreen();
+    expect(await screen.findByText('probe:true:1:right:right:dismissing')).toBeOnTheScreen();
     expect(screen.getByText('Grace')).toBeOnTheScreen();
 
     await renderResult.rerender(
@@ -830,7 +1437,7 @@ describe('SwipeDeck factory hooks', () => {
 
     await user.press(screen.getByRole('button', { name: 'Probe swipe right' }));
 
-    expect(await screen.findByText('probe:true:0:right:dismissing')).toBeOnTheScreen();
+    expect(await screen.findByText('probe:true:0:right:right:dismissing')).toBeOnTheScreen();
     expect(screen.getByText('Linus')).toBeOnTheScreen();
   });
 
@@ -850,11 +1457,11 @@ describe('SwipeDeck factory hooks', () => {
       const actions = ProfileDeck.useDeckActions();
       const interaction = ProfileDeck.useDeckInteraction();
       const [lastActionResult, setLastActionResult] = useState('none');
-      const [interactionText, setInteractionText] = useState('0:0:0:null:idle');
+      const [interactionText, setInteractionText] = useState('0:0:0:null:null:idle');
 
       useEffect(() => {
         setInteractionText(
-          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
+          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.intentDirection.get() ?? 'null'}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
         );
       }, [interaction, state.activeIndex, state.canUndo]);
 
@@ -938,7 +1545,7 @@ describe('SwipeDeck factory hooks', () => {
 
     expect(await screen.findByText('state:0:true:false:false')).toBeOnTheScreen();
     expect(screen.getByText('Ada')).toBeOnTheScreen();
-    expect(screen.getByText('interaction:0:0:0:null:idle')).toBeOnTheScreen();
+    expect(screen.getByText('interaction:0:0:0:null:null:idle')).toBeOnTheScreen();
     expect(onSwipe).toHaveBeenCalledTimes(1);
     expect(onUndo).toHaveBeenCalledWith({
       direction: 'right',
@@ -1048,7 +1655,7 @@ describe('SwipeDeck factory hooks', () => {
               );
 
               setProbe(
-                `${String(accepted)}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
+                `${String(accepted)}:${interaction.intentDirection.get() ?? 'null'}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
               );
             }}
           >
@@ -1078,7 +1685,7 @@ describe('SwipeDeck factory hooks', () => {
 
     await user.press(screen.getByRole('button', { name: 'Probe undo' }));
 
-    expect(await screen.findByText('probe:true:null:undoing')).toBeOnTheScreen();
+    expect(await screen.findByText('probe:true:null:null:undoing')).toBeOnTheScreen();
     expect(await screen.findByText('state:0:true:false:false')).toBeOnTheScreen();
   });
 
@@ -1089,11 +1696,11 @@ describe('SwipeDeck factory hooks', () => {
     function DeckControls() {
       const state = ProfileDeck.useDeckState();
       const interaction = ProfileDeck.useDeckInteraction();
-      const [interactionText, setInteractionText] = useState('0:0:0:null:idle');
+      const [interactionText, setInteractionText] = useState('0:0:0:null:null:idle');
 
       useEffect(() => {
         setInteractionText(
-          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
+          `${interaction.progress.get()}:${interaction.signedProgress.get()}:${interaction.direction.get()}:${interaction.intentDirection.get() ?? 'null'}:${interaction.dismissDirection.get() ?? 'null'}:${interaction.phase.get()}`,
         );
       }, [interaction, state.activeIndex, state.canSwipe, state.canUndo]);
 
@@ -1136,7 +1743,7 @@ describe('SwipeDeck factory hooks', () => {
     ]);
 
     expect(await screen.findByText('state:0:true:false:false')).toBeOnTheScreen();
-    expect(screen.getByText('interaction:0:0:0:null:idle')).toBeOnTheScreen();
+    expect(screen.getByText('interaction:0:0:0:null:null:idle')).toBeOnTheScreen();
     expect(screen.getByText('Ada')).toBeOnTheScreen();
     expect(onSwipe).not.toHaveBeenCalled();
   });

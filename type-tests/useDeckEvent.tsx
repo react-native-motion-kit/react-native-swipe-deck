@@ -1,5 +1,6 @@
 import type {
   SwipeDeckCardInteractive,
+  SwipeDirection,
   SwipeEvent,
   SwipeEventSource,
   SwipeRenderInfo,
@@ -26,6 +27,8 @@ expectType<SwipeDeckCardInteractive<Profile>>((info) => {
 });
 expectType<SwipeEventSource>('gesture');
 expectType<SwipeEventSource>('programmatic');
+expectType<SwipeDirection>('up');
+expectType<boolean>(ProfileDeck.useDeckActions().swipeUp());
 expectType<SwipeEvent<Profile> | undefined>(ProfileDeck.useDeckEvent('swipe'));
 expectType<SwipeEvent<Profile> | undefined>(ProfileDeck.useDeckEvent('swipe', 'nearby'));
 expectType<SwipeEvent<Profile> | null>(ProfileDeck.useDeckEvent('swipe', null));
@@ -34,7 +37,7 @@ expectType<SwipeEvent<Profile>>(
   ProfileDeck.useDeckEvent('swipe', {
     item: profile,
     index: 0,
-    direction: 'right',
+    direction: 'up',
     source: 'gesture',
   }),
 );
@@ -44,13 +47,19 @@ expectType<boolean>(ProfileDeck.useDeckEvent('endReached', false));
 // @ts-expect-error Empty object hides the event payload shape and must stay invalid.
 ProfileDeck.useDeckEvent('swipe', {});
 
-// @ts-expect-error Swipe events only support left/right directions.
+// @ts-expect-error Swipe events only support public swipe directions.
 ProfileDeck.useDeckEvent('swipe', {
   item: profile,
   index: 0,
-  direction: 'up',
+  direction: 'down',
   source: 'gesture',
 });
+
+const rootWithUpDirection = (
+  <ProfileDeck.Root data={[profile]} getKey={(item) => item.id} allowedDirections={['up']}>
+    <ProfileDeck.Card>{() => null}</ProfileDeck.Card>
+  </ProfileDeck.Root>
+);
 
 const rootWithCallbackProp = (
   // @ts-expect-error Root callback props were intentionally replaced by event hooks.
@@ -82,3 +91,4 @@ void booleanInteractiveCard;
 void predicateInteractiveCard;
 void invalidInteractiveCard;
 void rootWithCallbackProp;
+void rootWithUpDirection;

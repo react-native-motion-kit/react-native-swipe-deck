@@ -3,8 +3,9 @@ import { Easing } from 'react-native-reanimated';
 
 import {
   mergeSwipeDeckMotionPreset,
+  resolveSwipeDeckDismissAxisDuration,
+  resolveSwipeDeckDismissDestination,
   resolveSwipeDeckDismissDestinationDistance,
-  resolveSwipeDeckDismissDuration,
   resolveSwipeDeckDragTranslateY,
   resolveSwipeDeckGestureStartYRatio,
   resolveSwipeDeckMotionConfig,
@@ -421,13 +422,98 @@ describe('resolveSwipeDeckDismissDestinationDistance', () => {
   });
 });
 
-describe('resolveSwipeDeckDismissDuration', () => {
+describe('resolveSwipeDeckDismissDestination', () => {
+  it('keeps the existing left and right X destination while preserving release Y', () => {
+    const destinationArgs = {
+      offscreenMultiplier: 1,
+      layout: { width: 300, height: 500 },
+      rotationMaxDegrees: 18,
+      rotationMode: 'grab-position' as const,
+      gestureStartYRatio: 0.25,
+      translationX: 80,
+      translationY: -36,
+    };
+    const rightDistance = resolveSwipeDeckDismissDestinationDistance({
+      ...destinationArgs,
+      swipeDirection: 'right',
+    });
+    const leftDistance = resolveSwipeDeckDismissDestinationDistance({
+      ...destinationArgs,
+      swipeDirection: 'left',
+    });
+
+    expect(
+      resolveSwipeDeckDismissDestination({
+        ...destinationArgs,
+        swipeDirection: 'right',
+      }),
+    ).toMatchObject({
+      translateX: rightDistance,
+      translateY: -36,
+      axis: 'x',
+    });
+    expect(
+      resolveSwipeDeckDismissDestination({
+        ...destinationArgs,
+        swipeDirection: 'left',
+      }),
+    ).toMatchObject({
+      translateX: -leftDistance,
+      translateY: -36,
+      axis: 'x',
+    });
+  });
+
+  it('resolves upward destinations by preserving X and exiting above the deck', () => {
+    const destination = resolveSwipeDeckDismissDestination({
+      offscreenMultiplier: 1,
+      layout: { width: 300, height: 500 },
+      rotationMaxDegrees: 18,
+      rotationMode: 'grab-position',
+      gestureStartYRatio: 0.25,
+      swipeDirection: 'up',
+      translationX: 42,
+      translationY: -140,
+    });
+
+    expect(destination.axis).toBe('y');
+    expect(destination.translateX).toBe(42);
+    expect(destination.translateY).toBeLessThan(-500);
+  });
+
+  it('normalizes the upward offscreen multiplier', () => {
+    const baseDestination = resolveSwipeDeckDismissDestination({
+      offscreenMultiplier: 1,
+      layout: { width: 300, height: 500 },
+      rotationMaxDegrees: 18,
+      rotationMode: 'grab-position',
+      gestureStartYRatio: 0.25,
+      swipeDirection: 'up',
+      translationX: 0,
+      translationY: 0,
+    });
+    const multipliedDestination = resolveSwipeDeckDismissDestination({
+      offscreenMultiplier: 1.2,
+      layout: { width: 300, height: 500 },
+      rotationMaxDegrees: 18,
+      rotationMode: 'grab-position',
+      gestureStartYRatio: 0.25,
+      swipeDirection: 'up',
+      translationX: 0,
+      translationY: 0,
+    });
+
+    expect(multipliedDestination.translateY).toBeCloseTo(baseDestination.translateY * 1.2);
+  });
+});
+
+describe('resolveSwipeDeckDismissAxisDuration', () => {
   it('uses fixed duration when provided', () => {
     expect(
-      resolveSwipeDeckDismissDuration({
-        translationX: 80,
-        velocityX: 500,
-        destinationX: 450,
+      resolveSwipeDeckDismissAxisDuration({
+        translation: 80,
+        velocity: 500,
+        destination: 450,
         duration: 180,
         minDuration: 120,
         maxDuration: 320,
@@ -437,50 +523,81 @@ describe('resolveSwipeDeckDismissDuration', () => {
 
   it('derives duration from release velocity and clamps it', () => {
     expect(
-      resolveSwipeDeckDismissDuration({
-        translationX: 100,
-        velocityX: 1000,
-        destinationX: 300,
+      resolveSwipeDeckDismissAxisDuration({
+        translation: 100,
+        velocity: 1000,
+        destination: 300,
         minDuration: 120,
         maxDuration: 320,
       }),
     ).toBe(200);
     expect(
-      resolveSwipeDeckDismissDuration({
-        translationX: 100,
-        velocityX: -1000,
-        destinationX: 300,
+      resolveSwipeDeckDismissAxisDuration({
+        translation: 100,
+        velocity: -1000,
+        destination: 300,
         minDuration: 120,
         maxDuration: 320,
       }),
     ).toBe(320);
     expect(
-      resolveSwipeDeckDismissDuration({
-        translationX: -100,
-        velocityX: -1000,
-        destinationX: -300,
+      resolveSwipeDeckDismissAxisDuration({
+        translation: -100,
+        velocity: -1000,
+        destination: -300,
         minDuration: 120,
         maxDuration: 320,
       }),
     ).toBe(200);
     expect(
-      resolveSwipeDeckDismissDuration({
-        translationX: 100,
-        velocityX: 10_000,
-        destinationX: 300,
+      resolveSwipeDeckDismissAxisDuration({
+        translation: 100,
+        velocity: 10_000,
+        destination: 300,
         minDuration: 120,
         maxDuration: 320,
       }),
     ).toBe(120);
     expect(
-      resolveSwipeDeckDismissDuration({
-        translationX: 100,
-        velocityX: 1,
-        destinationX: 300,
+      resolveSwipeDeckDismissAxisDuration({
+        translation: 100,
+        velocity: 1,
+        destination: 300,
         minDuration: 120,
         maxDuration: 320,
       }),
     ).toBe(320);
+  });
+
+  it('uses the generalized axis duration for upward Y motion', () => {
+    expect(
+      resolveSwipeDeckDismissAxisDuration({
+        translation: -100,
+        velocity: -1000,
+        destination: -300,
+        minDuration: 120,
+        maxDuration: 320,
+      }),
+    ).toBe(200);
+    expect(
+      resolveSwipeDeckDismissAxisDuration({
+        translation: -100,
+        velocity: 1000,
+        destination: -300,
+        minDuration: 120,
+        maxDuration: 320,
+      }),
+    ).toBe(320);
+    expect(
+      resolveSwipeDeckDismissAxisDuration({
+        translation: -100,
+        velocity: -1000,
+        destination: -300,
+        duration: 180,
+        minDuration: 120,
+        maxDuration: 320,
+      }),
+    ).toBe(180);
   });
 });
 

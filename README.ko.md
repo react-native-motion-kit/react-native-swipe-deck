@@ -24,7 +24,7 @@ Reanimated, Worklets, Gesture Handler를 기반으로 card stack, like/pass butt
 - 🪟 **Bounded Render Window** - 전체 데이터가 아니라 active card와 작은 forward stack만 mount합니다
 - 🧬 **Item-Stable Promotion** - 안정적인 item key로 promoted card가 React Native view identity를 유지합니다
 - 🧠 **Typed Compound API** - Root, Card, hook, action, event를 하나의 typed deck family로 묶습니다
-- 🎛️ **외부 제어 API** - button이나 다른 UI에서 swipeLeft, swipeRight, undo를 programmatic하게 실행합니다
+- 🎛️ **외부 제어 API** - button이나 다른 UI에서 swipeLeft, swipeRight, swipeUp, undo를 programmatic하게 실행합니다
 - 🎨 **Motion Recipes** - gesture motion, programmatic action, undo restore를 각각 독립적으로 조정합니다
 - 🧩 **Multi-Instance Management** - 안정적인 factory-scoped id로 여러 deck root를 독립적으로 관리합니다
 - ↩️ **Undo Support** - action-safe undo motion과 LIFO history로 back-swipe UX를 opt-in으로 제공합니다
@@ -82,7 +82,7 @@ function ProfileCard({ profile }: { profile: Profile }) {
 
 function ProfileDeckControls() {
   const { activeIndex, count, canSwipe } = ProfileDeck.useDeckState();
-  const { swipeLeft, swipeRight } = ProfileDeck.useDeckActions();
+  const { swipeLeft, swipeRight, swipeUp } = ProfileDeck.useDeckActions();
   const current = activeIndex >= 0 ? activeIndex + 1 : 0;
 
   return (
@@ -94,6 +94,9 @@ function ProfileDeckControls() {
       <Pressable disabled={!canSwipe} onPress={swipeRight}>
         <Text>Like</Text>
       </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeUp}>
+        <Text>Up</Text>
+      </Pressable>
     </View>
   );
 }
@@ -101,7 +104,12 @@ function ProfileDeckControls() {
 export function ProfileDeckScreen({ profiles }: { profiles: Profile[] }) {
   return (
     <View>
-      <ProfileDeck.Root data={profiles} getKey={(item) => item.id} visibleCardCount={3}>
+      <ProfileDeck.Root
+        data={profiles}
+        getKey={(item) => item.id}
+        allowedDirections={['left', 'right', 'up']}
+        visibleCardCount={3}
+      >
         <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
       </ProfileDeck.Root>
 

@@ -8,7 +8,12 @@ import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reani
 import type { SwipeDeckRenderedCardMotionConfig } from '../core/renderedCardMotionTypes';
 import type { SwipeRenderTransition } from '../core/rendering';
 import type { SwipeWindowDescriptor } from '../core/windowing';
-import type { SwipeDeckCardInteractive, SwipeDeckCardProps, SwipeRenderInfo } from '../types';
+import type {
+  SwipeDeckCardInteractive,
+  SwipeDeckCardProps,
+  SwipeDirection,
+  SwipeRenderInfo,
+} from '../types';
 
 import {
   resolveSwipeDeckDragTranslateY,
@@ -30,14 +35,44 @@ type SwipeDeckRenderedCardProps<T> = {
   swipeProgress: SharedValue<number>;
   activeTranslateX: SharedValue<number>;
   activeTranslateY: SharedValue<number>;
+  dismissDirection: SharedValue<SwipeDirection | null>;
   dragItemIndex: SharedValue<number>;
   undoItemKey?: string;
   undoProgress: SharedValue<number>;
   undoFromTranslateX: SharedValue<number>;
+  undoFromTranslateY: SharedValue<number>;
   activeItemIndex: SharedValue<number>;
   gestureStartYRatio: SharedValue<number>;
   motionConfig: SwipeDeckRenderedCardMotionConfig;
 };
+
+function resolveSwipeDeckRenderedTranslateY({
+  dismissDirection,
+  dragMode,
+  liftYFactor,
+  translationX,
+  translationY,
+}: {
+  dismissDirection: SwipeDirection | null;
+  dragMode: SwipeDeckRenderedCardMotionConfig['drag']['mode'];
+  liftYFactor: number;
+  translationX: number;
+  translationY: number;
+}): number {
+  'worklet';
+
+  // Horizontal mode constrains finger input, not an accepted upward dismiss animation.
+  if (dragMode === 'horizontal' && dismissDirection === 'up') {
+    return translationY;
+  }
+
+  return resolveSwipeDeckDragTranslateY({
+    mode: dragMode,
+    liftYFactor,
+    translationX,
+    translationY,
+  });
+}
 
 function resolveSwipeDeckCardInteractive<T>(
   interactive: SwipeDeckCardInteractive<T> | undefined,
@@ -75,10 +110,12 @@ export function SwipeDeckRenderedCard<T>({
   swipeProgress,
   activeTranslateX,
   activeTranslateY,
+  dismissDirection,
   dragItemIndex,
   undoItemKey,
   undoProgress,
   undoFromTranslateX,
+  undoFromTranslateY,
   activeItemIndex,
   gestureStartYRatio,
   motionConfig,
@@ -95,9 +132,10 @@ export function SwipeDeckRenderedCard<T>({
         ? undoFromTranslateX.get() * undoProgress.get()
         : activeTranslateX.get();
       const translateY = isUndoItem
-        ? 0
-        : resolveSwipeDeckDragTranslateY({
-            mode: drag.mode,
+        ? undoFromTranslateY.get() * undoProgress.get()
+        : resolveSwipeDeckRenderedTranslateY({
+            dismissDirection: dismissDirection.get(),
+            dragMode: drag.mode,
             liftYFactor: drag.liftYFactor,
             translationX: translateX,
             translationY: activeTranslateY.get(),
@@ -170,6 +208,7 @@ export function SwipeDeckRenderedCard<T>({
     activeItemIndex,
     activeTranslateX,
     activeTranslateY,
+    dismissDirection,
     drag.liftYFactor,
     drag.mode,
     dragItemIndex,
@@ -186,6 +225,7 @@ export function SwipeDeckRenderedCard<T>({
     swipeProgress,
     transition,
     undoFromTranslateX,
+    undoFromTranslateY,
     undoItemKey,
     undoProgress,
   ]);

@@ -15,11 +15,11 @@ import type {
   SwipeEventSource,
 } from '../types';
 
-import { resolveAllowedSwipeDirection, resolveSwipeDirection } from '../core/directions';
-import { resolveProgressDirection, resolveSignedSwipeProgress } from '../core/swipeDeckRuntime';
+import { resolveSwipeDirection } from '../core/directions';
+import { resolveSwipeProgressIntent, resolveSwipeDirectionSignal } from '../core/swipeDeckRuntime';
 import {
-  resolveSwipeDeckDismissDestinationDistance,
-  resolveSwipeDeckDismissDuration,
+  resolveSwipeDeckDismissDestination,
+  resolveSwipeDeckDismissAxisDuration,
   resolveSwipeDeckGestureStartYRatio,
 } from '../motion/animation';
 
@@ -56,6 +56,7 @@ type UseSwipeDeckGestureRuntimeArgs = {
   dragItemIndex: SharedValue<number>;
   gestureStartYRatio: SharedValue<number>;
   hasActiveCard: boolean;
+  intentDirection: SharedValue<SwipeDirection | null>;
   isAnimating: SharedValue<boolean>;
   isDragging: SharedValue<boolean>;
   interactionPhase: SharedValue<SwipeDeckInteractionPhase>;
@@ -95,6 +96,7 @@ export function useSwipeDeckGestureRuntime({
   dragItemIndex,
   gestureStartYRatio,
   hasActiveCard,
+  intentDirection,
   isAnimating,
   isDragging,
   interactionPhase,
@@ -130,6 +132,7 @@ export function useSwipeDeckGestureRuntime({
           isDragging.set(true);
           interactionPhase.set('dragging');
           dismissDirection.set(null);
+          intentDirection.set(null);
           swipeDirectionSignal.set(0);
           signedSwipeProgress.set(0);
           scheduleOnRN(applyScheduledRuntimeState, nextRuntimeEventId, false, true);
@@ -159,13 +162,18 @@ export function useSwipeDeckGestureRuntime({
 
           activeTranslateX.set(event.translationX);
           activeTranslateY.set(event.translationY);
-          swipeProgress.set(
-            Math.min(Math.abs(event.translationX) / Math.max(swipeProgressDistance, 1), 1),
-          );
-          signedSwipeProgress.set(
-            resolveSignedSwipeProgress(event.translationX, swipeProgressDistance),
-          );
-          swipeDirectionSignal.set(resolveProgressDirection(event.translationX));
+          const progressIntent = resolveSwipeProgressIntent({
+            translationX: event.translationX,
+            translationY: event.translationY,
+            distance: swipeProgressDistance,
+            directionPolicy: allowedDirectionPolicy.get(),
+            dragMode: cardMotionConfig.drag.mode,
+          });
+
+          swipeProgress.set(progressIntent.progress);
+          signedSwipeProgress.set(progressIntent.signedProgress);
+          swipeDirectionSignal.set(progressIntent.direction);
+          intentDirection.set(progressIntent.intentDirection);
         })
         .onEnd((event) => {
           hasHandledGestureEnd.set(true);
@@ -174,18 +182,18 @@ export function useSwipeDeckGestureRuntime({
             return;
           }
 
-          const resolvedDirection = resolveSwipeDirection({
+          const direction = resolveSwipeDirection({
             translationX: event.translationX,
+            translationY: event.translationY,
             velocityX: event.velocityX,
+            velocityY: event.velocityY,
+            directionPolicy: allowedDirectionPolicy.get(),
             disabled: disabled || !hasActiveCard,
+            dragMode: cardMotionConfig.drag.mode,
             layout,
             swipeThreshold: resolvedSwipeThreshold,
             velocityThreshold: resolvedVelocityThreshold,
           });
-          const direction = resolveAllowedSwipeDirection(
-            resolvedDirection,
-            allowedDirectionPolicy.get(),
-          );
 
           if (dragItemIndex.get() < 0) {
             dragItemIndex.set(activeItemIndex.get());
@@ -200,6 +208,7 @@ export function useSwipeDeckGestureRuntime({
                   isDragging.set(false);
                   interactionPhase.set('idle');
                   dismissDirection.set(null);
+                  intentDirection.set(null);
                   swipeDirectionSignal.set(0);
                   const nextRuntimeEventId = runtimeEventId.get() + 1;
 
@@ -219,10 +228,11 @@ export function useSwipeDeckGestureRuntime({
           isDragging.set(true);
           interactionPhase.set('dismissing');
           dismissDirection.set(direction);
+          intentDirection.set(direction);
           const currentAttachmentGeneration = attachmentGeneration.get();
 
           scheduleOnRN(applyScheduledRuntimeState, runtimeEventId.get(), true, true);
-          const destinationDistance = resolveSwipeDeckDismissDestinationDistance({
+          const destination = resolveSwipeDeckDismissDestination({
             offscreenMultiplier: dismissOffscreenMultiplier,
             layout,
             rotationMaxDegrees: cardMotionConfig.rotation.maxDegrees,
@@ -231,12 +241,13 @@ export function useSwipeDeckGestureRuntime({
             rotationDirection: cardMotionConfig.rotation.direction,
             gestureStartYRatio: gestureStartYRatio.get(),
             swipeDirection: direction,
-          });
-          const exitX = direction === 'right' ? destinationDistance : -destinationDistance;
-          const resolvedDismissDuration = resolveSwipeDeckDismissDuration({
             translationX: event.translationX,
-            velocityX: event.velocityX,
-            destinationX: exitX,
+            translationY: event.translationY,
+          });
+          const resolvedDismissDuration = resolveSwipeDeckDismissAxisDuration({
+            translation: destination.axis === 'x' ? event.translationX : event.translationY,
+            velocity: destination.axis === 'x' ? event.velocityX : event.velocityY,
+            destination: destination.axis === 'x' ? destination.translateX : destination.translateY,
             duration: dismissDuration,
             minDuration: dismissMinDuration,
             maxDuration: dismissMaxDuration,
@@ -246,14 +257,27 @@ export function useSwipeDeckGestureRuntime({
             easing: dismissEasing,
           };
 
-          swipeDirectionSignal.set(direction === 'right' ? 1 : -1);
-          signedSwipeProgress.set(withTiming(direction === 'right' ? 1 : -1, dismissTimingConfig));
+          const progressDirection = resolveSwipeDirectionSignal(direction);
+
+          swipeDirectionSignal.set(progressDirection);
+          signedSwipeProgress.set(withTiming(progressDirection, dismissTimingConfig));
           swipeProgress.set(withTiming(1, dismissTimingConfig));
-          activeTranslateX.set(
-            withTiming(exitX, dismissTimingConfig, (finished) => {
+          activeTranslateY.set(
+            withTiming(destination.translateY, dismissTimingConfig, (finished) => {
               'worklet';
 
-              completeSwipeDismiss(finished, currentAttachmentGeneration, direction, 'gesture');
+              if (destination.axis === 'y') {
+                completeSwipeDismiss(finished, currentAttachmentGeneration, direction, 'gesture');
+              }
+            }),
+          );
+          activeTranslateX.set(
+            withTiming(destination.translateX, dismissTimingConfig, (finished) => {
+              'worklet';
+
+              if (destination.axis === 'x') {
+                completeSwipeDismiss(finished, currentAttachmentGeneration, direction, 'gesture');
+              }
             }),
           );
         })
@@ -272,6 +296,7 @@ export function useSwipeDeckGestureRuntime({
           swipeProgress.set(0);
           signedSwipeProgress.set(0);
           swipeDirectionSignal.set(0);
+          intentDirection.set(null);
           isDragging.set(false);
           interactionPhase.set('idle');
           dragItemIndex.set(-1);
@@ -289,6 +314,7 @@ export function useSwipeDeckGestureRuntime({
       applyScheduledRuntimeState,
       attachmentGeneration,
       cancelSpringConfig,
+      cardMotionConfig.drag.mode,
       cardMotionConfig.rotation.direction,
       cardMotionConfig.rotation.maxDegrees,
       cardMotionConfig.rotation.mode,
@@ -305,6 +331,7 @@ export function useSwipeDeckGestureRuntime({
       gestureStartYRatio,
       hasActiveCard,
       hasHandledGestureEnd,
+      intentDirection,
       isAnimating,
       isDragging,
       interactionPhase,

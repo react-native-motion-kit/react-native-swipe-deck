@@ -33,7 +33,7 @@ features:
     details: Create one typed deck family with Root, Card, hooks, actions, and events.
     icon: 🧠
   - title: External Control API
-    details: Trigger swipeLeft, swipeRight, and undo from buttons or other UI components.
+    details: Trigger swipeLeft, swipeRight, swipeUp, and undo from buttons or other UI components.
     icon: 🎛️
   - title: Motion Recipes
     details: Tune gesture motion, programmatic actions, and undo restores independently.

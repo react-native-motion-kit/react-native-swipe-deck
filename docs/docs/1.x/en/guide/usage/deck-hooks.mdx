@@ -38,7 +38,7 @@ Returns stable action callbacks.
 ```tsx
 function Controls() {
   const { canSwipe, canUndo } = ProfileDeck.useDeckState();
-  const { swipeLeft, swipeRight, undo } = ProfileDeck.useDeckActions();
+  const { swipeLeft, swipeRight, swipeUp, undo } = ProfileDeck.useDeckActions();
 
   return (
     <View>
@@ -51,15 +51,19 @@ function Controls() {
       <Pressable disabled={!canSwipe} onPress={swipeRight}>
         <Text>Like</Text>
       </Pressable>
+      <Pressable disabled={!canSwipe} onPress={swipeUp}>
+        <Text>Up</Text>
+      </Pressable>
     </View>
   );
 }
 ```
 
-`swipeLeft()` and `swipeRight()` return `true` when accepted and `false` when the
-deck is unattached, disabled, animating, unmeasured, completed, or the direction
-is not allowed. `undo()` returns `true` when `canUndo` is true, including after
-the deck is completed.
+`swipeLeft()`, `swipeRight()`, and `swipeUp()` return `true` when accepted and
+`false` when the deck is unattached, disabled, animating, unmeasured, completed,
+or the direction is not allowed. `swipeUp()` requires `allowedDirections` to
+include `'up'`, but it is not blocked by horizontal drag mode. `undo()` returns
+`true` when `canUndo` is true, including after the deck is completed.
 
 ## `useDeckInteraction(id?)`
 
@@ -67,7 +71,7 @@ Returns Reanimated shared values for progress-driven UI.
 
 ```tsx
 function SwipeReactionOverlay() {
-  const { signedProgress } = ProfileDeck.useDeckInteraction();
+  const { intentDirection, progress, signedProgress } = ProfileDeck.useDeckInteraction();
 
   const likeStyle = useAnimatedStyle(() => {
     const progress = Math.max(signedProgress.get(), 0);
@@ -78,23 +82,40 @@ function SwipeReactionOverlay() {
     };
   });
 
-  return <Animated.View pointerEvents="none" style={likeStyle} />;
+  const upStyle = useAnimatedStyle(() => {
+    const upProgress = intentDirection.get() === 'up' ? progress.get() : 0;
+
+    return {
+      opacity: upProgress,
+      transform: [{ scale: 0.9 + upProgress * 0.18 }],
+    };
+  });
+
+  return (
+    <View pointerEvents="none">
+      <Animated.Text style={likeStyle}>LIKE</Animated.Text>
+      <Animated.Text style={upStyle}>SUPER LIKE</Animated.Text>
+    </View>
+  );
 }
 ```
 
 Interaction values update on the UI thread and do not rerender React every
 gesture frame.
 
-| Value              | Meaning                                                |
-| ------------------ | ------------------------------------------------------ |
-| `progress`         | Absolute swipe progress from `0` to `1`.               |
-| `signedProgress`   | Signed progress from `-1` to `1`.                      |
-| `direction`        | Raw live direction signal: `-1`, `0`, or `1`.          |
-| `dismissDirection` | Accepted dismiss side: `'left'`, `'right'`, or `null`. |
-| `translationX`     | Active card horizontal translation.                    |
-| `translationY`     | Active card vertical translation.                      |
-| `isDragging`       | Whether the deck is dragging or dismissing.            |
-| `phase`            | `idle`, `dragging`, `dismissing`, or `undoing`.        |
+| Value              | Meaning                                                                       |
+| ------------------ | ----------------------------------------------------------------------------- |
+| `progress`         | Dominant enabled-axis progress from `0` to `1`.                               |
+| `signedProgress`   | Horizontal signed progress from `-1` to `1`; up is `0`.                       |
+| `direction`        | Horizontal live signal: `-1`, `0`, or `1`; up is `0`.                         |
+| `intentDirection`  | Policy-filtered live semantic intent: `'left'`, `'right'`, `'up'`, or `null`. |
+| `dismissDirection` | Accepted dismiss side: `'left'`, `'right'`, `'up'`, or `null`.                |
+| `translationX`     | Active card horizontal translation.                                           |
+| `translationY`     | Active card vertical translation.                                             |
+| `isDragging`       | Whether the deck is dragging or dismissing.                                   |
+| `phase`            | `idle`, `dragging`, `dismissing`, or `undoing`.                               |
 
-Use `phase` for frame-synchronous visual feedback. Use event hooks for
-committed state changes.
+Use `intentDirection` for one-at-a-time live reaction overlays. It updates on
+each drag frame, stays set to an accepted direction while dismissing, and resets
+with the rest of the interaction values. Use `phase` for frame-synchronous
+visual feedback. Use event hooks for committed state changes.

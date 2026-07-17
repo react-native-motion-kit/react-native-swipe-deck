@@ -106,6 +106,7 @@ describe('SwipeDeckUndoMotion', () => {
       type: 'spring',
       from: {
         translateX: 450,
+        translateY: 0,
       },
     });
 
@@ -120,6 +121,7 @@ describe('SwipeDeckUndoMotion', () => {
       type: 'timing',
       from: {
         translateX: -450,
+        translateY: 0,
       },
       duration: 0,
     });
@@ -137,6 +139,7 @@ describe('SwipeDeckUndoMotion', () => {
       duration: 0,
       from: {
         translateX: 450,
+        translateY: 0,
       },
     });
   });
@@ -157,8 +160,44 @@ describe('SwipeDeckUndoMotion', () => {
       type: 'timing',
       from: {
         translateX: -600,
+        translateY: 0,
       },
       duration: 180,
+    });
+  });
+
+  it('resolves auto and explicit up entry vectors from above', () => {
+    expect(
+      resolveSwipeDeckUndoMotion({
+        defaultEntryDistance: 520,
+        layout: { width: 300, height: 500 },
+        originalDirection: 'up',
+        recipe: SwipeDeckUndoMotion.timing(),
+      }),
+    ).toMatchObject({
+      type: 'timing',
+      from: {
+        translateX: 0,
+        translateY: -520,
+      },
+    });
+
+    expect(
+      resolveSwipeDeckUndoMotion({
+        defaultEntryDistance: 520,
+        layout: { width: 300, height: 500 },
+        originalDirection: 'right',
+        recipe: SwipeDeckUndoMotion.spring({
+          from: 'up',
+          entryDistance: 600,
+        }),
+      }),
+    ).toMatchObject({
+      type: 'spring',
+      from: {
+        translateX: 0,
+        translateY: -600,
+      },
     });
   });
 });

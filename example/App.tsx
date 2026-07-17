@@ -29,7 +29,7 @@ const profiles: Profile[] = Array.from({ length: 150 }, (_, index) => ({
 const ProfileDeck = createSwipeDeck<Profile>({
   motion: SwipeDeckMotion.tinder({
     drag: {
-      mode: 'free',
+      mode: 'horizontal',
       liftYFactor: 0.3,
     },
     rotation: {
@@ -62,28 +62,45 @@ const ProfileDeck = createSwipeDeck<Profile>({
 });
 
 function SwipeReactionOverlay() {
-  const { signedProgress } = ProfileDeck.useDeckInteraction();
+  const { intentDirection, progress, signedProgress } = ProfileDeck.useDeckInteraction();
 
   const passStyle = useAnimatedStyle(() => {
-    const progress = Math.max(-signedProgress.get(), 0);
+    const passProgress = Math.max(-signedProgress.get(), 0);
 
     return {
-      opacity: progress,
-      transform: [{ scale: 0.9 + progress * 0.18 }],
+      opacity: passProgress,
+      transform: [{ scale: 0.9 + passProgress * 0.18 }],
     };
   });
 
   const likeStyle = useAnimatedStyle(() => {
-    const progress = Math.max(signedProgress.get(), 0);
+    const likeProgress = Math.max(signedProgress.get(), 0);
 
     return {
-      opacity: progress,
-      transform: [{ scale: 0.9 + progress * 0.18 }],
+      opacity: likeProgress,
+      transform: [{ scale: 0.9 + likeProgress * 0.18 }],
+    };
+  });
+
+  const upStyle = useAnimatedStyle(() => {
+    const upwardProgress = intentDirection.get() === 'up' ? progress.get() : 0;
+
+    return {
+      opacity: upwardProgress,
+      transform: [
+        { translateY: -upwardProgress * 18 },
+        { scale: 0.9 + upwardProgress * 0.18 },
+      ] as const,
     };
   });
 
   return (
     <View pointerEvents="none" style={styles.reactionOverlay}>
+      <View style={[styles.reactionAnchor, styles.upAnchor]}>
+        <Animated.View style={[styles.reactionBadge, styles.upBadge, upStyle]}>
+          <Text style={styles.reactionText}>UP</Text>
+        </Animated.View>
+      </View>
       <View style={[styles.reactionAnchor, styles.passAnchor]}>
         <Animated.View style={[styles.reactionBadge, styles.passBadge, passStyle]}>
           <Text style={styles.reactionText}>PASS</Text>
@@ -137,6 +154,12 @@ function DeckPhaseFeedback() {
     };
   });
 
+  const upDismissStyle = useAnimatedStyle(() => {
+    return {
+      opacity: dismissDirection.get() === 'up' ? 1 : 0.24,
+    };
+  });
+
   return (
     <View pointerEvents="none" style={styles.phaseFeedback}>
       <Animated.View style={[styles.phasePill, styles.idlePhasePill, idleStyle]}>
@@ -156,6 +179,9 @@ function DeckPhaseFeedback() {
       </Animated.View>
       <Animated.View style={[styles.phasePill, styles.rightDismissPill, rightDismissStyle]}>
         <Text style={styles.phaseText}>Right</Text>
+      </Animated.View>
+      <Animated.View style={[styles.phasePill, styles.upDismissPill, upDismissStyle]}>
+        <Text style={styles.phaseText}>Up</Text>
       </Animated.View>
     </View>
   );
@@ -189,7 +215,7 @@ function ProfileCard({ isActive, profile, role }: ProfileCardProps) {
 
 function ProfileDeckControls() {
   const { activeIndex, count, canSwipe, canUndo, isCompleted } = ProfileDeck.useDeckState();
-  const { swipeLeft, swipeRight, undo } = ProfileDeck.useDeckActions();
+  const { swipeLeft, swipeRight, swipeUp, undo } = ProfileDeck.useDeckActions();
   const current = activeIndex >= 0 ? activeIndex + 1 : 0;
   const counterText = isCompleted ? 'Done' : `${current} / ${count}`;
 
@@ -227,6 +253,22 @@ function ProfileDeckControls() {
         >
           <Text style={styles.actionText}>Like</Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          disabled={!canSwipe}
+          onPress={() =>
+            swipeUp(
+              SwipeDeckActionMotion.direct({
+                duration: 420,
+                easing: Easing.out(Easing.cubic),
+                offscreenMultiplier: 1.2,
+              }),
+            )
+          }
+          style={[styles.actionButton, styles.upButton, !canSwipe && styles.disabledButton]}
+        >
+          <Text style={styles.actionText}>Up</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -261,6 +303,7 @@ export default function App() {
 
         <View style={styles.deckFrame}>
           <ProfileDeck.Root
+            allowedDirections={['left', 'right', 'up']}
             data={profiles}
             getKey={(item) => item.id}
             undoEnabled
@@ -385,6 +428,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 48,
   },
+  upAnchor: {
+    alignSelf: 'center',
+    left: 0,
+    right: 0,
+  },
   passAnchor: {
     right: 24,
     transform: [{ rotate: '12deg' }],
@@ -404,6 +452,10 @@ const styles = StyleSheet.create({
   },
   likeBadge: {
     borderColor: '#34d399',
+  },
+  upBadge: {
+    alignSelf: 'center',
+    borderColor: '#60a5fa',
   },
   reactionText: {
     color: '#fff',
@@ -457,6 +509,9 @@ const styles = StyleSheet.create({
   rightDismissPill: {
     backgroundColor: 'rgba(74, 222, 128, 0.82)',
   },
+  upDismissPill: {
+    backgroundColor: 'rgba(96, 165, 250, 0.82)',
+  },
   phaseText: {
     color: '#09090b',
     fontSize: 10,
@@ -465,16 +520,18 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   actions: {
+    alignSelf: 'stretch',
     flexDirection: 'row',
-    gap: 16,
+    gap: 10,
   },
   actionButton: {
     alignItems: 'center',
     borderRadius: 999,
+    flex: 1,
     height: 58,
     justifyContent: 'center',
-    minWidth: 112,
-    paddingHorizontal: 22,
+    minWidth: 0,
+    paddingHorizontal: 12,
   },
   passButton: {
     backgroundColor: '#fb7185',
@@ -482,16 +539,20 @@ const styles = StyleSheet.create({
   likeButton: {
     backgroundColor: '#34d399',
   },
+  upButton: {
+    backgroundColor: '#60a5fa',
+  },
   undoButton: {
     backgroundColor: '#fbbf24',
   },
   iconButton: {
     alignItems: 'center',
     borderRadius: 999,
+    flex: 1,
     height: 58,
     justifyContent: 'center',
-    minWidth: 88,
-    paddingHorizontal: 18,
+    minWidth: 0,
+    paddingHorizontal: 12,
   },
   disabledButton: {
     opacity: 0.45,

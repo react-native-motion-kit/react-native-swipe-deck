@@ -11,6 +11,9 @@ import type {
   SwipeDeckUndoTimingMotionRecipe,
   SwipeDirection,
 } from '../types';
+import type { SwipeDeckMotionTranslation } from './motionGeometry';
+
+import { resolveSwipeDeckDirectionTranslation } from './motionGeometry';
 
 const UNDO_MOTION_KIND = 'swipe-deck-undo-motion';
 const DEFAULT_UNDO_TIMING_DURATION = 0;
@@ -23,17 +26,13 @@ const DEFAULT_UNDO_SPRING_CONFIG: WithSpringConfig = {
 
 type ResolvedSwipeDeckUndoSpringMotion = {
   type: 'spring';
-  from: {
-    translateX: number;
-  };
+  from: SwipeDeckMotionTranslation;
   springConfig: NonNullable<SwipeDeckUndoSpringMotionOptions['springConfig']>;
 };
 
 type ResolvedSwipeDeckUndoTimingMotion = {
   type: 'timing';
-  from: {
-    translateX: number;
-  };
+  from: SwipeDeckMotionTranslation;
   duration: number;
   easing: SwipeDeckMotionEasing;
 };
@@ -67,7 +66,7 @@ function resolveLayoutValue(
   return value ?? fallback;
 }
 
-function getUndoMotionFromSide(
+export function resolveSwipeDeckUndoEntryDirection(
   from: SwipeDeckUndoMotionFrom | undefined,
   originalDirection: SwipeDirection,
 ): SwipeDirection {
@@ -130,13 +129,15 @@ export function resolveSwipeDeckUndoMotion({
   originalDirection,
   recipe = SwipeDeckUndoMotion.timing(),
 }: ResolveSwipeDeckUndoMotionArgs): ResolvedSwipeDeckUndoMotion {
-  const fromSide = getUndoMotionFromSide(recipe.from, originalDirection);
+  const fromSide = resolveSwipeDeckUndoEntryDirection(recipe.from, originalDirection);
   const entryDistance = Math.max(
     resolveLayoutValue(recipe.entryDistance, layout, defaultEntryDistance),
     1,
   );
-  const translateX = fromSide === 'right' ? entryDistance : -entryDistance;
-  const from = { translateX };
+  const from = resolveSwipeDeckDirectionTranslation({
+    direction: fromSide,
+    distance: entryDistance,
+  });
 
   if (recipe.type === 'timing') {
     return {

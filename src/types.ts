@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from 'react';
 import type { GestureResponderEvent, StyleProp, ViewStyle } from 'react-native';
 import type { SharedValue, WithSpringConfig, WithTimingConfig } from 'react-native-reanimated';
 
-export type SwipeDirection = 'left' | 'right';
+export type SwipeDirection = 'left' | 'right' | 'up';
 
 export type SwipeEventSource = 'gesture' | 'programmatic';
 
@@ -31,9 +31,9 @@ export type SwipeEvent<T> = {
    * How the swipe was committed.
    *
    * `gesture` means the user pan gesture released past the configured threshold/velocity policy.
-   * `programmatic` means the swipe was committed through `actions.swipeLeft()` or
-   * `actions.swipeRight()`. Programmatic does not imply a button; callers may map it to their own UI
-   * trigger when appropriate.
+   * `programmatic` means the swipe was committed through `actions.swipeLeft()`,
+   * `actions.swipeRight()`, or `actions.swipeUp()`. Programmatic does not imply a button;
+   * callers may map it to their own UI trigger when appropriate.
    */
   source: SwipeEventSource;
 };
@@ -200,7 +200,7 @@ export type SwipeDeckTinderMotionConfig = {
    */
   nextTranslateY?: number;
   /**
-   * Horizontal drag distance that maps to full visual progress.
+   * Dominant enabled-axis drag distance that maps to full visual progress.
    * Defaults to `max(layout.width * 0.35, 120)`.
    */
   swipeProgressDistance?: number | ((layout: SwipeDeckLayout) => number);
@@ -235,9 +235,9 @@ export type SwipeDeckTinderMotionConfig = {
   rotation?: SwipeDeckTinderRotationConfig;
   /** Dismiss motion and swipe recognition defaults. */
   dismiss?: {
-    /** Horizontal drag distance required to commit a swipe. Root `swipeThreshold` overrides this. */
+    /** Dominant enabled-axis distance required to commit a swipe. Root `swipeThreshold` overrides this. */
     threshold?: number | ((layout: SwipeDeckLayout) => number);
-    /** Horizontal velocity required to commit a flick swipe. Root `velocityThreshold` overrides this. */
+    /** Dominant enabled-axis velocity required to commit a flick swipe. Root `velocityThreshold` overrides this. */
     velocityThreshold?: number;
     /**
      * Multiplier applied to the release-time distance needed to clear the rotated card bounds.
@@ -434,7 +434,8 @@ export type SwipeDeckProps<T> = {
   /**
    * Dismiss directions accepted by this Root.
    *
-   * Omit to allow both directions. Pass `['left']` or `['right']` to allow only one direction.
+   * Omit to allow left and right. Include `'up'` explicitly to accept upward dismisses.
+   * Gesture up requires free drag mode; programmatic `swipeUp()` is not affected by drag mode.
    * Pass an empty array to allow dragging but reject every dismiss release and programmatic swipe
    * action. Rejected gesture releases use the same snap-back path as threshold misses.
    */
@@ -443,7 +444,7 @@ export type SwipeDeckProps<T> = {
   velocityThreshold?: number;
   /** Motion preset for this deck instance. Overrides factory motion defaults. */
   motion?: SwipeDeckMotionPreset;
-  /** Programmatic swipe motion recipe for actions such as `swipeLeft()` and `swipeRight()`. */
+  /** Programmatic swipe motion recipe for actions such as `swipeLeft()`, `swipeRight()`, and `swipeUp()`. */
   actionMotion?: SwipeDeckActionMotionRecipe;
   /** Programmatic undo restore motion recipe for `actions.undo()`. */
   undoMotion?: SwipeDeckUndoMotionRecipe;
@@ -549,6 +550,8 @@ export type SwipeDeckActions = {
   swipeLeft: SwipeDeckAction;
   /** Programmatically dismiss the active card to the right. Returns whether the action was accepted. */
   swipeRight: SwipeDeckAction;
+  /** Programmatically dismiss the active card upward. Returns whether the action was accepted. */
+  swipeUp: SwipeDeckAction;
   /** Programmatically restore the latest swiped card. Returns whether the action was accepted. */
   undo: SwipeDeckUndoAction;
 };
@@ -556,12 +559,19 @@ export type SwipeDeckActions = {
 export type SwipeDeckInteractionPhase = 'idle' | 'dragging' | 'dismissing' | 'undoing';
 
 export type SwipeDeckInteraction = {
-  /** Absolute swipe progress from `0` to `1`. */
+  /** Absolute dominant-axis swipe progress from `0` to `1`. */
   progress: SharedValue<number>;
-  /** Signed swipe progress from `-1` to `1`; left is negative and right is positive. */
+  /** Signed horizontal swipe progress from `-1` to `1`; left is negative, right is positive, and up is `0`. */
   signedProgress: SharedValue<number>;
-  /** Current swipe direction signal; left is `-1`, idle is `0`, right is `1`. */
+  /** Current horizontal swipe direction signal; left is `-1`, idle/up is `0`, right is `1`. */
   direction: SharedValue<-1 | 0 | 1>;
+  /**
+   * Policy-filtered live semantic swipe intent.
+   *
+   * Use this for overlays that need exactly one of `left`, `right`, `up`, or `null` without
+   * re-deriving upward intent from raw translation.
+   */
+  intentDirection: SharedValue<SwipeDirection | null>;
   /**
    * Accepted dismiss direction for lifecycle-driven visual feedback.
    *

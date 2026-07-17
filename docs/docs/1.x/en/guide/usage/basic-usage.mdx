@@ -72,13 +72,19 @@ future gesture-coordination API instead of exposing raw `pointerEvents`.
 `allowedDirections` limits which directions can be accepted as a dismiss.
 
 ```tsx
-<ProfileDeck.Root data={profiles} getKey={(item) => item.id} allowedDirections={['right']}>
+<ProfileDeck.Root
+  data={profiles}
+  getKey={(item) => item.id}
+  allowedDirections={['left', 'right', 'up']}
+>
   <ProfileDeck.Card>{({ item }) => <ProfileCard profile={item} />}</ProfileDeck.Card>
 </ProfileDeck.Root>
 ```
 
-- Omit `allowedDirections` to allow both directions.
-- Pass `['left']` or `['right']` to allow only one dismiss direction.
+- Omit `allowedDirections` to allow left and right.
+- Include `'up'` explicitly to allow upward dismisses.
+- Gesture up requires `SwipeDeckMotion.tinder({ drag: { mode: 'free' } })`, the default.
+- `drag.mode: 'horizontal'` rejects gesture up but does not block `actions.swipeUp()`.
 - Pass `[]` to allow dragging but reject every dismiss release and
   programmatic swipe action.
 

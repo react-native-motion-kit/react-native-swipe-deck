@@ -61,7 +61,7 @@ const ProfileDeck = createSwipeDeck<Profile>({
 | `children`          | `ReactNode`                          | Matching `SwipeDeck.Card`를 포함해야 합니다.   |
 
 ```ts
-type AllowedDirections = readonly ('left' | 'right')[];
+type AllowedDirections = readonly ('left' | 'right' | 'up')[];
 type SwipeThreshold = number | ((layout: SwipeDeckLayout) => number);
 ```
 
@@ -91,6 +91,7 @@ type SwipeDeckState = {
 type SwipeDeckActions = {
   swipeLeft: SwipeDeckAction;
   swipeRight: SwipeDeckAction;
+  swipeUp: SwipeDeckAction;
   undo: SwipeDeckUndoAction;
 };
 ```
@@ -103,8 +104,18 @@ Programmatic action은 action이 받아들여졌는지 알려주는 `boolean`을
 type SwipeDeckInteractionPhase = 'idle' | 'dragging' | 'dismissing' | 'undoing';
 ```
 
-`useDeckInteraction()`은 `progress`, `signedProgress`, `direction`, `dismissDirection`,
-`translationX`, `translationY`, `isDragging`, `phase` Reanimated shared value를 반환합니다.
+`SwipeDirection`은 `'left' | 'right' | 'up'`입니다. `allowedDirections`를 생략하면 left와
+right만 허용되고 upward dismiss는 opt-in입니다.
+
+`useDeckInteraction()`은 `progress`, `signedProgress`, `direction`, `intentDirection`,
+`dismissDirection`, `translationX`, `translationY`, `isDragging`, `phase` Reanimated shared value를
+반환합니다. `intentDirection`은 overlay용 policy-filtered live semantic source이며 `'left'`,
+`'right'`, `'up'`, `null`이 될 수 있습니다. Centered upward gesture만 internal up cone에 들어가고,
+일반적인 upper-left/upper-right diagonal은 horizontal intent로 남습니다. 해당 raw horizontal winner가
+허용되지 않으면 `intentDirection`, `progress`, `signedProgress`는 neutral이고 card translation은 손가락을
+그대로 따릅니다. `signedProgress`와 numeric `direction`은 horizontal-only라 upward intent/dismiss 중에는
+`0`입니다. `dismissDirection`은 dismiss가 accepted된 뒤 `'left'`, `'right'`, `'up'`, `null`이 될 수
+있습니다.
 
 ## Events
 
