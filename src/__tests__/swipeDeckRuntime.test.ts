@@ -382,6 +382,26 @@ describe('resolveSwipeDeckProgrammaticUndoMotion', () => {
     expect(motion.from.translateY).toBeLessThan(-500);
   });
 
+  it('resolves default undo entry distance from an overridden entry axis', () => {
+    const horizontalMotion = resolveSwipeDeckProgrammaticUndoMotion({
+      direction: 'up',
+      layout: { width: 600, height: 200 },
+      runtime,
+      undoMotion: SwipeDeckUndoMotion.timing({ from: 'left' }),
+    });
+    const upwardMotion = resolveSwipeDeckProgrammaticUndoMotion({
+      direction: 'right',
+      layout: { width: 200, height: 600 },
+      runtime,
+      undoMotion: SwipeDeckUndoMotion.timing({ from: 'up' }),
+    });
+
+    expect(horizontalMotion.from.translateX).toBeLessThan(-600);
+    expect(horizontalMotion.from.translateY).toBe(0);
+    expect(upwardMotion.from.translateX).toBe(0);
+    expect(upwardMotion.from.translateY).toBeLessThan(-600);
+  });
+
   it('lets a one-call undo motion override the default undo motion', () => {
     expect(
       resolveSwipeDeckProgrammaticUndoMotion({

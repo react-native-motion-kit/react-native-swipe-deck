@@ -66,7 +66,7 @@ function resolveLayoutValue(
   return value ?? fallback;
 }
 
-function getUndoMotionFromSide(
+export function resolveSwipeDeckUndoEntryDirection(
   from: SwipeDeckUndoMotionFrom | undefined,
   originalDirection: SwipeDirection,
 ): SwipeDirection {
@@ -129,7 +129,7 @@ export function resolveSwipeDeckUndoMotion({
   originalDirection,
   recipe = SwipeDeckUndoMotion.timing(),
 }: ResolveSwipeDeckUndoMotionArgs): ResolvedSwipeDeckUndoMotion {
-  const fromSide = getUndoMotionFromSide(recipe.from, originalDirection);
+  const fromSide = resolveSwipeDeckUndoEntryDirection(recipe.from, originalDirection);
   const entryDistance = Math.max(
     resolveLayoutValue(recipe.entryDistance, layout, defaultEntryDistance),
     1,

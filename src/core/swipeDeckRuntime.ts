@@ -16,7 +16,11 @@ import {
   resolveSwipeDeckActionMotionRecipe,
 } from '../motion/actionMotion';
 import { resolveSwipeDeckDismissDestination } from '../motion/animation';
-import { resolveSwipeDeckUndoMotion, resolveSwipeDeckUndoMotionRecipe } from '../motion/undoMotion';
+import {
+  resolveSwipeDeckUndoEntryDirection,
+  resolveSwipeDeckUndoMotion,
+  resolveSwipeDeckUndoMotionRecipe,
+} from '../motion/undoMotion';
 import { resolveAllowedSwipeDirection, resolveSwipeIntentWinner } from './directions';
 
 type SwipeDeckProgrammaticDismissRuntime = {
@@ -248,6 +252,11 @@ export function resolveSwipeDeckProgrammaticUndoMotion({
   runtime,
   undoMotion,
 }: ResolveSwipeDeckProgrammaticUndoMotionArgs): ReturnType<typeof resolveSwipeDeckUndoMotion> {
+  const recipe = resolveSwipeDeckUndoMotionRecipe({
+    defaultUndoMotion,
+    undoMotion,
+  });
+  const entryDirection = resolveSwipeDeckUndoEntryDirection(recipe?.from, direction);
   const defaultDestination = resolveSwipeDeckDismissDestination({
     offscreenMultiplier: runtime.offscreenMultiplier,
     layout,
@@ -256,7 +265,7 @@ export function resolveSwipeDeckProgrammaticUndoMotion({
     rotationOrigin: runtime.rotationOrigin,
     rotationDirection: runtime.rotationDirection,
     gestureStartYRatio: 0.5,
-    swipeDirection: direction,
+    swipeDirection: entryDirection,
     translationX: 0,
     translationY: 0,
   });
@@ -269,9 +278,6 @@ export function resolveSwipeDeckProgrammaticUndoMotion({
     defaultEntryDistance,
     layout,
     originalDirection: direction,
-    recipe: resolveSwipeDeckUndoMotionRecipe({
-      defaultUndoMotion,
-      undoMotion,
-    }),
+    recipe,
   });
 }
