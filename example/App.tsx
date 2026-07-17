@@ -29,7 +29,7 @@ const profiles: Profile[] = Array.from({ length: 150 }, (_, index) => ({
 const ProfileDeck = createSwipeDeck<Profile>({
   motion: SwipeDeckMotion.tinder({
     drag: {
-      mode: 'horizontal',
+      mode: 'free',
       liftYFactor: 0.3,
     },
     rotation: {
