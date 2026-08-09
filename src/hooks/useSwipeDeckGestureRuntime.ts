@@ -18,8 +18,9 @@ import type {
 import { resolveSwipeDirection } from '../core/directions';
 import { resolveSwipeProgressIntent, resolveSwipeDirectionSignal } from '../core/swipeDeckRuntime';
 import {
-  resolveSwipeDeckDismissDestination,
+  resolveSwipeDeckDismissAxisMotion,
   resolveSwipeDeckDismissAxisDuration,
+  resolveSwipeDeckDismissDestination,
   resolveSwipeDeckGestureStartYRatio,
 } from '../motion/animation';
 
@@ -244,10 +245,17 @@ export function useSwipeDeckGestureRuntime({
             translationX: event.translationX,
             translationY: event.translationY,
           });
+          const dismissAxisMotion = resolveSwipeDeckDismissAxisMotion({
+            destination,
+            translationX: event.translationX,
+            translationY: event.translationY,
+            velocityX: event.velocityX,
+            velocityY: event.velocityY,
+          });
           const resolvedDismissDuration = resolveSwipeDeckDismissAxisDuration({
-            translation: destination.axis === 'x' ? event.translationX : event.translationY,
-            velocity: destination.axis === 'x' ? event.velocityX : event.velocityY,
-            destination: destination.axis === 'x' ? destination.translateX : destination.translateY,
+            translation: dismissAxisMotion.translation,
+            velocity: dismissAxisMotion.velocity,
+            destination: dismissAxisMotion.destination,
             duration: dismissDuration,
             minDuration: dismissMinDuration,
             maxDuration: dismissMaxDuration,
@@ -262,22 +270,25 @@ export function useSwipeDeckGestureRuntime({
           swipeDirectionSignal.set(progressDirection);
           signedSwipeProgress.set(withTiming(progressDirection, dismissTimingConfig));
           swipeProgress.set(withTiming(1, dismissTimingConfig));
-          activeTranslateY.set(
-            withTiming(destination.translateY, dismissTimingConfig, (finished) => {
-              'worklet';
 
-              if (destination.axis === 'y') {
+          // Keep the cross axis on its last drag frame. Restarting it from the final Android
+          // gesture event can introduce a visible one-frame jump at the dismiss handoff.
+          if (dismissAxisMotion.axis === 'y') {
+            activeTranslateY.set(
+              withTiming(dismissAxisMotion.destination, dismissTimingConfig, (finished) => {
+                'worklet';
+
                 completeSwipeDismiss(finished, currentAttachmentGeneration, direction, 'gesture');
-              }
-            }),
-          );
+              }),
+            );
+            return;
+          }
+
           activeTranslateX.set(
-            withTiming(destination.translateX, dismissTimingConfig, (finished) => {
+            withTiming(dismissAxisMotion.destination, dismissTimingConfig, (finished) => {
               'worklet';
 
-              if (destination.axis === 'x') {
-                completeSwipeDismiss(finished, currentAttachmentGeneration, direction, 'gesture');
-              }
+              completeSwipeDismiss(finished, currentAttachmentGeneration, direction, 'gesture');
             }),
           );
         })

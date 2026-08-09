@@ -78,6 +78,21 @@ export type SwipeDeckTranslation = SwipeDeckMotionTranslation;
 
 export type SwipeDeckDismissDestination = SwipeDeckMotionVector;
 
+type SwipeDeckDismissAxisMotion = {
+  axis: SwipeDeckDismissDestination['axis'];
+  translation: number;
+  velocity: number;
+  destination: number;
+};
+
+type ResolveSwipeDeckDismissAxisMotionArgs = {
+  destination: SwipeDeckDismissDestination;
+  translationX: number;
+  translationY: number;
+  velocityX: number;
+  velocityY: number;
+};
+
 type ResolveSwipeDeckTinderRotationAnchorArgs = {
   mode: SwipeDeckTinderRotationMode;
   origin?: SwipeDeckTinderFixedRotationOrigin;
@@ -337,6 +352,32 @@ export function resolveSwipeDeckDismissDestination(
     distance: destinationDistance,
     crossAxisTranslation: args.translationY,
   });
+}
+
+export function resolveSwipeDeckDismissAxisMotion({
+  destination,
+  translationX,
+  translationY,
+  velocityX,
+  velocityY,
+}: ResolveSwipeDeckDismissAxisMotionArgs): SwipeDeckDismissAxisMotion {
+  'worklet';
+
+  if (destination.axis === 'x') {
+    return {
+      axis: 'x',
+      translation: translationX,
+      velocity: velocityX,
+      destination: destination.translateX,
+    };
+  }
+
+  return {
+    axis: 'y',
+    translation: translationY,
+    velocity: velocityY,
+    destination: destination.translateY,
+  };
 }
 
 function mergeSwipeDeckTinderRotationConfig(
