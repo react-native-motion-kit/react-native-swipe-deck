@@ -67,6 +67,15 @@ type SwipeThreshold = number | ((layout: SwipeDeckLayout) => number);
 
 Static `SwipeDeck.Root`는 `id`를 제외한 같은 props를 받습니다.
 
+전체 id contract는 [Multi-Instance Management](./multi-instance-management)를 참고하세요.
+
+`id`는 item key가 아닙니다. `"nearby"`, `"recommended"` 같은 안정적인 deck namespace나, 화면이
+mount되어 있는 동안 변하지 않는 navigation route key를 사용하세요. 해당 id를 retain하는 committed
+Root 또는 public hook consumer가 하나 이상 mount되어 있는 동안 identity가 안정적으로 유지됩니다.
+마지막 cleanup과 deferred eviction 이후 같은 id를 다시 사용하면 새 action과 interaction shared value를
+받습니다. Item id, timestamp, mounted lifecycle 중에 바뀌는 값에서 id를 만들지 마세요. 같은 factory의
+Root 두 개가 동시에 mount되려면 여전히 서로 다른 id가 필요합니다.
+
 ## `SwipeDeck.Card` props
 
 | Prop          | Type                                                 | 설명                                                |

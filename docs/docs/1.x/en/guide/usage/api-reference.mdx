@@ -67,6 +67,16 @@ type SwipeThreshold = number | ((layout: SwipeDeckLayout) => number);
 
 Static `SwipeDeck.Root` accepts the same props except `id`.
 
+See [Multi-Instance Management](./multi-instance-management) for the complete id contract.
+
+`id` is not an item key. Use a stable deck namespace such as `"nearby"`,
+`"recommended"`, or a navigation route key that does not change while the screen
+is mounted. Identity is stable while at least one committed Root or public hook
+consumer remains mounted for that id. After the final cleanup and deferred
+eviction, a later consumer receives fresh actions and interaction shared values.
+Do not derive ids from item ids, timestamps, or values that change while mounted.
+Two simultaneous Roots from the same factory still require distinct ids.
+
 ## `SwipeDeck.Card` Props
 
 | Prop          | Type                                                 | Notes                                               |
