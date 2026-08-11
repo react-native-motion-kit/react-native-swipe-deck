@@ -62,6 +62,35 @@ describe('createSwipeDeckRegistry', () => {
     expect(store.interaction.dismissDirection.get()).toBeNull();
   });
 
+  it('publishes canonical store identity changes without allocating during snapshot reads', async () => {
+    const registry = createSwipeDeckRegistry();
+    const listener = jest.fn();
+    const unsubscribe = registry.subscribeStore('route:identity', listener);
+
+    expect(registry.getStoreSnapshot('route:identity')).toBeUndefined();
+    expect(registry.getStoreSnapshot('route:identity')).toBeUndefined();
+
+    const store = registry.getStore('route:identity');
+
+    expect(registry.getStoreSnapshot('route:identity')).toBe(store);
+    expect(listener).not.toHaveBeenCalled();
+
+    await Promise.resolve();
+
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    const release = registry.retainStore('route:identity', store);
+
+    release();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(registry.getStoreSnapshot('route:identity')).toBeUndefined();
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    unsubscribe();
+  });
+
   it('notifies state subscribers only when the snapshot changes', () => {
     const registry = createSwipeDeckRegistry();
     const store = registry.getStore();

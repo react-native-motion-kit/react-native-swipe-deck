@@ -38,6 +38,7 @@ import { useSwipeDeckMotionConfig } from '../hooks/useSwipeDeckMotionConfig';
 import { useSwipeDeckUndoRuntime } from '../hooks/useSwipeDeckUndoRuntime';
 import { getSwipeDeckState } from '../registry/deckState';
 import { createSwipeDeckRegistry, type SwipeDeckRegistry } from '../registry/registry';
+import { useSwipeDeckRegistryStore } from '../registry/registryHooks';
 import { SwipeDeckCard } from './SwipeDeckCard';
 import { SwipeDeckRenderedCard } from './SwipeDeckRenderedCard';
 
@@ -81,7 +82,7 @@ function Root<T>({
   children,
   registry,
 }: SwipeDeckRootProps<T>): ReactElement {
-  const deckStore = useMemo(() => registry.getStore(id), [id, registry]);
+  const deckStore = useSwipeDeckRegistryStore(registry, id);
   const interaction = deckStore.interaction;
   const [layout, setLayout] = useState<SwipeDeckLayout>({ width: 0, height: 0 });
   const [activeIndex, setActiveIndex] = useState(() => clampActiveIndex(data.length, initialIndex));
