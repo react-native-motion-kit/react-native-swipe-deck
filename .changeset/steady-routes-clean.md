@@ -1,5 +1,5 @@
 ---
-'@react-native-motion-kit/swipe-deck': minor
+'@react-native-motion-kit/swipe-deck': patch
 ---
 
 Reclaim factory registry entries after the final committed `Root` or public hook consumer for an
