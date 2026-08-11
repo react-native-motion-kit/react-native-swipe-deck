@@ -12,6 +12,7 @@ import type {
 import type { SwipeDeckStore } from './registry';
 
 type GetSwipeDeckStore<T> = (id?: string) => SwipeDeckStore<T>;
+type RetainSwipeDeckStore<T> = (id: string | undefined, heldStore: SwipeDeckStore<T>) => () => void;
 
 export type SwipeDeckRegistryHooks<T> = {
   useDeckState: (id?: string) => SwipeDeckState;
@@ -21,9 +22,16 @@ export type SwipeDeckRegistryHooks<T> = {
   useDeckEventListener: SwipeDeckEventListenerHook<T>;
 };
 
-export function createRegistryHooks<T>(getStore: GetSwipeDeckStore<T>): SwipeDeckRegistryHooks<T> {
+export function createRegistryHooks<T>(
+  getStore: GetSwipeDeckStore<T>,
+  retainStore: RetainSwipeDeckStore<T>,
+): SwipeDeckRegistryHooks<T> {
   function useDeckStore(id?: string): SwipeDeckStore<T> {
-    return useMemo(() => getStore(id), [id]);
+    const store = useMemo(() => getStore(id), [id]);
+
+    useLayoutEffect(() => retainStore(id, store), [id, store]);
+
+    return store;
   }
 
   function useDeckEvent<K extends keyof SwipeDeckEventMap<T>>(
