@@ -42,9 +42,16 @@ export type SwipeDeckStore<T> = {
 type DeckStoreKey = string | typeof DEFAULT_DECK_KEY;
 
 type GetSwipeDeckStore<T> = (id?: string) => SwipeDeckStore<T>;
+type SwipeDeckStoreRelease = () => void;
+
+type SwipeDeckStoreEntry<T> = {
+  referenceCount: number;
+  store: SwipeDeckStore<T>;
+};
 
 export type SwipeDeckRegistry<T> = SwipeDeckRegistryHooks<T> & {
   getStore: GetSwipeDeckStore<T>;
+  retainStore: (id: string | undefined, heldStore: SwipeDeckStore<T>) => SwipeDeckStoreRelease;
 };
 
 function getDeckStoreKey(id?: string): DeckStoreKey {
@@ -211,26 +218,75 @@ function createStore<T>(label: string): SwipeDeckStore<T> {
 }
 
 export function createSwipeDeckRegistry<T = never>(): SwipeDeckRegistry<T> {
-  const stores = new Map<DeckStoreKey, SwipeDeckStore<T>>();
+  const stores = new Map<DeckStoreKey, SwipeDeckStoreEntry<T>>();
+
+  const createEntry = (store: SwipeDeckStore<T>): SwipeDeckStoreEntry<T> => ({
+    referenceCount: 0,
+    store,
+  });
+
+  const scheduleEntryEviction = (deckStoreKey: DeckStoreKey, entry: SwipeDeckStoreEntry<T>) => {
+    Promise.resolve().then(() => {
+      if (stores.get(deckStoreKey) === entry && entry.referenceCount === 0) {
+        stores.delete(deckStoreKey);
+      }
+    });
+  };
 
   const getStore = (id?: string) => {
     const deckStoreKey = getDeckStoreKey(id);
-    const existingStore = stores.get(deckStoreKey);
+    const existingEntry = stores.get(deckStoreKey);
 
-    if (existingStore) {
-      return existingStore;
+    if (existingEntry) {
+      return existingEntry.store;
     }
 
-    const store = createStore<T>(getDeckStoreLabel(id));
-    stores.set(deckStoreKey, store);
+    const entry = createEntry(createStore<T>(getDeckStoreLabel(id)));
 
-    return store;
+    stores.set(deckStoreKey, entry);
+
+    return entry.store;
   };
 
-  const hooks = createRegistryHooks(getStore);
+  const retainStore = (id: string | undefined, heldStore: SwipeDeckStore<T>) => {
+    const deckStoreKey = getDeckStoreKey(id);
+    const existingEntry = stores.get(deckStoreKey);
+
+    if (existingEntry && existingEntry.store !== heldStore) {
+      throw new Error(
+        `SwipeDeck registry lifecycle inconsistency for id "${getDeckStoreLabel(id)}": a different store already owns this id.`,
+      );
+    }
+
+    const entry = existingEntry ?? createEntry(heldStore);
+
+    if (!existingEntry) {
+      stores.set(deckStoreKey, entry);
+    }
+
+    entry.referenceCount += 1;
+
+    let released = false;
+
+    return () => {
+      if (released) {
+        return;
+      }
+
+      released = true;
+      entry.referenceCount -= 1;
+
+      if (entry.referenceCount === 0) {
+        scheduleEntryEviction(deckStoreKey, entry);
+      }
+    };
+  };
+
+  const hooks = createRegistryHooks(getStore, retainStore);
 
   return {
     getStore,
+    retainStore,
     useDeckState: hooks.useDeckState,
     useDeckActions: hooks.useDeckActions,
     useDeckInteraction: hooks.useDeckInteraction,
