@@ -3,6 +3,7 @@ import { Easing } from 'react-native-reanimated';
 
 import {
   mergeSwipeDeckMotionPreset,
+  resolveSwipeDeckDismissAxisMotion,
   resolveSwipeDeckDismissAxisDuration,
   resolveSwipeDeckDismissDestination,
   resolveSwipeDeckDismissDestinationDistance,
@@ -13,6 +14,40 @@ import {
   resolveSwipeDeckTinderTransformOrigin,
   SwipeDeckMotion,
 } from '../motion/animation';
+
+describe('resolveSwipeDeckDismissAxisMotion', () => {
+  it('selects only the dismiss axis and leaves cross-axis displacement out of the animation', () => {
+    expect(
+      resolveSwipeDeckDismissAxisMotion({
+        destination: { axis: 'x', translateX: 620, translateY: 37 },
+        translationX: 180,
+        translationY: 12,
+        velocityX: 900,
+        velocityY: 240,
+      }),
+    ).toEqual({
+      axis: 'x',
+      destination: 620,
+      translation: 180,
+      velocity: 900,
+    });
+
+    expect(
+      resolveSwipeDeckDismissAxisMotion({
+        destination: { axis: 'y', translateX: 37, translateY: -780 },
+        translationX: 12,
+        translationY: -180,
+        velocityX: 240,
+        velocityY: -900,
+      }),
+    ).toEqual({
+      axis: 'y',
+      destination: -780,
+      translation: -180,
+      velocity: -900,
+    });
+  });
+});
 
 describe('SwipeDeckMotion', () => {
   it('creates a discriminated tinder motion preset', () => {
