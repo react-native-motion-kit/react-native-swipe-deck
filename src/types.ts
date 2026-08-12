@@ -406,9 +406,18 @@ export type SwipeDeckProps<T> = {
   /**
    * Deck instance id inside this factory namespace.
    *
-   * This is not an item key. Use it only for a small, stable set of deck instances rendered
-   * from the same `createSwipeDeck<T>()` factory, such as `"nearby"` or `"recommended"`.
-   * Do not derive it from item ids, timestamps, or rapidly changing route/render values.
+   * This is not an item key. Use it for a stable deck instance rendered from the same
+   * `createSwipeDeck<T>()` factory, such as `"nearby"`, `"recommended"`, or a navigation
+   * route key that remains unchanged while the screen is mounted. Two simultaneous Roots from
+   * the same factory must use distinct ids.
+   *
+   * The id keeps actions and interaction identity stable while at least one committed Root or
+   * public hook consumer remains mounted. After the final committed consumer cleans up and the
+   * registry finishes its deferred eviction, a later consumer for the same id receives fresh
+   * actions and interaction shared values.
+   *
+   * Do not derive ids from item ids, timestamps, or values that change while mounted. A render
+   * that reads a new id but never commits is a known best-effort cleanup limitation.
    *
    * Omit this for the common single-deck case.
    */

@@ -9,9 +9,13 @@ import type {
   SwipeDeckInteraction,
   SwipeDeckState,
 } from '../types';
-import type { SwipeDeckStore } from './registry';
+import type { SwipeDeckRegistry, SwipeDeckStore } from './registry';
 
-type GetSwipeDeckStore<T> = (id?: string) => SwipeDeckStore<T>;
+type RetainSwipeDeckStore<T> = (id: string | undefined, heldStore: SwipeDeckStore<T>) => () => void;
+type SwipeDeckRegistryStoreAccess<T> = Pick<
+  SwipeDeckRegistry<T>,
+  'getStore' | 'getStoreSnapshot' | 'subscribeStore'
+>;
 
 export type SwipeDeckRegistryHooks<T> = {
   useDeckState: (id?: string) => SwipeDeckState;
@@ -21,9 +25,36 @@ export type SwipeDeckRegistryHooks<T> = {
   useDeckEventListener: SwipeDeckEventListenerHook<T>;
 };
 
-export function createRegistryHooks<T>(getStore: GetSwipeDeckStore<T>): SwipeDeckRegistryHooks<T> {
+export function useSwipeDeckRegistryStore<T>(
+  registry: SwipeDeckRegistryStoreAccess<T>,
+  id?: string,
+): SwipeDeckStore<T> {
+  const heldStore = useMemo(() => registry.getStore(id), [id, registry]);
+  const subscribe = useCallback(
+    (listener: () => void) => registry.subscribeStore(id, listener),
+    [id, registry],
+  );
+  // Preserve an unclaimed held store so retainStore can restore it. If a
+  // replacement owns the id, React observes that identity before commit and
+  // rerenders the consumer with the replacement instead.
+  const getSnapshot = useCallback(
+    () => registry.getStoreSnapshot(id) ?? heldStore,
+    [heldStore, id, registry],
+  );
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+export function createRegistryHooks<T>(
+  registry: SwipeDeckRegistryStoreAccess<T>,
+  retainStore: RetainSwipeDeckStore<T>,
+): SwipeDeckRegistryHooks<T> {
   function useDeckStore(id?: string): SwipeDeckStore<T> {
-    return useMemo(() => getStore(id), [id]);
+    const store = useSwipeDeckRegistryStore(registry, id);
+
+    useLayoutEffect(() => retainStore(id, store), [id, store]);
+
+    return store;
   }
 
   function useDeckEvent<K extends keyof SwipeDeckEventMap<T>>(

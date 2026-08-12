@@ -22,19 +22,30 @@ function MultiDeckScreen() {
 }
 ```
 
-`id`는 item key가 아니라 factory 안에서 deck instance를 구분하는 namespace입니다. 서로 다른
-factory는 둘 다 default id를 써도 충돌하지 않지만, 같은 factory와 같은 id의 Root 두 개가
-동시에 mount되는 것은 잘못된 사용입니다.
-
 ## Id 규칙
 
-- 안정적이고 적은 개수의 id를 사용하세요.
-- `"nearby"`, `"recommended"` 같은 화면/용도 단위 이름을 사용하세요.
-- Item id, timestamp, 매 render마다 바뀌는 값, 일회성 route 값에서 id를 만들지 마세요.
-- Factory와 id는 render path 밖에서 안정적으로 만들고 유지하세요.
+::: info mount된 deck마다 안정적인 id를 사용하세요
+`id`는 item key가 아니라 factory 안에서 deck instance를 구분하는 namespace입니다. 서로 다른
+factory는 같은 id를 안전하게 사용할 수 있지만, 같은 factory에서 동시에 mount되는 Root에는 서로
+다른 id를 사용해야 합니다. 화면이 mount된 동안 바뀌지 않는 navigation route key를 사용할 수 있습니다.
+:::
 
-Registry는 hook, action, interaction shared value의 identity를 안정적으로 유지하기 위해 factory
-lifetime 동안 id별 store를 유지합니다.
+- `"nearby"`, `"recommended"` 같은 화면/용도 단위 이름이나, 화면이 mount되어 있는 동안 변하지 않는
+  navigation route key를 사용하세요.
+- 같은 factory에서 동시에 mount되는 Root는 서로 다른 id를 가져야 합니다. Duplicate Root 규칙은
+  그대로입니다. 같은 factory와 같은 id의 Root 두 개가 동시에 mount되는 것은 잘못된 사용입니다.
+- Item id, timestamp, 매 render마다 바뀌는 값, mounted lifecycle 중에 바뀌는 값에서 id를 만들지
+  마세요.
+- Factory는 render path 밖에서 만들고, 각 id는 mounted lifecycle 동안 안정적으로 유지하세요.
+
+Registry는 하나 이상의 committed Root 또는 public hook consumer가 해당 id를 retain하는 동안 hook,
+action, interaction shared value의 identity를 안정적으로 유지합니다. 마지막 committed consumer가
+cleanup되고 registry의 deferred eviction이 끝난 뒤 같은 id를 다시 사용하면 새 action과 interaction
+shared value를 받습니다.
+
+Never-committed abandoned render는 known best-effort cleanup limitation입니다. Render가 새 id를
+읽었지만 React가 commit하지 않으면 library가 관찰할 committed cleanup path가 없습니다. 화면이
+mount되어 있는 동안 바뀌는 값으로 id를 만들지 마세요.
 
 ## Same-Factory Rule
 

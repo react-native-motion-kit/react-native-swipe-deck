@@ -22,20 +22,32 @@ function MultiDeckScreen() {
 }
 ```
 
-`id` is a factory-scoped deck namespace, not an item key. Two different
-factories can both use the default id safely, but two mounted roots from the
-same factory and same id are invalid.
-
 ## Id Rules
 
-- Keep ids stable and low-cardinality.
-- Use screen-level names such as `"nearby"` or `"recommended"`.
-- Do not derive ids from item ids, timestamps, values that change per render, or
-  one-off route values.
-- Create factories and ids outside render paths.
+::: info Use a stable id per mounted deck
+`id` is a factory-scoped deck namespace, not an item key. Different factories can safely use the
+same id, but simultaneous Roots from one factory must use distinct ids. A stable navigation route
+key is supported as long as it does not change while the screen is mounted.
+:::
 
-The registry keeps one store per id for the lifetime of the factory so hooks,
-actions, and interaction shared values stay stable.
+- Use screen-level names such as `"nearby"` or `"recommended"`, or a navigation route key that
+  remains stable for one mounted screen.
+- Give simultaneous Roots from the same factory distinct ids. The duplicate-Root rule is unchanged:
+  two mounted Roots from the same factory and same id are invalid.
+- Do not derive ids from item ids, timestamps, values that change per render, or
+  values that change while the screen is mounted.
+- Create factories outside render paths, and keep each id stable for the mounted lifecycle.
+
+The registry keeps hooks, actions, and interaction shared values stable while at
+least one committed Root or public hook consumer retains that id. After the final
+committed consumer cleans up and the registry finishes its deferred eviction, a
+later consumer for the same id receives fresh actions and interaction shared
+values.
+
+Never-committed abandoned renders are a known best-effort cleanup limitation: if
+a render reads a brand-new id but React never commits it, there is no committed
+cleanup path for the library to observe. Avoid creating ids from values that
+change while a screen is mounted.
 
 ## Same-Factory Rule
 

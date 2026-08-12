@@ -42,9 +42,19 @@ export type SwipeDeckStore<T> = {
 type DeckStoreKey = string | typeof DEFAULT_DECK_KEY;
 
 type GetSwipeDeckStore<T> = (id?: string) => SwipeDeckStore<T>;
+type SwipeDeckStoreRelease = () => void;
+type SwipeDeckStoreListener = () => void;
+
+type SwipeDeckStoreEntry<T> = {
+  referenceCount: number;
+  store: SwipeDeckStore<T>;
+};
 
 export type SwipeDeckRegistry<T> = SwipeDeckRegistryHooks<T> & {
   getStore: GetSwipeDeckStore<T>;
+  getStoreSnapshot: (id?: string) => SwipeDeckStore<T> | undefined;
+  retainStore: (id: string | undefined, heldStore: SwipeDeckStore<T>) => SwipeDeckStoreRelease;
+  subscribeStore: (id: string | undefined, listener: SwipeDeckStoreListener) => () => void;
 };
 
 function getDeckStoreKey(id?: string): DeckStoreKey {
@@ -211,26 +221,120 @@ function createStore<T>(label: string): SwipeDeckStore<T> {
 }
 
 export function createSwipeDeckRegistry<T = never>(): SwipeDeckRegistry<T> {
-  const stores = new Map<DeckStoreKey, SwipeDeckStore<T>>();
+  const stores = new Map<DeckStoreKey, SwipeDeckStoreEntry<T>>();
+  const storeListeners = new Map<DeckStoreKey, Set<SwipeDeckStoreListener>>();
+  const pendingStoreNotifications = new Set<DeckStoreKey>();
+
+  const createEntry = (store: SwipeDeckStore<T>): SwipeDeckStoreEntry<T> => ({
+    referenceCount: 0,
+    store,
+  });
+
+  const scheduleStoreNotification = (deckStoreKey: DeckStoreKey) => {
+    if (pendingStoreNotifications.has(deckStoreKey)) {
+      return;
+    }
+
+    pendingStoreNotifications.add(deckStoreKey);
+
+    // getStore can create an entry during render, so registry subscribers must
+    // not be notified synchronously from that render.
+    Promise.resolve().then(() => {
+      pendingStoreNotifications.delete(deckStoreKey);
+      storeListeners.get(deckStoreKey)?.forEach((listener) => listener());
+    });
+  };
+
+  const scheduleEntryEviction = (deckStoreKey: DeckStoreKey, entry: SwipeDeckStoreEntry<T>) => {
+    Promise.resolve().then(() => {
+      if (stores.get(deckStoreKey) === entry && entry.referenceCount === 0) {
+        stores.delete(deckStoreKey);
+        scheduleStoreNotification(deckStoreKey);
+      }
+    });
+  };
+
+  const getStoreSnapshot = (id?: string) => stores.get(getDeckStoreKey(id))?.store;
 
   const getStore = (id?: string) => {
     const deckStoreKey = getDeckStoreKey(id);
-    const existingStore = stores.get(deckStoreKey);
+    const existingEntry = stores.get(deckStoreKey);
 
-    if (existingStore) {
-      return existingStore;
+    if (existingEntry) {
+      return existingEntry.store;
     }
 
-    const store = createStore<T>(getDeckStoreLabel(id));
-    stores.set(deckStoreKey, store);
+    const entry = createEntry(createStore<T>(getDeckStoreLabel(id)));
 
-    return store;
+    stores.set(deckStoreKey, entry);
+    scheduleStoreNotification(deckStoreKey);
+
+    return entry.store;
   };
 
-  const hooks = createRegistryHooks(getStore);
+  const retainStore = (id: string | undefined, heldStore: SwipeDeckStore<T>) => {
+    const deckStoreKey = getDeckStoreKey(id);
+    const existingEntry = stores.get(deckStoreKey);
+
+    if (existingEntry && existingEntry.store !== heldStore) {
+      throw new Error(
+        `SwipeDeck registry lifecycle inconsistency for id "${getDeckStoreLabel(id)}": a different store already owns this id.`,
+      );
+    }
+
+    const entry = existingEntry ?? createEntry(heldStore);
+
+    if (!existingEntry) {
+      stores.set(deckStoreKey, entry);
+      scheduleStoreNotification(deckStoreKey);
+    }
+
+    entry.referenceCount += 1;
+
+    let released = false;
+
+    return () => {
+      if (released) {
+        return;
+      }
+
+      released = true;
+      entry.referenceCount -= 1;
+
+      if (entry.referenceCount === 0) {
+        scheduleEntryEviction(deckStoreKey, entry);
+      }
+    };
+  };
+
+  const subscribeStore = (id: string | undefined, listener: SwipeDeckStoreListener) => {
+    const deckStoreKey = getDeckStoreKey(id);
+    const listeners = storeListeners.get(deckStoreKey) ?? new Set<SwipeDeckStoreListener>();
+
+    listeners.add(listener);
+    storeListeners.set(deckStoreKey, listeners);
+
+    return () => {
+      listeners.delete(listener);
+
+      if (listeners.size === 0) {
+        storeListeners.delete(deckStoreKey);
+      }
+    };
+  };
+
+  const storeAccess = {
+    getStore,
+    getStoreSnapshot,
+    subscribeStore,
+  };
+  const hooks = createRegistryHooks(storeAccess, retainStore);
 
   return {
     getStore,
+    getStoreSnapshot,
+    retainStore,
+    subscribeStore,
     useDeckState: hooks.useDeckState,
     useDeckActions: hooks.useDeckActions,
     useDeckInteraction: hooks.useDeckInteraction,

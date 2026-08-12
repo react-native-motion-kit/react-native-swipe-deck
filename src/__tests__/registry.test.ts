@@ -16,6 +16,10 @@ function createAttachedState(canUndo = false) {
   };
 }
 
+async function flushRegistryEvictionMicrotask() {
+  await Promise.resolve();
+}
+
 describe('createSwipeDeckRegistry', () => {
   it('scopes default deck ids by registry instance', () => {
     const firstRegistry = createSwipeDeckRegistry();
@@ -56,6 +60,35 @@ describe('createSwipeDeckRegistry', () => {
     expect(store.interaction.phase.get()).toBe('idle');
     expect(store.interaction.intentDirection.get()).toBeNull();
     expect(store.interaction.dismissDirection.get()).toBeNull();
+  });
+
+  it('publishes canonical store identity changes without allocating during snapshot reads', async () => {
+    const registry = createSwipeDeckRegistry();
+    const listener = jest.fn();
+    const unsubscribe = registry.subscribeStore('route:identity', listener);
+
+    expect(registry.getStoreSnapshot('route:identity')).toBeUndefined();
+    expect(registry.getStoreSnapshot('route:identity')).toBeUndefined();
+
+    const store = registry.getStore('route:identity');
+
+    expect(registry.getStoreSnapshot('route:identity')).toBe(store);
+    expect(listener).not.toHaveBeenCalled();
+
+    await Promise.resolve();
+
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    const release = registry.retainStore('route:identity', store);
+
+    release();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(registry.getStoreSnapshot('route:identity')).toBeUndefined();
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    unsubscribe();
   });
 
   it('notifies state subscribers only when the snapshot changes', () => {
@@ -260,6 +293,105 @@ describe('createSwipeDeckRegistry', () => {
     expect(store.getSnapshot().activeIndex).toBe(0);
 
     secondDetach();
+  });
+
+  it('evicts a store after the final release and returns a fresh identity on next lookup', async () => {
+    const registry = createSwipeDeckRegistry();
+    const firstStore = registry.getStore('route:ada');
+    const release = registry.retainStore('route:ada', firstStore);
+
+    release();
+    await flushRegistryEvictionMicrotask();
+
+    expect(registry.getStore('route:ada')).not.toBe(firstStore);
+    expect(registry.getStore('route:ada').interaction).not.toBe(firstStore.interaction);
+  });
+
+  it('makes release closures idempotent and does not underflow the lifecycle count', async () => {
+    const registry = createSwipeDeckRegistry();
+    const store = registry.getStore('route:grace');
+    const firstRelease = registry.retainStore('route:grace', store);
+    const secondRelease = registry.retainStore('route:grace', store);
+
+    firstRelease();
+    firstRelease();
+    await flushRegistryEvictionMicrotask();
+
+    expect(registry.getStore('route:grace')).toBe(store);
+
+    secondRelease();
+    secondRelease();
+    await flushRegistryEvictionMicrotask();
+
+    expect(registry.getStore('route:grace')).not.toBe(store);
+  });
+
+  it('preserves identity when the same entry is re-retained before the eviction microtask', async () => {
+    const registry = createSwipeDeckRegistry();
+    const store = registry.getStore('route:linus');
+    const firstRelease = registry.retainStore('route:linus', store);
+
+    firstRelease();
+
+    const secondRelease = registry.retainStore('route:linus', store);
+
+    await flushRegistryEvictionMicrotask();
+
+    expect(registry.getStore('route:linus')).toBe(store);
+
+    secondRelease();
+  });
+
+  it('restores a late held store when its id is unclaimed', async () => {
+    const registry = createSwipeDeckRegistry();
+    const heldStore = registry.getStore('route:late');
+    const firstRelease = registry.retainStore('route:late', heldStore);
+
+    firstRelease();
+    await flushRegistryEvictionMicrotask();
+
+    const lateRelease = registry.retainStore('route:late', heldStore);
+
+    expect(registry.getStore('route:late')).toBe(heldStore);
+
+    lateRelease();
+  });
+
+  it('does not let a stale release delete a replacement entry for the same id', async () => {
+    const registry = createSwipeDeckRegistry();
+    const firstStore = registry.getStore('route:replacement');
+    const firstRelease = registry.retainStore('route:replacement', firstStore);
+
+    firstRelease();
+    const replacementPromise = Promise.resolve().then(() => registry.getStore('route:replacement'));
+
+    const secondRelease = registry.retainStore('route:replacement', firstStore);
+    secondRelease();
+
+    const replacementStore = await replacementPromise;
+    await flushRegistryEvictionMicrotask();
+
+    expect(registry.getStore('route:replacement')).toBe(replacementStore);
+    expect(replacementStore).not.toBe(firstStore);
+  });
+
+  it('rejects retaining a held store when a different entry already owns the id', async () => {
+    const registry = createSwipeDeckRegistry();
+    const heldStore = registry.getStore('route:conflict');
+    const firstRelease = registry.retainStore('route:conflict', heldStore);
+
+    firstRelease();
+    await flushRegistryEvictionMicrotask();
+
+    const replacementStore = registry.getStore('route:conflict');
+    const replacementRelease = registry.retainStore('route:conflict', replacementStore);
+
+    expect(() => registry.retainStore('route:conflict', heldStore)).toThrow(
+      /SwipeDeck registry lifecycle inconsistency/,
+    );
+    expect(registry.getStore('route:conflict')).toBe(replacementStore);
+
+    replacementRelease();
   });
 
   it('resets interaction shared values on detach', () => {

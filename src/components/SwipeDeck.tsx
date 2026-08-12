@@ -38,6 +38,7 @@ import { useSwipeDeckMotionConfig } from '../hooks/useSwipeDeckMotionConfig';
 import { useSwipeDeckUndoRuntime } from '../hooks/useSwipeDeckUndoRuntime';
 import { getSwipeDeckState } from '../registry/deckState';
 import { createSwipeDeckRegistry, type SwipeDeckRegistry } from '../registry/registry';
+import { useSwipeDeckRegistryStore } from '../registry/registryHooks';
 import { SwipeDeckCard } from './SwipeDeckCard';
 import { SwipeDeckRenderedCard } from './SwipeDeckRenderedCard';
 
@@ -81,7 +82,7 @@ function Root<T>({
   children,
   registry,
 }: SwipeDeckRootProps<T>): ReactElement {
-  const deckStore = useMemo(() => registry.getStore(id), [id, registry]);
+  const deckStore = useSwipeDeckRegistryStore(registry, id);
   const interaction = deckStore.interaction;
   const [layout, setLayout] = useState<SwipeDeckLayout>({ width: 0, height: 0 });
   const [activeIndex, setActiveIndex] = useState(() => clampActiveIndex(data.length, initialIndex));
@@ -374,20 +375,39 @@ function Root<T>({
     attachmentGenerationRef.current = currentAttachmentGeneration;
     attachmentGeneration.set(currentAttachmentGeneration);
 
-    const detach = deckStore.attach({
-      getState: getDeckState,
-      swipe: swipeProgrammatically,
-      undo: undoProgrammatically,
-    });
+    const releaseStore = registry.retainStore(id, deckStore);
 
-    return () => {
-      const nextAttachmentGeneration = attachmentGenerationRef.current + 1;
+    try {
+      const detach = deckStore.attach({
+        getState: getDeckState,
+        swipe: swipeProgrammatically,
+        undo: undoProgrammatically,
+      });
 
-      attachmentGenerationRef.current = nextAttachmentGeneration;
-      attachmentGeneration.set(nextAttachmentGeneration);
-      detach();
-    };
-  }, [attachmentGeneration, deckStore, getDeckState, swipeProgrammatically, undoProgrammatically]);
+      return () => {
+        try {
+          const nextAttachmentGeneration = attachmentGenerationRef.current + 1;
+
+          attachmentGenerationRef.current = nextAttachmentGeneration;
+          attachmentGeneration.set(nextAttachmentGeneration);
+          detach();
+        } finally {
+          releaseStore();
+        }
+      };
+    } catch (error) {
+      releaseStore();
+      throw error;
+    }
+  }, [
+    attachmentGeneration,
+    deckStore,
+    getDeckState,
+    id,
+    registry,
+    swipeProgrammatically,
+    undoProgrammatically,
+  ]);
 
   // Root owns public deck-state publication for any active-index change.
   // Dismiss runtime separately owns active render-item sync and post-dismiss reset ordering.

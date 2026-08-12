@@ -6,7 +6,7 @@ import type {
 
 import { describe, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, render, screen, userEvent } from '@testing-library/react-native';
-import { useEffect, useState } from 'react';
+import { StrictMode, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
@@ -43,6 +43,12 @@ async function measureDeckFromVisibleCard(cardName: string) {
         y: 0,
       },
     },
+  });
+}
+
+async function flushRegistryEvictionMicrotask() {
+  await act(async () => {
+    await Promise.resolve();
   });
 }
 
@@ -2264,6 +2270,222 @@ describe('SwipeDeck factory hooks', () => {
 
     expect(await screen.findByText('state:1:false:false:true')).toBeOnTheScreen();
     expect(screen.queryByText('Ada')).not.toBeOnTheScreen();
+  });
+
+  it('mounts distinct route-like ids from one factory at the same time', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+
+    await render(
+      <>
+        <ProfileDeck.Root id="route:nearby" data={[adaProfile]} getKey={getProfileKey}>
+          <ProfileDeck.Card>{({ item }) => <Text>nearby:{item.name}</Text>}</ProfileDeck.Card>
+        </ProfileDeck.Root>
+        <ProfileDeck.Root id="route:recommended" data={[graceProfile]} getKey={getProfileKey}>
+          <ProfileDeck.Card>{({ item }) => <Text>recommended:{item.name}</Text>}</ProfileDeck.Card>
+        </ProfileDeck.Root>
+      </>,
+    );
+
+    expect(screen.getByText('nearby:Ada')).toBeOnTheScreen();
+    expect(screen.getByText('recommended:Grace')).toBeOnTheScreen();
+  });
+
+  it('evicts an id after the final Root and hook unmount and recreates fresh interaction identity', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const interactions: ReturnType<typeof ProfileDeck.useDeckInteraction>[] = [];
+
+    function InteractionProbe() {
+      const interaction = ProfileDeck.useDeckInteraction('route:fresh');
+
+      useEffect(() => {
+        interactions.push(interaction);
+      }, [interaction]);
+
+      return <Text>probe:fresh</Text>;
+    }
+
+    function Example() {
+      return (
+        <>
+          <InteractionProbe />
+          <ProfileDeck.Root id="route:fresh" data={[adaProfile]} getKey={getProfileKey}>
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    const firstRender = await render(<Example />);
+
+    expect(screen.getByText('probe:fresh')).toBeOnTheScreen();
+    expect(interactions).toHaveLength(1);
+
+    const firstInteraction = interactions[0];
+
+    await firstRender.unmount();
+    await flushRegistryEvictionMicrotask();
+
+    await render(<Example />);
+
+    expect(interactions).toHaveLength(2);
+    expect(interactions[1]).not.toBe(firstInteraction);
+  });
+
+  it('keeps interaction identity when a hook stays mounted across Root-only unmount and remount', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const interactions: ReturnType<typeof ProfileDeck.useDeckInteraction>[] = [];
+
+    function InteractionProbe() {
+      const interaction = ProfileDeck.useDeckInteraction('route:kept');
+
+      useEffect(() => {
+        interactions.push(interaction);
+      }, [interaction]);
+
+      return <Text>probe:kept</Text>;
+    }
+
+    function Example({ rootMounted = true }: { rootMounted?: boolean }) {
+      return (
+        <>
+          <InteractionProbe />
+          {rootMounted ? (
+            <ProfileDeck.Root id="route:kept" data={[adaProfile]} getKey={getProfileKey}>
+              <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+            </ProfileDeck.Root>
+          ) : null}
+        </>
+      );
+    }
+
+    const renderResult = await render(<Example />);
+    const firstInteraction = interactions[0];
+
+    await renderResult.rerender(<Example rootMounted={false} />);
+    await flushRegistryEvictionMicrotask();
+    await renderResult.rerender(<Example />);
+
+    expect(screen.getByText('probe:kept')).toBeOnTheScreen();
+    expect(interactions).toEqual([firstInteraction]);
+  });
+
+  it('evicts a hook-only consumer after unmount and gives the next hook fresh identity', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const interactions: ReturnType<typeof ProfileDeck.useDeckInteraction>[] = [];
+
+    function InteractionProbe() {
+      const interaction = ProfileDeck.useDeckInteraction('route:hook-only');
+
+      useEffect(() => {
+        interactions.push(interaction);
+      }, [interaction]);
+
+      return <Text>probe:hook-only</Text>;
+    }
+
+    const firstRender = await render(<InteractionProbe />);
+    const firstInteraction = interactions[0];
+
+    await firstRender.unmount();
+    await flushRegistryEvictionMicrotask();
+
+    await render(<InteractionProbe />);
+
+    expect(interactions).toHaveLength(2);
+    expect(interactions[1]).not.toBe(firstInteraction);
+  });
+
+  it('preserves identity through StrictMode setup and cleanup replay without throwing', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const interactions: ReturnType<typeof ProfileDeck.useDeckInteraction>[] = [];
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    function InteractionProbe() {
+      const interaction = ProfileDeck.useDeckInteraction('route:strict');
+
+      useEffect(() => {
+        interactions.push(interaction);
+      }, [interaction]);
+
+      return <Text>probe:strict</Text>;
+    }
+
+    try {
+      await render(
+        <StrictMode>
+          <InteractionProbe />
+          <ProfileDeck.Root id="route:strict" data={[adaProfile]} getKey={getProfileKey}>
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </StrictMode>,
+      );
+
+      expect(
+        consoleErrorSpy.mock.calls.every((args) => {
+          const message = args.map(String).join(' ');
+
+          return message.includes('findNodeHandle') && message.includes('deprecated in StrictMode');
+        }),
+      ).toBe(true);
+      expect(screen.getByText('probe:strict')).toBeOnTheScreen();
+      expect(new Set(interactions).size).toBe(1);
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
+  });
+
+  it('cleans up duplicate Root retain failure so the surviving id can be recreated', async () => {
+    const ProfileDeck = createSwipeDeck<Profile>();
+    const interactions: ReturnType<typeof ProfileDeck.useDeckInteraction>[] = [];
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    function InteractionProbe() {
+      const interaction = ProfileDeck.useDeckInteraction('route:duplicate');
+
+      useEffect(() => {
+        interactions.push(interaction);
+      }, [interaction]);
+
+      return <Text>probe:duplicate</Text>;
+    }
+
+    function Survivor() {
+      return (
+        <>
+          <InteractionProbe />
+          <ProfileDeck.Root id="route:duplicate" data={[adaProfile]} getKey={getProfileKey}>
+            <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+          </ProfileDeck.Root>
+        </>
+      );
+    }
+
+    function DuplicateRoot() {
+      return (
+        <ProfileDeck.Root id="route:duplicate" data={[graceProfile]} getKey={getProfileKey}>
+          <ProfileDeck.Card>{({ item }) => <Text>{item.name}</Text>}</ProfileDeck.Card>
+        </ProfileDeck.Root>
+      );
+    }
+
+    try {
+      const survivorRender = await render(<Survivor />);
+      const firstInteraction = interactions[0];
+
+      await expect(render(<DuplicateRoot />)).rejects.toThrow(
+        'SwipeDeck.Root with id "route:duplicate" is already mounted for this factory. Use a unique id for multiple decks.',
+      );
+
+      await survivorRender.unmount();
+      await flushRegistryEvictionMicrotask();
+
+      await render(<Survivor />);
+
+      expect(interactions).toHaveLength(2);
+      expect(interactions[1]).not.toBe(firstInteraction);
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 });
 
