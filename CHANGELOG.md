@@ -1,5 +1,66 @@
 # @react-native-motion-kit/swipe-deck
 
+## 1.5.0
+
+### Minor Changes
+
+- [#23](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/23) [`3fecbb0`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/3fecbb0f6a6055c4150b930f9da49740f8430d3a) Thanks [@saseungmin](https://github.com/saseungmin)! - Add opt-in upward swipe support across gestures, programmatic actions, events, interaction state,
+  and undo, with a public live `interaction.intentDirection` source for one-at-a-time reaction UI.
+
+  ```tsx
+  function DeckControls() {
+    const { swipeUp } = ProfileDeck.useDeckActions();
+
+    return (
+      <Pressable onPress={swipeUp}>
+        <Text>Super Like</Text>
+      </Pressable>
+    );
+  }
+
+  <ProfileDeck.Root
+    data={profiles}
+    getKey={(item) => item.id}
+    allowedDirections={["left", "right", "up"]}
+  >
+    <ProfileDeck.Card>
+      {({ item }) => <ProfileCard profile={item} />}
+    </ProfileDeck.Card>
+  </ProfileDeck.Root>;
+  ```
+
+  Upward dismisses are backward-compatible and explicitly opt-in: omitting `allowedDirections`
+  continues to allow only left and right. Gesture-driven up requires the default `drag.mode: 'free'`;
+  horizontal drag mode rejects an upward release through the existing snap-back motion, while
+  `swipeUp()` remains available when `'up'` is allowed.
+
+  `SwipeDirection`, committed swipe and undo events, `interaction.intentDirection`, and
+  `interaction.dismissDirection` now include `'up'`. Only centered upward gestures enter the internal
+  up cone; upper-left and upper-right diagonals stay horizontal. When the raw semantic winner is not
+  allowed, `intentDirection`, `progress`, `signedProgress`, and numeric `direction` stay neutral while
+  physical card translation still follows the finger. Programmatic up actions support the existing
+  direct and springboard action-motion recipes, and an upward card can be restored through the
+  existing undo flow.
+
+  TypeScript consumers with exhaustive `switch` statements or `Record<SwipeDirection, ...>` mappings
+  must add an `'up'` branch even when a deck does not opt into upward dismisses.
+
+### Patch Changes
+
+- [#25](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/25) [`9be410c`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/9be410cb8bfb82d8b739ad1899e6ff377ce64d53) Thanks [@saseungmin](https://github.com/saseungmin)! - Prevent gesture-driven dismisses from briefly jumping when the finger is released on Android.
+  Committed swipes now animate only their primary dismiss axis, preserving the final cross-axis drag
+  position instead of restarting an unnecessary timing animation during the gesture handoff.
+
+- [#26](https://github.com/react-native-motion-kit/react-native-swipe-deck/pull/26) [`85ccb41`](https://github.com/react-native-motion-kit/react-native-swipe-deck/commit/85ccb41ca4975f8db94bef4df1852c5dc6b3cace) Thanks [@saseungmin](https://github.com/saseungmin)! - Reclaim factory registry entries after the final committed `Root` or public hook consumer for an
+  id unmounts. Stable navigation route keys are now supported as deck instance ids, provided the key
+  does not change while the screen is mounted.
+
+  The duplicate-Root rule is unchanged: two simultaneous Roots from the same factory still require
+  distinct ids. This release also changes the documented identity contract. Actions and interaction
+  shared values stay stable only while at least one committed consumer retains the id; after a gap
+  with zero committed consumers and deferred eviction, a later consumer for the same id receives a
+  fresh action/interaction identity.
+
 ## 1.4.1
 
 ### Patch Changes
