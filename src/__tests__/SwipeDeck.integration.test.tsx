@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import type {
   GestureStateChangeEvent,
   GestureUpdateEvent,
@@ -5,9 +6,16 @@ import type {
 } from 'react-native-gesture-handler';
 
 import { describe, expect, it, jest } from '@jest/globals';
-import { act, fireEvent, render, screen, userEvent } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render as renderComponent,
+  screen,
+  userEvent,
+} from '@testing-library/react-native';
 import { StrictMode, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
 import type { SwipeDeckCardInteractive, SwipeDirection } from '../index';
@@ -32,6 +40,10 @@ const linusProfile: Profile = { id: 'linus', name: 'Linus' };
 const profiles: Profile[] = [adaProfile, graceProfile];
 
 const getProfileKey = (profile: Profile) => profile.id;
+
+function render(element: ReactElement) {
+  return renderComponent(element, { wrapper: GestureHandlerRootView });
+}
 
 async function measureDeckFromVisibleCard(cardName: string) {
   await fireEvent(screen.getByText(cardName), 'layout', {
@@ -1042,6 +1054,9 @@ describe('SwipeDeck factory hooks', () => {
     await measureDeckFromVisibleCard('Ada');
 
     const panGesture = getByGestureTestId('swipe-deck-pan');
+    if (!('handlers' in panGesture)) {
+      throw new Error('Expected registered pan gesture callbacks');
+    }
     const onBegin = panGesture.handlers.onBegin as
       | ((event: GestureStateChangeEvent<PanGestureHandlerEventPayload>) => void)
       | undefined;
