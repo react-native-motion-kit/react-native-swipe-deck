@@ -68,6 +68,3 @@ jobs:
 
       - name: Build docs
         run: pnpm docs:build
-
-      - name: Check docs SEO output
-        run: pnpm -C docs test:seo

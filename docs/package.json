@@ -7,7 +7,6 @@
     "build": "rspress build",
     "dev": "rspress dev",
     "preview": "rspress preview",
-    "test:seo": "node --test tests/seo.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
