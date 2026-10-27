@@ -16,11 +16,14 @@ import {
 } from '@rspress/core/theme-original';
 import { useEffect } from 'react';
 
+import type { AlternateLink } from '../plugins/seo';
+
 const GUIDE_SECTION_NAMES = new Set(['getting-started', 'usage']);
 const INSTALL_PACKAGES = '@react-native-motion-kit/swipe-deck';
 
 function Layout(props: ComponentProps<typeof BasicLayout>) {
   const { page } = usePage();
+  const alternatives = (page.seoAlternates ?? []) as AlternateLink[];
 
   useHead({
     link:
@@ -31,6 +34,7 @@ function Layout(props: ComponentProps<typeof BasicLayout>) {
               rel: 'canonical',
               href: withSiteOrigin(withBase(normalizeHrefInRuntime(page.routePath))),
             },
+            ...alternatives,
           ],
   });
 

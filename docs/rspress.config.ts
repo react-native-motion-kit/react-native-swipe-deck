@@ -2,7 +2,7 @@ import { defineConfig } from '@rspress/core';
 import { transformerNotationDiff, transformerNotationHighlight } from '@shikijs/transformers';
 import * as path from 'node:path';
 
-import { sitemapPlugin } from './plugins/sitemap';
+import { seoPlugin } from './plugins/seo';
 
 export default defineConfig({
   root: path.join(__dirname, 'docs'),
@@ -25,7 +25,7 @@ export default defineConfig({
     versioned: true,
   },
   ssg: true,
-  plugins: [sitemapPlugin()],
+  plugins: [seoPlugin()],
   markdown: {
     showLineNumbers: true,
     defaultWrapCode: false,
