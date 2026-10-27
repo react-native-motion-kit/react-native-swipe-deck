@@ -1,6 +1,16 @@
 import './index.css';
+import type { ComponentProps } from 'react';
+
+import {
+  normalizeHrefInRuntime,
+  useHead,
+  usePage,
+  withBase,
+  withSiteOrigin,
+} from '@rspress/core/runtime';
 import {
   HomeLayout as BasicHomeLayout,
+  Layout as BasicLayout,
   NotFoundLayout as BasicNotFoundLayout,
   PackageManagerTabs,
 } from '@rspress/core/theme-original';
@@ -8,6 +18,24 @@ import { useEffect } from 'react';
 
 const GUIDE_SECTION_NAMES = new Set(['getting-started', 'usage']);
 const INSTALL_PACKAGES = '@react-native-motion-kit/swipe-deck';
+
+function Layout(props: ComponentProps<typeof BasicLayout>) {
+  const { page } = usePage();
+
+  useHead({
+    link:
+      page.pageType === '404'
+        ? []
+        : [
+            {
+              rel: 'canonical',
+              href: withSiteOrigin(withBase(normalizeHrefInRuntime(page.routePath))),
+            },
+          ],
+  });
+
+  return <BasicLayout {...props} />;
+}
 
 function getGuideRedirectPath(pathname: string) {
   const parts = pathname.split('/').filter(Boolean);
@@ -62,6 +90,6 @@ function NotFoundLayout() {
   return <BasicNotFoundLayout />;
 }
 
-export { HomeLayout, NotFoundLayout };
+export { HomeLayout, Layout, NotFoundLayout };
 // oxlint-disable-next-line import/export
 export * from '@rspress/core/theme-original';
