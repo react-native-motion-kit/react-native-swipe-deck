@@ -2,8 +2,14 @@ import { defineConfig } from '@rspress/core';
 import { transformerNotationDiff, transformerNotationHighlight } from '@shikijs/transformers';
 import * as path from 'node:path';
 
+import { seoPlugin } from './plugins/seo';
+
 export default defineConfig({
   root: path.join(__dirname, 'docs'),
+  siteOrigin: 'https://react-native-swipe-deck.pages.dev',
+  route: {
+    cleanUrls: true,
+  },
   lang: 'en',
   title: 'React Native Swipe Deck',
   description: 'High-performance Tinder-style swipe deck documentation for React Native apps.',
@@ -19,6 +25,7 @@ export default defineConfig({
     versioned: true,
   },
   ssg: true,
+  plugins: [seoPlugin()],
   markdown: {
     showLineNumbers: true,
     defaultWrapCode: false,
